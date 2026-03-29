@@ -142,8 +142,7 @@ $tenants = $m_stmt->fetchAll(PDO::FETCH_ASSOC);
         <p class="text-muted small mb-0">Manage client databases and global schema updates.</p>
     </div>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-dark rounded-pill px-4 shadow-sm" data-bs-toggle="modal"
-            data-bs-target="#tenantModal" onclick="resetTenantForm()">
+        <button type="button" class="btn btn-dark rounded-pill px-4 shadow-sm" onclick="resetTenantForm()">
             <i class="bi bi-plus-circle me-1"></i> Add Client
         </button>
         <form method="POST">
@@ -219,6 +218,31 @@ endif; ?>
     </div>
 </div>
 
+<!-- Hostinger DB Pre-Check Modal -->
+<div class="modal fade" id="hostingerCheckModal" tabindex="-1" aria-hidden="true" style="z-index: 11000;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold m-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>MANDATORY STEP</h5>
+            </div>
+            <div class="modal-body text-center p-5">
+                <div class="mb-4 text-danger">
+                    <i class="bi bi-database-fill-x display-1"></i>
+                </div>
+                <h4 class="fw-bold text-dark">Hostinger Database Ready?</h4>
+                <p class="text-muted fs-6 px-3">
+                    You MUST first go to your <strong>Hostinger Control Panel</strong> and manually create the database & user.<br><br>
+                    Is the database created and ready for credentials?
+                </p>
+            </div>
+            <div class="modal-footer bg-light border-0 justify-content-center py-3">
+                <button type="button" class="btn btn-light border px-4 rounded-pill" data-bs-dismiss="modal">No, not yet</button>
+                <button type="button" id="confirmDbBtn" class="btn btn-danger px-5 rounded-pill fw-bold shadow-sm">Yes, I have created it</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Tenant Add/Edit Modal -->
 <div class="modal fade" id="tenantModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -227,17 +251,10 @@ endif; ?>
                 <h5 class="modal-title fw-bold" id="modalTitle">Add New Client</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST">
+            <form method="POST" onsubmit="return confirm('🛑 FINAL CHECK: Have you verified that the Database and User are already active in Hostinger with these EXACT credentials?\n\nSaving without a matching Hostinger database will cause a connection error. Proceed?')">
                 <div class="modal-body p-4">
                     <input type="hidden" name="tenant_id" id="t_id">
 
-                    <!-- Hosted Provisioning Warning -->
-                    <div class="alert alert-warning border-0 shadow-sm rounded-4 small p-3 mb-4 d-flex align-items-center">
-                        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
-                        <div>
-                            <strong>Important for Hosted:</strong> Before saving this client, you must visit your <strong>Hostinger Control Panel</strong> and manually create a database with the name and username shown below.
-                        </div>
-                    </div>
 
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted text-uppercase">Tenant Unique Key</label>
@@ -305,22 +322,35 @@ endif; ?>
         return retVal;
     }
 
-    function syncDbConfig() {
-        const id = document.getElementById('t_id').value;
-        if (id) return; // Only sync for NEW tenants
 
-        const key = document.getElementById('t_key').value.trim();
-        if (key) {
-            const cleanKey = key.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-            document.getElementById('t_db').value = 'vms_' + cleanKey;
-            
-            // Only sync username to vms_db_ pattern if NOT on localhost
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            document.getElementById('t_user').value = isLocal ? 'root' : ('vms_db_' + cleanKey);
-        }
-    }
+    let pendingAction = null;
 
     function resetTenantForm() {
+        pendingAction = 'add';
+        const checkModal = new bootstrap.Modal(document.getElementById('hostingerCheckModal'));
+        checkModal.show();
+    }
+
+    function editTenant(t) {
+        pendingAction = { type: 'edit', data: t };
+        const checkModal = new bootstrap.Modal(document.getElementById('hostingerCheckModal'));
+        checkModal.show();
+    }
+
+    // Handle Confirmation in Pre-Check Modal
+    document.getElementById('confirmDbBtn').addEventListener('click', function() {
+        // Hide pre-check
+        const checkModalEl = document.getElementById('hostingerCheckModal');
+        bootstrap.Modal.getInstance(checkModalEl).hide();
+
+        if (pendingAction === 'add') {
+            showAddForm();
+        } else if (pendingAction && pendingAction.type === 'edit') {
+            showEditForm(pendingAction.data);
+        }
+    });
+
+    function showAddForm() {
         document.getElementById('modalTitle').innerText = 'Add New Client';
         document.getElementById('t_id').value = '';
         document.getElementById('t_key').value = '';
@@ -328,14 +358,14 @@ endif; ?>
         document.getElementById('t_db').value = '';
         document.getElementById('t_user').value = 'root';
         
-        // Detect if we are on localhost for default password
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         document.getElementById('t_pass').value = isLocal ? '' : generateRandomPass(10);
-        
         document.getElementById('t_status').value = 'active';
+
+        new bootstrap.Modal(document.getElementById('tenantModal')).show();
     }
 
-    function editTenant(t) {
+    function showEditForm(t) {
         document.getElementById('modalTitle').innerText = 'Edit Client: ' + t.tenant_key;
         document.getElementById('t_id').value = t.id;
         document.getElementById('t_key').value = t.tenant_key;
@@ -348,8 +378,6 @@ endif; ?>
         new bootstrap.Modal(document.getElementById('tenantModal')).show();
     }
 
-    // Bind event for auto-fill
-    document.getElementById('t_key').addEventListener('keyup', syncDbConfig);
 </script>
 
 <?php require_once 'footer.php'; ?>
