@@ -50,7 +50,7 @@ if (!function_exists('menuPath')) {
                             class="bi bi-shield-lock me-2"></i> Users</a></li>
             <?php endif; ?>
 
-            <?php if (isset($_SESSION['is_super']) && $_SESSION['is_super']): ?>
+            <?php if (isset($_SESSION['is_super']) && $_SESSION['is_super'] && ($_SESSION['tenant_key'] ?? 'default') === 'default'): ?>
                 <li><a class="dropdown-item" href="<?php echo menuPath('admin', 'tenants.php'); ?>"><i
                             class="bi bi-database me-2"></i> Clients / Tenants</a></li>
             <?php endif; ?>
@@ -61,7 +61,7 @@ if (!function_exists('menuPath')) {
                 </li>
                 <li><a class="dropdown-item" href="<?php echo menuPath('admin', 'settings.php'); ?>"><i
                             class="bi bi-sliders me-2"></i> Settings</a></li>
-                <?php if (isset($_SESSION['is_super']) && $_SESSION['is_super']): ?>
+                <?php if (isset($_SESSION['is_super']) && $_SESSION['is_super'] && ($_SESSION['tenant_key'] ?? 'default') === 'default'): ?>
                     <li><a class="dropdown-item" href="<?php echo menuPath('admin', 'cloud_deployment.php'); ?>"><i class="bi bi-cloud-arrow-up me-2"></i> Cloud Deployment</a></li>
                 <?php endif; ?>
             <?php endif; ?>

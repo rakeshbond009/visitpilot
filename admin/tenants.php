@@ -3,14 +3,14 @@ require_once 'header.php';
 require_once '../includes/migration_engine.php';
 
 // --- SUPER ADMIN SECURITY ---
-// Only the primary 'is_super' account can access this page
-if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
+// STRICT PROTECTION: Only the System Super Administrator (on default database) can manage other clients.
+if (!isset($_SESSION['is_super']) || !$_SESSION['is_super'] || ($_SESSION['tenant_key'] ?? 'default') !== 'default') {
     echo '<div class="container py-5 text-center">
             <div class="alert alert-danger rounded-4 shadow-sm">
                 <i class="bi bi-shield-lock display-1 d-block mb-3"></i>
                 <h3>Access Denied</h3>
                 <p>Only the System Super Administrator can manage clients and global database routing.</p>
-                <a href="' . $home_url . '" class="btn btn-primary rounded-pill px-4 mt-3">Return to Dashboard</a>
+                <a href="dashboard.php" class="btn btn-primary rounded-pill px-4 mt-3">Return to Dashboard</a>
             </div>
           </div>';
     require_once 'footer.php';
