@@ -1,6 +1,4 @@
-uploads/**
-!uploads/**/
-!uploads/**/.gitkeep
+uploads/
 .env
 *.log
 whatsapp_log.txt
