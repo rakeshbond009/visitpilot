@@ -111,7 +111,12 @@ include_once 'header.php';
                             <i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)
                         </button>
                         
-                        <p class="text-muted small italic mt-3 mb-0 text-center">*Note: If Webhook is set, deployment is automated. Otherwise, manual deploy on Hostinger is needed.</p>
+                        <div class="mt-3 text-center">
+                            <p class="text-muted small italic mb-2">*Note: If Webhook is set, deployment is automated. Otherwise, manual deploy on Hostinger is needed.</p>
+                            <a href="api/git_repair.php" target="_blank" class="text-decoration-none small fw-bold text-danger">
+                                <i class="bi bi-tools me-1"></i> Stuck? Repair Hostinger Sync Conflict
+                            </a>
+                        </div>
                     </form>
 
                     <!-- Deployment Logs/Output -->

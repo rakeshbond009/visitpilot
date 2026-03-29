@@ -18,23 +18,6 @@ $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 // 3. GLOBAL DATE/TIME & HELPERS
 date_default_timezone_set('Asia/Kolkata');
 
-// ========== UPLOAD DIRECTORIES (Standardized Absolute Paths) ==========
-// Mirroring 'gatepilot' structure for best-in-class sync compatibility
-define('UPLOAD_BASE', dirname(__DIR__) . '/uploads/');
-define('PHOTO_UPLOAD_DIR', UPLOAD_BASE . 'photos/');
-define('PASS_UPLOAD_DIR', UPLOAD_BASE . 'passes/');
-define('COMPANY_UPLOAD_DIR', UPLOAD_BASE . 'company/');
-define('QR_UPLOAD_DIR', UPLOAD_BASE . 'qrcodes/');
-define('ISSUE_UPLOAD_DIR', UPLOAD_BASE . 'issues/');
-
-// Ensure directories exist locally (Git ignores the contents, but app needs the structure)
-if (!is_dir(UPLOAD_BASE)) @mkdir(UPLOAD_BASE, 0755, true);
-if (!is_dir(PHOTO_UPLOAD_DIR)) @mkdir(PHOTO_UPLOAD_DIR, 0755, true);
-if (!is_dir(PASS_UPLOAD_DIR)) @mkdir(PASS_UPLOAD_DIR, 0755, true);
-if (!is_dir(COMPANY_UPLOAD_DIR)) @mkdir(COMPANY_UPLOAD_DIR, 0755, true);
-if (!is_dir(QR_UPLOAD_DIR)) @mkdir(QR_UPLOAD_DIR, 0755, true);
-if (!is_dir(ISSUE_UPLOAD_DIR)) @mkdir(ISSUE_UPLOAD_DIR, 0755, true);
-
 if (!function_exists('getIST')) {
     function getIST($format = 'Y-m-d H:i:s')
     {
@@ -389,9 +372,9 @@ function enforcePageSecurity()
         'search.php' => ['security_search'],
         'invite.php' => ['host_invite'],
         'pending_approvals.php' => ['host_pending'],
-        'my_visitors.php'       => ['host_history'],
-        'ai_chat.php'           => ['access_ai_rag_chat'],
-        'app_issues.php'        => ['report_issue']
+        'my_visitors.php' => ['host_history'],
+        'ai_chat.php' => ['access_ai_rag_chat'],
+        'app_issues.php' => ['report_issue']
     ];
 
     // 4. Critical Super Admin Only - Full Page Block (Explicit Request)
