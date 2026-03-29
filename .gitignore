@@ -1,5 +1,4 @@
-uploads/photos/
-uploads/qrcodes/
+uploads/
 .env
 *.log
 includes/sessions/
