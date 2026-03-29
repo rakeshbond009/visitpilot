@@ -1,4 +1,5 @@
-uploads/**/*
+uploads/**
+!uploads/**/
 !uploads/**/.gitkeep
 .env
 *.log
