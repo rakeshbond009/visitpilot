@@ -1,8 +1,20 @@
-uploads/
+# Database & Secrets
 .env
-*.log
+error.log
 whatsapp_log.txt
+db_debug.log
+
+# User Data & Photos (Keep these safe and PERSISTENT on your server!)
+uploads/
+temp/
 includes/sessions/
+
+# System & Tooling
 .DS_Store
 .vscode/
 includes/*.json
+
+# Backup files
+*.bak
+*.tmp
+*.log
