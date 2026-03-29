@@ -4,7 +4,7 @@ requireLogin();
 
 // Enforce Super Admin only (assuming role 'admin' is super admin, or we check a specific permission)
 // For now, mirroring the screenshot's requirement.
-if ($_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
     header("Location: dashboard.php");
     exit;
 }

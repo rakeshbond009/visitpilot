@@ -4,7 +4,7 @@ require_once '../includes/migration_engine.php';
 
 // --- SUPER ADMIN SECURITY ---
 // STRICT PROTECTION: Only the System Super Administrator (on default database) can manage other clients.
-if (!isset($_SESSION['is_super']) || !$_SESSION['is_super'] || ($_SESSION['tenant_key'] ?? 'default') !== 'default') {
+if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
     echo '<div class="container py-5 text-center">
             <div class="alert alert-danger rounded-4 shadow-sm">
                 <i class="bi bi-shield-lock display-1 d-block mb-3"></i>
