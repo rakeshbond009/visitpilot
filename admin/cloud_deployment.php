@@ -107,16 +107,21 @@ include_once 'header.php';
                             <span class="text-muted small mt-2 d-block">(This will be attached to your code's history log on GitHub.)</span>
                         </div>
 
-                        <button type="button" id="pushBtn" class="btn btn-primary w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
-                            <i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)
-                        </button>
-                        
-                        <div class="mt-3 text-center">
-                            <p class="text-muted small italic mb-2">*Note: If Webhook is set, deployment is automated. Otherwise, manual deploy on Hostinger is needed.</p>
-                            <a href="api/git_repair.php" target="_blank" class="text-decoration-none small fw-bold text-danger">
-                                <i class="bi bi-tools me-1"></i> Stuck? Repair Hostinger Sync Conflict
+                        <div class="mt-4 d-flex flex-column gap-2">
+                            <button type="button" id="pushBtn" class="btn btn-primary w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)
+                            </button>
+                            
+                            <a href="api/repair_sync.php" onclick="return confirm('WARNING: This will discard any manual changes on the SERVER and force it to match your latest GitHub code. Are you sure?')" class="btn btn-outline-danger w-100 py-2 rounded-3 fw-bold small d-flex align-items-center justify-content-center gap-2" style="font-size: 0.8rem;">
+                                <i class="bi bi-tools"></i> Stuck? Repair Hostinger Sync Conflict
                             </a>
                         </div>
+                        
+                        <?php if (empty($current_webhook)): ?>
+                            <p class="text-muted small italic mt-3 mb-0 text-center">*Note: If Webhook is set, deployment is automated. Otherwise, manual deploy on Hostinger is needed.</p>
+                        <?php else: ?>
+                            <p class="text-success small italic mt-3 mb-0 text-center"><i class="bi bi-check-circle-fill me-1"></i> Webhook configured: Automated deployment is active.</p>
+                        <?php endif; ?>
                     </form>
 
                     <!-- Deployment Logs/Output -->

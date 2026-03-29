@@ -17,8 +17,9 @@ if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
     exit;
 }
 
-$action_msg = "";
-$action_icon = "success";
+$action_msg = $_SESSION['tenant_msg'] ?? "";
+$action_icon = $_SESSION['tenant_icon'] ?? "success";
+unset($_SESSION['tenant_msg'], $_SESSION['tenant_icon']);
 
 // --- HANDLE POST ACTIONS ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -38,18 +39,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $server_pdo = new PDO("mysql:host=$db_host;charset=utf8mb4", $db_user, $db_pass);
                 $server_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $server_pdo->exec("CREATE DATABASE IF NOT EXISTS `$db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            }
-            catch (PDOException $db_e) {
-            // Ignore creator error, proceed to save metadata
+            } catch (PDOException $db_e) {
+                // Ignore creator error, proceed to save metadata
             }
 
             if ($id) {
                 $stmt = $master_pdo->prepare("UPDATE tenants SET tenant_key=?, db_host=?, db_name=?, db_user=?, db_pass=?, status=? WHERE id=?");
                 $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $id]);
                 logAction($pdo, $_SESSION['user_id'], "Updated Tenant: $key (ID: $id)");
-                $action_msg = "Tenant '$key' config updated.";
-            }
-            else {
+                $_SESSION['tenant_msg'] = "Tenant '$key' config updated.";
+            } else {
                 $stmt = $master_pdo->prepare("INSERT INTO tenants (tenant_key, db_host, db_name, db_user, db_pass, status) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status]);
 
@@ -75,18 +74,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     logAction($pdo, $_SESSION['user_id'], "Created new Tenant: $key (ID: $tenant_id)");
 
-                    $action_msg = "New tenant '$key' added successfully!<br><br><strong>Admin Credentials:</strong><br>Username: <code>admin</code><br>Password: <code>$random_password</code><br><br><span class='text-danger'>⚠️ Save this password securely - it cannot be recovered!</span>";
-                }
-                catch (PDOException $e) {
-                    $action_msg = "Tenant added but admin creation failed: " . $e->getMessage();
-                    $action_icon = "warning";
+                    $_SESSION['tenant_msg'] = "New tenant '$key' added successfully!<br><br><strong>Admin Credentials:</strong><br>Username: <code>admin</code><br>Password: <code>$random_password</code><br><br><span class='text-danger'>⚠️ Save this password securely - it cannot be recovered!</span>";
+                } catch (PDOException $e) {
+                    $_SESSION['tenant_msg'] = "Tenant added but admin creation failed: " . $e->getMessage();
+                    $_SESSION['tenant_icon'] = "warning";
                 }
             }
+        } catch (PDOException $e) {
+            $_SESSION['tenant_msg'] = "Error saving tenant: " . $e->getMessage();
+            $_SESSION['tenant_icon'] = "warning";
         }
-        catch (PDOException $e) {
-            $action_msg = "Error saving tenant: " . $e->getMessage();
-            $action_icon = "warning";
-        }
+        redirect('tenants.php');
     }
 
     // 2. UPGADE ALL TENANTS
@@ -95,13 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $active_tenants = $m_stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $updatedCount = 0;
+        $all_errors = "";
         foreach ($active_tenants as $t) {
             try {
                 try {
                     // Try to connect normally
                     $t_pdo = new PDO("mysql:host={$t['db_host']};dbname={$t['db_name']};charset=utf8mb4", $t['db_user'], $t['db_pass']);
-                }
-                catch (PDOException $e) {
+                } catch (PDOException $e) {
                     if ($e->getCode() == 1049 || strpos($e->getMessage(), 'Unknown database') !== false) {
                         // Database missing - Join the host without selecting a DB
                         $server_pdo = new PDO("mysql:host={$t['db_host']};charset=utf8mb4", $t['db_user'], $t['db_pass']);
@@ -110,8 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         // Retry connection
                         $t_pdo = new PDO("mysql:host={$t['db_host']};dbname={$t['db_name']};charset=utf8mb4", $t['db_user'], $t['db_pass']);
-                    }
-                    else {
+                    } else {
                         throw $e;
                     }
                 }
@@ -124,13 +121,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $upd->execute([$res['new_version'], $t['id']]);
                     $updatedCount++;
                 }
-            }
-            catch (Exception $e) {
-                $action_msg .= "Error updating {$t['tenant_key']}: " . $e->getMessage() . "<br>";
+            } catch (Exception $e) {
+                $all_errors .= "Error updating {$t['tenant_key']}: " . $e->getMessage() . "<br>";
             }
         }
         logAction($pdo, $_SESSION['user_id'], "Triggered bulk upgrade for $updatedCount active tenants");
-        $action_msg = "Successfully updated $updatedCount tenants.<br>" . $action_msg;
+        $_SESSION['tenant_msg'] = "Successfully updated $updatedCount tenants.<br>" . $all_errors;
+        redirect('tenants.php');
     }
 }
 
@@ -158,12 +155,12 @@ $tenants = $m_stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 
 <?php if ($action_msg): ?>
-    <div class="alert alert-<?php echo($action_icon == 'success') ? 'info' : 'warning'; ?> alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4"
+    <div class="alert alert-<?php echo ($action_icon == 'success') ? 'info' : 'warning'; ?> alert-dismissible fade show rounded-4 shadow-sm border-0 mb-4"
         role="alert">
         <?php echo $action_msg; ?>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-<?php
+    <?php
 endif; ?>
 
 <div class="card shadow-sm border-0 rounded-4 overflow-hidden">
@@ -199,7 +196,7 @@ endif; ?>
                         </td>
                         <td>
                             <span
-                                class="badge bg-<?php echo(($t['status'] ?? 'active') == 'active') ? 'success' : 'danger'; ?>-opacity text-<?php echo(($t['status'] ?? 'active') == 'active') ? 'success' : 'danger'; ?> px-3">
+                                class="badge bg-<?php echo (($t['status'] ?? 'active') == 'active') ? 'success' : 'danger'; ?>-opacity text-<?php echo (($t['status'] ?? 'active') == 'active') ? 'success' : 'danger'; ?> px-3">
                                 <?php echo strtoupper($t['status'] ?? 'ACTIVE'); ?>
                             </span>
                         </td>
@@ -215,8 +212,8 @@ endif; ?>
                             </button>
                         </td>
                     </tr>
-                <?php
-endforeach; ?>
+                    <?php
+                endforeach; ?>
             </tbody>
         </table>
     </div>
@@ -269,8 +266,13 @@ endforeach; ?>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted text-uppercase">DB Password</label>
-                            <input type="password" name="db_pass" id="t_pass" class="form-control"
-                                placeholder="Optional">
+                            <div class="input-group">
+                                <input type="text" name="db_pass" id="t_pass" class="form-control" 
+                                       placeholder="Optional">
+                                <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('t_pass').value = generateRandomPass(12)">
+                                    <i class="bi bi-shuffle"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -286,6 +288,27 @@ endforeach; ?>
 </div>
 
 <script>
+    function generateRandomPass(length = 12) {
+        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+        let retVal = "";
+        for (let i = 0, n = charset.length; i < length; ++i) {
+            retVal += charset.charAt(Math.floor(Math.random() * n));
+        }
+        return retVal;
+    }
+
+    function syncDbConfig() {
+        const id = document.getElementById('t_id').value;
+        if (id) return; // Only sync for NEW tenants
+
+        const key = document.getElementById('t_key').value.trim();
+        if (key) {
+            const cleanKey = key.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+            document.getElementById('t_db').value = 'VMS_' + cleanKey;
+            document.getElementById('t_user').value = 'VMS_DB_' + cleanKey;
+        }
+    }
+
     function resetTenantForm() {
         document.getElementById('modalTitle').innerText = 'Add New Client';
         document.getElementById('t_id').value = '';
@@ -293,7 +316,11 @@ endforeach; ?>
         document.getElementById('t_host').value = 'localhost';
         document.getElementById('t_db').value = '';
         document.getElementById('t_user').value = 'root';
-        document.getElementById('t_pass').value = '';
+        
+        // Detect if we are on localhost for default password
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        document.getElementById('t_pass').value = isLocal ? '' : generateRandomPass(10);
+        
         document.getElementById('t_status').value = 'active';
     }
 
@@ -309,6 +336,9 @@ endforeach; ?>
 
         new bootstrap.Modal(document.getElementById('tenantModal')).show();
     }
+
+    // Bind event for auto-fill
+    document.getElementById('t_key').addEventListener('keyup', syncDbConfig);
 </script>
 
 <?php require_once 'footer.php'; ?>

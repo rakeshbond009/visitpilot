@@ -200,7 +200,7 @@ if ($tenant && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 // 9. BASE URL & REDIRECTS
 $protocol = $is_https ? "https://" : "http://";
 $domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
-define('BASE_URL', $is_local ? $protocol . $domainName . '/VMS/' : $protocol . $domainName . '/');
+define('BASE_URL', $is_local ? $protocol . $domainName . '/visitpilot/' : $protocol . $domainName . '/');
 
 function redirect($url)
 {
