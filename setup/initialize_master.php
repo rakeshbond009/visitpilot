@@ -16,9 +16,9 @@ if ($is_local) {
 } else {
     // Hosted Credentials
     $master_host = 'localhost';
-    $master_user = 'u875321134_codepilotvisit';
+    $master_user = 'u875321134_vms_master';
     $master_pass = 'Eu8~ieQH?Wzc';
-    $master_db = 'u875321134_visitor'; // Store tenants table in the main DB
+    $master_db = 'u875321134_vms_master'; // Store tenants table in the main DB
     $create_db = false; // Don't try to create DB on shared hosting
 }
 
@@ -57,9 +57,9 @@ try {
     $stmt = $m_pdo->prepare("INSERT IGNORE INTO `tenants` (tenant_key, db_host, db_name, db_user, db_pass) VALUES (?, ?, ?, ?, ?)");
 
     if ($is_local) {
-        $stmt->execute(['default', 'localhost', 'vms_db', 'root', '']);
+        $stmt->execute(['default', 'localhost', 'vms_master', 'root', '']);
     } else {
-        $stmt->execute(['default', 'localhost', 'u875321134_visitor', 'u875321134_codepilotvisit', 'Eu8~ieQH?Wzc']);
+        $stmt->execute(['default', 'localhost', 'u875321134_vms_master', 'u875321134_vms_master', 'Eu8~ieQH?Wzc']);
     }
 
     echo "<div style='color:green; font-weight:bold;'>Success! Master configuration initialized.</div>";

@@ -113,9 +113,9 @@ if ($is_local) {
     define('SUPPORT_DB_PASS', '');
 } else {
     $m_host = 'localhost';
-    $m_user = 'u875321134_codepilotvisit';
+    $m_user = 'u875321134_vms_master';
     $m_pass = 'Eu8~ieQH?Wzc';
-    $m_db = 'u875321134_visitor';
+    $m_db = 'u875321134_vms_master';
 
     // ========== CENTRALIZED SUPPORT DATABASE (PRODUCTION) ==========
     define('SUPPORT_DB_HOST', 'localhost');

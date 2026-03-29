@@ -46,9 +46,9 @@ if ($is_local) {
 } else {
     // Hosted environment
     $m_host = 'localhost';
-    $m_user = 'u875321134_codepilotvisit';
+    $m_user = 'u875321134_vms_master';
     $m_pass = 'Eu8~ieQH?Wzc';
-    $m_db = 'u875321134_visitor';
+    $m_db = 'u875321134_vms_master';
 }
 
 try {

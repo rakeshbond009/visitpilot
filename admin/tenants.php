@@ -305,7 +305,10 @@ endif; ?>
         if (key) {
             const cleanKey = key.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
             document.getElementById('t_db').value = 'VMS_' + cleanKey;
-            document.getElementById('t_user').value = 'VMS_DB_' + cleanKey;
+            
+            // Only sync username to VMS_DB_ pattern if NOT on localhost
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            document.getElementById('t_user').value = isLocal ? 'root' : ('VMS_DB_' + cleanKey);
         }
     }
 

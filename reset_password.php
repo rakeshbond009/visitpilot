@@ -1,5 +1,5 @@
 <?php
-$pdo = new PDO('mysql:host=127.0.0.1;dbname=vms_db', 'root', '');
+$pdo = new PDO('mysql:host=127.0.0.1;dbname=vms_master', 'root', '');
 $password = password_hash('password123', PASSWORD_DEFAULT);
 $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE username = 'mobiletest'");
 if ($stmt->execute([$password])) {
