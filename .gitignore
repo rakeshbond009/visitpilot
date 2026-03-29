@@ -1,6 +1,7 @@
 uploads/
 .env
 *.log
+whatsapp_log.txt
 includes/sessions/
 .DS_Store
 .vscode/
