@@ -231,6 +231,14 @@ endif; ?>
                 <div class="modal-body p-4">
                     <input type="hidden" name="tenant_id" id="t_id">
 
+                    <!-- Hosted Provisioning Warning -->
+                    <div class="alert alert-warning border-0 shadow-sm rounded-4 small p-3 mb-4 d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                        <div>
+                            <strong>Important for Hosted:</strong> Before saving this client, you must visit your <strong>Hostinger Control Panel</strong> and manually create a database with the name and username shown below.
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-bold text-muted text-uppercase">Tenant Unique Key</label>
                         <input type="text" name="tenant_key" id="t_key" class="form-control fw-bold"
@@ -303,12 +311,12 @@ endif; ?>
 
         const key = document.getElementById('t_key').value.trim();
         if (key) {
-            const cleanKey = key.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
-            document.getElementById('t_db').value = 'VMS_' + cleanKey;
+            const cleanKey = key.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            document.getElementById('t_db').value = 'vms_' + cleanKey;
             
-            // Only sync username to VMS_DB_ pattern if NOT on localhost
+            // Only sync username to vms_db_ pattern if NOT on localhost
             const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            document.getElementById('t_user').value = isLocal ? 'root' : ('VMS_DB_' + cleanKey);
+            document.getElementById('t_user').value = isLocal ? 'root' : ('vms_db_' + cleanKey);
         }
     }
 
