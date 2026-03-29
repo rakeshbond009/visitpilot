@@ -1,0 +1,27 @@
+DB NOW: 2026-03-17 17:31:57
+PHP NOW: 2026-03-17
+
+--- STATUS SUMMARY ---
+: 22
+pending: 57
+approved: 64
+rejected: 40
+checked_in: 10
+checked_out: 22
+
+--- VISIT DATES (LAST 10) ---
+ | pending
+ | rejected
+2026-03-17 | pending
+2026-03-17 | pending
+ | rejected
+ | rejected
+ | rejected
+ | pending
+ | rejected
+ | rejected
+
+--- TEST QUERIES ---
+Monthly Unique: 2
+Visits Today: 12
+Checked In Now: 10

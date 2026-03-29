@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "CodePilotxVMS",
+    "slug": "codepilotxvms",
+    "version": "1.0.1",
+    "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.codepilot.vms",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
+        "backgroundColor": "#FFFFFF"
+      },
+      "queries": [
+        "whatsapp"
+      ],
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "SYSTEM_ALERT_WINDOW",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
+          "color": "#ffffff"
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}

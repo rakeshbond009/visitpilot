@@ -1,0 +1,105 @@
+:root {
+    --primary-color: #4361ee;
+    --primary-hover: #3a56d4;
+    --secondary-color: #3f37c9;
+    --accent-color: #4895ef;
+    --background-color: #f8f9fa;
+    --text-color: #212529;
+    --text-muted: #6c757d;
+    --card-bg: #ffffff;
+    --border-color: #e9ecef;
+}
+
+/* 
+   Keep style.css minimal to avoid conflicting with the Admin Dashboard.
+   The Dashboard uses Bootstrap, so we should avoid global overrides here 
+   unless they are specifically for the admin panel layout.
+*/
+
+body {
+    background-color: var(--background-color);
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--text-color);
+}
+
+/* Utility Classes used in Admin */
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #4361ee, #3f37c9);
+}
+
+.text-primary-gradient {
+    background: linear-gradient(45deg, #4361ee, #3f37c9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Admin-specific card adjustments if needed, but keep it scoped */
+.card {
+    border: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* 
+   DASHBOARD STAT CARDS
+   Restoring these styles as they are used across Security, Admin, and Host dashboards.
+*/
+.stat-card {
+    padding: 20px;
+    border-radius: 15px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.stat-card h3 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+.stat-card p {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+/* Color Variants */
+.stat-card.blue {
+    background: linear-gradient(45deg, #4361ee, #3a0ca3);
+}
+
+.stat-card.green {
+    background: linear-gradient(45deg, #2ec4b6, #20a4f3);
+}
+
+.stat-card.orange {
+    background: linear-gradient(45deg, #ff9f1c, #ffbf69);
+}
+
+.stat-card.purple {
+    background: linear-gradient(45deg, #7209b7, #560bad);
+}
+
+/* Utility Classes */
+.hover-scale:hover {
+    transform: scale(1.02);
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Ensure navbar doesn't look broken in admin */
+.navbar-brand {
+    font-weight: 700;
+}

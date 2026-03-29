@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "865175140979",
+    "project_id": "vms-notification-c484b",
+    "storage_bucket": "vms-notification-c484b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:865175140979:android:c70c202e9dbc68a3aec806",
+        "android_client_info": {
+          "package_name": "com.codepilot.vms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYNwtIsr8t8xzulQVaf9HsTl-nMBsO6MM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

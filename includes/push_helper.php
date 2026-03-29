@@ -1,0 +1,285 @@
+<?php
+/**
+ * VMS Push Helper - Refined Version with Full Data Sync
+ */
+
+function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
+{
+    // --- DEBUG LOGGING ---
+    $logFile = __DIR__ . '/push_debug.log';
+    $log = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+
+    $log("Attempting push for Employee ID: $employee_id. Title: $title");
+
+    // Modified to fetch from user_devices table for multi-device support
+    $stmt = $pdo->prepare("
+        SELECT u.id as user_id, ud.fcm_token, u.role 
+        FROM users u 
+        JOIN user_devices ud ON u.id = ud.user_id 
+        WHERE u.employee_id = ? 
+        AND ud.fcm_token IS NOT NULL
+    ");
+    $stmt->execute([$employee_id]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fallback to legacy single token if no devices found (Backward Compatibility)
+    if (empty($users)) {
+        $stmt = $pdo->prepare("SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.employee_id = ? AND u.fcm_token IS NOT NULL");
+        $stmt->execute([$employee_id]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    if (empty($users)) {
+        $log("No active FCM tokens found for Employee ID: $employee_id");
+        return false;
+    }
+
+    // Filter out users with empty or suspiciously short tokens
+    $users = array_filter($users, function ($u) {
+        return !empty(trim($u['fcm_token'])) && strlen($u['fcm_token']) > 20;
+    });
+
+    if (empty($users)) {
+        $log("Filtered out all tokens (too short or empty) for Employee ID: $employee_id");
+        return false;
+    }
+
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase Service Account JSON not found at: $certPath");
+        return false;
+    }
+
+    $serviceAccount = json_decode(file_get_contents($certPath), true);
+    $projectId = $serviceAccount['project_id'];
+
+    foreach ($users as $user) {
+        $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']}) with Token: " . substr($user['fcm_token'], 0, 15) . "...");
+
+        $accessToken = getGoogleAccessToken($serviceAccount);
+        if (!$accessToken) {
+            $log("ERROR: Failed to obtain Google Access Token for User ID: {$user['user_id']}");
+            continue;
+        }
+
+        // Platform-Specific Payload Strategy
+        // Android: Data-only to trigger onMessageReceived -> Background Task -> Local Notification -> Full Screen Intent
+        // iOS: Standard Notification via APNs to ensure banner visibility
+
+        $message = [
+            'message' => [
+                'token' => (string)$user['fcm_token'],
+                // NO root 'notification' key to prevent default Android system tray behavior
+                'data' => array_merge([
+                    'title' => (string)$title,
+                    'body' => (string)$body,
+                    'type' => 'visitor_arrival',
+                    'is_call_priority' => 'true',
+                    // Redundant keys to ensure compatibility with different parsers
+                    'visitId' => (string)($data['visit_id'] ?? ''),
+                    'click_action' => 'visitor_arrival_action'
+                ], $data),
+                'android' => [
+                    'priority' => 'high',
+                    'ttl' => '0s',
+                    // Intentionally OMIT 'notification' block here so it remains Data-Only for Android
+                ],
+                'apns' => [
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => (string)$title,
+                                'body' => (string)$body,
+                            ],
+                            'sound' => 'default',
+                            'category' => 'visitor_arrival',
+                            'content-available' => 1,
+                            'mutable-content' => 1
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $payloadJson = json_encode($message);
+        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+
+        // Log the outgoing payload (sensitive data masked)
+        $log("Sending Payload: " . $payloadJson);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            $log("CURL ERROR for User ID {$user['user_id']}: $curlError");
+        }
+        else {
+            $log("FCM RESPONSE for User ID {$user['user_id']} [HTTP $httpCode]: $response");
+        }
+    }
+    return true;
+}
+
+function getGoogleAccessToken($serviceAccount)
+{
+    try {
+        $now = time();
+        $expiry = $now + 3600;
+        $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+        $claimSet = json_encode([
+            'iss' => $serviceAccount['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'exp' => $expiry,
+            'iat' => $now
+        ]);
+
+        $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+        $base64UrlClaimSet = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claimSet));
+        $signatureInput = $base64UrlHeader . "." . $base64UrlClaimSet;
+
+        $privateKey = openssl_pkey_get_private($serviceAccount['private_key']);
+        if (!$privateKey)
+            return '';
+
+        openssl_sign($signatureInput, $signature, $privateKey, OPENSSL_ALGO_SHA256);
+        $jwt = $signatureInput . "." . str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+        $ch = curl_init('https://oauth2.googleapis.com/token');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion' => $jwt
+        ]));
+
+        $tokenData = json_decode(curl_exec($ch), true);
+        curl_close($ch);
+        return $tokenData['access_token'] ?? '';
+    }
+    catch (Exception $e) {
+        return '';
+    }
+}
+
+function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
+{
+    // --- DEBUG LOGGING ---
+    $logFile = __DIR__ . '/push_debug.log';
+    $log = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+
+    $log("Attempting push for Role: $role. Title: $title");
+
+    // Fetch users by role
+    $stmt = $pdo->prepare("
+        SELECT u.id as user_id, ud.fcm_token, u.role 
+        FROM users u 
+        JOIN user_devices ud ON u.id = ud.user_id 
+        WHERE u.role = ? 
+        AND ud.fcm_token IS NOT NULL
+    ");
+    $stmt->execute([$role]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fallback (Backward Compatibility)
+    if (empty($users)) {
+        $stmt = $pdo->prepare("SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.role = ? AND u.fcm_token IS NOT NULL");
+        $stmt->execute([$role]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    if (empty($users)) {
+        $log("No active FCM tokens found for Role: $role");
+        return false;
+    }
+
+    // Filter tokens
+    $users = array_filter($users, function ($u) {
+        return !empty(trim($u['fcm_token'])) && strlen($u['fcm_token']) > 20;
+    });
+
+    if (empty($users)) {
+        return false;
+    }
+
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase Service Account JSON not found");
+        return false;
+    }
+
+    $serviceAccount = json_decode(file_get_contents($certPath), true);
+    $projectId = $serviceAccount['project_id'];
+
+    foreach ($users as $user) {
+        $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']})");
+
+        $accessToken = getGoogleAccessToken($serviceAccount);
+        if (!$accessToken)
+            continue;
+
+        $message = [
+            'message' => [
+                'token' => (string)$user['fcm_token'],
+                'data' => array_merge([
+                    'title' => (string)$title,
+                    'body' => (string)$body,
+                    'type' => 'visit_update', // Different type for updates
+                    'is_call_priority' => 'false',
+                    'visitId' => (string)($data['visit_id'] ?? ''),
+                    'click_action' => 'visit_update_action'
+                ], $data),
+                'android' => [
+                    'priority' => 'high',
+                    'ttl' => '0s',
+                ],
+                'apns' => [
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => (string)$title,
+                                'body' => (string)$body,
+                            ],
+                            'sound' => 'default',
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $payloadJson = json_encode($message);
+        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $log("FCM RESPONSE for Role $role [HTTP $httpCode]: $response");
+    }
+    return true;
+}
+?>

@@ -1,0 +1,13 @@
+# Disable global error pages for API to avoid HTML responses on 404
+ErrorDocument 404 default
+ErrorDocument 403 default
+
+# Ensure JSON content type
+<FilesMatch "\.php$">
+    Header set Content-Type "application/json; charset=utf-8"
+</FilesMatch>
+
+# Allow access to index.php
+<Files "index.php">
+    Header set Content-Type "text/html; charset=utf-8"
+</Files>

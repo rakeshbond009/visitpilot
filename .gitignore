@@ -1,0 +1,8 @@
+uploads/photos/
+uploads/qrcodes/
+.env
+*.log
+includes/sessions/
+.DS_Store
+.vscode/
+includes/*.json

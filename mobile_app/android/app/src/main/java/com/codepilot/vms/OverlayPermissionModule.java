@@ -1,0 +1,62 @@
+package com.codepilot.vms;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Build;
+import android.view.WindowManager;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+
+public class OverlayPermissionModule extends ReactContextBaseJavaModule {
+    private final ReactApplicationContext reactContext;
+
+    public OverlayPermissionModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        this.reactContext = reactContext;
+    }
+
+    @Override
+    public String getName() {
+        return "OverlayPermissionModule";
+    }
+
+    @ReactMethod
+    public void wakeUpApp() {
+        // If the app is in foreground, just ensure screen is on
+        if (getCurrentActivity() != null) {
+            final Activity activity = getCurrentActivity();
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                        activity.setShowWhenLocked(true);
+                        activity.setTurnScreenOn(true);
+                        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                    } else {
+                        activity.getWindow().addFlags(
+                            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                        );
+                    }
+                }
+            });
+        } 
+        
+        // ALWAYS try to bring to front/launch if called, to handle background/killed states
+        // We use the application context to start activity
+        try {
+            Intent intent = new Intent(reactContext, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | 
+                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP |
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            reactContext.startActivity(intent);
+        } catch (Exception e) {
+            // Log error
+            e.printStackTrace();
+        }
+    }
+}

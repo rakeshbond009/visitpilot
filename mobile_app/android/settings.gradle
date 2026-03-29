@@ -1,0 +1,83 @@
+pluginManagement {
+  repositories {
+    google()
+    mavenCentral()
+    jcenter()
+    gradlePluginPortal()
+  }
+  def version = "0.74.5"
+  def reactNativeMinor = 74
+  def reactNativePatch = 5
+
+  if(reactNativeMinor == 74 && reactNativePatch <= 3){
+    includeBuild("react-settings-plugin")
+  }
+}
+
+rootProject.name = 'CodePilotxVMS'
+
+// plugins { id("com.facebook.react.settings") }
+
+def getRNMinorVersion() {
+  return 74
+}
+
+if (getRNMinorVersion() >= 75) {
+  extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    if (System.getenv('EXPO_UNSTABLE_CORE_AUTOLINKING') == '1') {
+      println('\u001B[32mUsing expo-modules-autolinking as core autolinking source\u001B[0m')
+      def command = [
+        'node',
+        '--no-warnings',
+        '--eval',
+        'require(require.resolve(\'expo-modules-autolinking\', { paths: [require.resolve(\'expo/package.json\')] }))(process.argv.slice(1))',
+        'react-native-config',
+        '--json',
+        '--platform',
+        'android'
+      ].toList()
+      ex.autolinkLibrariesFromCommand(command)
+    } else {
+      ex.autolinkLibrariesFromCommand()
+    }
+  }
+}
+
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+  repositories {
+    google()
+    mavenCentral()
+    maven { url 'https://maven.google.com' }
+    jcenter() 
+    maven { url 'https://www.jitpack.io' }
+    maven {
+      url "$rootDir/../node_modules/expo-camera/android/maven"
+    }
+    maven {
+      // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+      url(new File(rootDir, "../node_modules/react-native/android"))
+    }
+    maven {
+      // Android JSC is installed from npm
+      url(new File(rootDir, "../node_modules/jsc-android/dist"))
+    }
+  }
+  versionCatalogs {
+    reactAndroidLibs {
+      from(files(new File(rootDir, "../node_modules/react-native/gradle/libs.versions.toml")))
+    }
+  }
+}
+
+apply from: new File(rootDir, "../node_modules/expo/scripts/autolinking.gradle");
+useExpoModules()
+
+if (getRNMinorVersion() < 75) {
+  apply from: new File(rootDir, "../node_modules/@react-native-community/cli-platform-android/native_modules.gradle");
+  applyNativeModulesSettingsGradle(settings)
+}
+
+include ':app'
+includeBuild(new File(rootDir, "../node_modules/@react-native/gradle-plugin"))
