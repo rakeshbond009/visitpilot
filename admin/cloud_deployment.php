@@ -16,19 +16,19 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_webhook'])) {
     $webhook = $_POST['hostinger_webhook'];
     try {
-        // Ensure table exists
-        $pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
+        // Ensure table exists in MASTER database
+        $master_pdo->exec("CREATE TABLE IF NOT EXISTS system_settings (
             id INT AUTO_INCREMENT PRIMARY KEY,
             setting_key VARCHAR(100) UNIQUE NOT NULL,
             setting_value TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
 
-        $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) 
+        $stmt = $master_pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) 
                                VALUES ('hostinger_webhook', ?) 
                                ON DUPLICATE KEY UPDATE setting_value = ?");
         $stmt->execute([$webhook, $webhook]);
-        $success = "Hostinger Webhook URL saved successfully.";
+        $success = "Hostinger Webhook URL saved successfully (Global Setting).";
     } catch (Exception $e) {
         $error = "Error saving webhook: " . $e->getMessage();
     }
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_webhook'])) {
 // Fetch current webhook
 $current_webhook = '';
 try {
-    $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'hostinger_webhook'");
+    $stmt = $master_pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'hostinger_webhook'");
     $stmt->execute();
     $res = $stmt->fetch();
     if ($res) $current_webhook = $res['setting_value'];
