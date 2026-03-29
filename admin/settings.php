@@ -251,6 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             'whatsapp_phone_number_id' => $_POST['whatsapp_phone_number_id'],
             'whatsapp_waba_id' => $_POST['whatsapp_waba_id'],
             'whatsapp_app_id' => $_POST['whatsapp_app_id'],
+            'whatsapp_template_language' => $_POST['whatsapp_template_language'] ?? 'en',
             'whatsapp_enabled_processes' => $enabled_processes
         ];
 
@@ -408,6 +409,7 @@ $email_defaults = [
     'whatsapp_phone_number_id' => '',
     'whatsapp_waba_id' => '',
     'whatsapp_app_id' => '',
+    'whatsapp_template_language' => 'en',
     'whatsapp_enabled_processes' => '["visitor_arrival_host_alert","visitor_otp_verification","visit_approval_visitor_notify","visit_rejection_visitor_notify","visitor_meet_notify","invite_cancelled"]',
     'ai_api_key' => '',
     'ai_model' => 'gemini-1.5-flash'
@@ -1351,16 +1353,30 @@ $active_tab_id = false;
                                                 placeholder="Business ID">
                                         </div>
                                     </div>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold small text-uppercase text-muted">Meta App ID</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light border-0"><i
-                                                class="bi bi-window-sidebar text-success"></i></span>
-                                        <input type="text" name="whatsapp_app_id"
-                                            class="form-control border-0 bg-light rounded-end"
-                                            value="<?php echo htmlspecialchars($config['whatsapp_app_id'] ?? ''); ?>"
-                                            placeholder="App ID">
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label fw-bold small text-uppercase text-muted">Meta App ID</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-0"><i
+                                                    class="bi bi-window-sidebar text-success"></i></span>
+                                            <input type="text" name="whatsapp_app_id"
+                                                class="form-control border-0 bg-light rounded-end"
+                                                value="<?php echo htmlspecialchars($config['whatsapp_app_id'] ?? ''); ?>"
+                                                placeholder="App ID">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label fw-bold small text-uppercase text-muted">Template Language</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-0"><i
+                                                    class="bi bi-translate text-success"></i></span>
+                                            <select name="whatsapp_template_language" class="form-select border-0 bg-light rounded-end">
+                                                <option value="en" <?php echo ($config['whatsapp_template_language'] ?? 'en') == 'en' ? 'selected' : ''; ?>>English (en)</option>
+                                                <option value="en_US" <?php echo ($config['whatsapp_template_language'] ?? '') == 'en_US' ? 'selected' : ''; ?>>English US (en_US)</option>
+                                                <option value="en_GB" <?php echo ($config['whatsapp_template_language'] ?? '') == 'en_GB' ? 'selected' : ''; ?>>English UK (en_GB)</option>
+                                                <option value="hi" <?php echo ($config['whatsapp_template_language'] ?? '') == 'hi' ? 'selected' : ''; ?>>Hindi (hi)</option>
+                                                <option value="ar" <?php echo ($config['whatsapp_template_language'] ?? '') == 'ar' ? 'selected' : ''; ?>>Arabic (ar)</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 

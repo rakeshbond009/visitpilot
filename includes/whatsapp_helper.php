@@ -67,10 +67,12 @@ function sendWhatsAppNotification($mobile, $message, $templateName = null, $temp
         $log_entry = "[" . date('Y-m-d H:i:s') . "] CALL: Template $templateName to $cleanMobile\n";
         file_put_contents(__DIR__ . '/../whatsapp_log.txt', $log_entry, FILE_APPEND);
 
-        // Detect language based on template name for common local templates
-        $lang = 'en_US';
-        if (str_contains($templateName, 'meet')) {
-            $lang = 'en'; // visitor_meet_notify uses 'en'
+        // Use configured template language from DB, default to 'en'
+        $lang = $config['whatsapp_template_language'] ?? 'en';
+        
+        // Specific override if needed, though DB setting should generally rule
+        if ($lang === 'en_US' && str_contains($templateName, 'meet')) {
+            $lang = 'en'; 
         }
 
         return sendWhatsAppTemplate($cleanMobile, $templateName, $templateParams, $accessToken, $phoneNumberId, $headerDocumentUrl, $lang, $headerText);
@@ -257,73 +259,90 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
         }
     }
 
-    $data = [
-        'messaging_product' => 'whatsapp',
-        'to' => $mobile,
-        'type' => 'template',
-        'template' => [
-            'name' => $templateName,
-            'language' => ['code' => $languageCode],
-            'components' => $components
-        ]
-    ];
+    // Language Fallback Logic: Try multiple common languages if the requested one fails
+    // Code 132001 means "Template name does not exist in the translation"
+    $languagesToTry = [$languageCode, 'en', 'en_US', 'en_GB'];
+    $languagesToTry = array_unique($languagesToTry);
 
-    $jsonPayload = json_encode($data);
+    $lastResponse = null;
+    $lastHttpCode = 0;
 
-    // TRACE: Log exact payload for debugging
-    $traceLog = "[" . date('Y-m-d H:i:s') . "] TRACE (Payload): To: $mobile | JSON: $jsonPayload\n";
-    file_put_contents(__DIR__ . '/../whatsapp_log.txt', $traceLog, FILE_APPEND);
+    foreach ($languagesToTry as $currentLangCode) {
+        $data = [
+            'messaging_product' => 'whatsapp',
+            'to' => $mobile,
+            'type' => 'template',
+            'template' => [
+                'name' => $templateName,
+                'language' => ['code' => $currentLangCode],
+                'components' => $components
+            ]
+        ];
 
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Authorization: Bearer ' . $accessToken,
-        'Content-Type: application/json'
-    ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); // Max 5s to connect
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Max 10s total
+        $jsonPayload = json_encode($data);
 
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+        // TRACE: Log exact payload for debugging
+        $traceLog = "[" . date('Y-m-d H:i:s') . "] TRACE (Payload): To: $mobile | Language: $currentLangCode | JSON: $jsonPayload\n";
+        file_put_contents(__DIR__ . '/../whatsapp_log.txt', $traceLog, FILE_APPEND);
 
-    if ($httpCode >= 200 && $httpCode < 300) {
-        $log_ok = "[" . date('Y-m-d H:i:s') . "] SUCCESS ($httpCode): Template $templateName sent to $mobile. Response: $response\n";
-        file_put_contents(__DIR__ . '/../whatsapp_log.txt', $log_ok, FILE_APPEND);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonPayload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); 
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10); 
 
-        // Audit Log Entry
-        try {
-            $user_id = $_SESSION['user_id'] ?? null;
-            $msg = "WhatsApp Sent: Template [$templateName] to [$mobile]";
-            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-            $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $lastResponse = $response;
+        $lastHttpCode = $httpCode;
+
+        $resData = json_decode($response, true);
+        $errorCode = $resData['error']['code'] ?? null;
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $log_ok = "[" . date('Y-m-d H:i:s') . "] SUCCESS ($httpCode): Template $templateName sent to $mobile (Lang: $currentLangCode)\n";
+            file_put_contents(__DIR__ . '/../whatsapp_log.txt', $log_ok, FILE_APPEND);
+
+            try {
+                $user_id = $_SESSION['user_id'] ?? null;
+                $msg = "WhatsApp Sent: Template [$templateName] to [$mobile] (Lang: $currentLangCode)";
+                $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
+                $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+            } catch (Exception $log_e) {}
+
+            return true;
         }
-        catch (Exception $log_e) {
+
+        // Check for template translation error
+        if ($errorCode == 132001) {
+            $log_retry = "[" . date('Y-m-d H:i:s') . "] RETRY: Template not found in '$currentLangCode'. Trying fallback...\n";
+            file_put_contents(__DIR__ . '/../whatsapp_log.txt', $log_retry, FILE_APPEND);
+            continue;
         }
 
-        return true;
+        // Any other error (Auth, Invalid Number), break the loop
+        break;
     }
-    else {
-        // Log API Errors to the central log file for visibility
-        $error_msg = "[" . date('Y-m-d H:i:s') . "] API ERROR ($httpCode): $response | To: $mobile | Template: $templateName\n";
-        file_put_contents(__DIR__ . '/../whatsapp_log.txt', $error_msg, FILE_APPEND);
-        error_log("WhatsApp API Error ($httpCode): " . $response);
 
-        // Audit Log Failure
-        try {
-            $user_id = $_SESSION['user_id'] ?? null;
-            $msg = "WhatsApp FAILED: Template [$templateName] to [$mobile]. Error: $httpCode";
-            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-            $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
-        }
-        catch (Exception $log_e) {
-        }
+    $error_msg = "[" . date('Y-m-d H:i:s') . "] API ERROR ($lastHttpCode): $lastResponse | Template: $templateName\n";
+    file_put_contents(__DIR__ . '/../whatsapp_log.txt', $error_msg, FILE_APPEND);
 
-        return false;
-    }
+    try {
+        $user_id = $_SESSION['user_id'] ?? null;
+        $msg = "WhatsApp FAILED: Template [$templateName] to [$mobile]. Error: $lastHttpCode";
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
+        $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+    } catch (Exception $log_e) {}
+
+    return false;
 }
 
 /**
