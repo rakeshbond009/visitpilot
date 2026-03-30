@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `full_name` varchar(100) NOT NULL,
   `employee_id` int(11) DEFAULT NULL,
   `is_super` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `department` varchar(100) DEFAULT NULL,
   `permissions_locked` tinyint(1) DEFAULT 0,
   `reset_token` varchar(64) DEFAULT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 CREATE TABLE IF NOT EXISTS `visit_purposes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `purpose_name` varchar(100) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `departments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS `employees` (
   `email` varchar(100) NOT NULL,
   `mobile` varchar(20) NOT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS `visitors` (
   `photo_path` varchar(255) DEFAULT NULL,
   `id_proof_type` varchar(50) DEFAULT NULL,
   `id_proof_number` varchar(50) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `mobile` (`mobile`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `visits` (
   `visit_code` varchar(20) NOT NULL,
   `pass_type` enum('digital','physical') DEFAULT 'digital',
   `qr_code_path` varchar(255) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `assets_carried` text DEFAULT NULL,
   `total_visitors` int(11) DEFAULT 1,
   `id_proof_type` varchar(50) DEFAULT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `user_devices` (
   `user_id` int(11) NOT NULL,
   `fcm_token` text NOT NULL,
   `platform` varchar(20) DEFAULT 'android',
-  `last_updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `last_updated` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `user_devices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `visit_members` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `visit_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `visit_id` (`visit_id`),
   CONSTRAINT `visit_members_ibfk_1` FOREIGN KEY (`visit_id`) REFERENCES `visits` (`id`) ON DELETE CASCADE
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   `user_id` int(11) DEFAULT NULL,
   `action` varchar(255) NOT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -141,7 +141,7 @@ CREATE TABLE IF NOT EXISTS `access_areas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `area_name` varchar(100) NOT NULL,
   `machine_id` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `area_name` (`area_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS `visit_otps` (
   `otp` varchar(6) DEFAULT NULL,
   `expires_at` datetime DEFAULT NULL,
   `verified` tinyint(1) DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS `support_requests` (
   `email` varchar(100) NOT NULL,
   `subject` varchar(200) NOT NULL,
   `message` text NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -189,9 +189,9 @@ CREATE TABLE IF NOT EXISTS `user_sessions` (
   `token` varchar(64) NOT NULL,
   `device_info` text DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
-  `last_activity` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `expires_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `last_activity` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `expires_at` datetime DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `token` (`token`),
   KEY `user_id` (`user_id`),

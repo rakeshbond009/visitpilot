@@ -1,0 +1,19 @@
+-- Migration #003: Convert TIMESTAMP to DATETIME
+-- Created: 2026-03-31
+
+ALTER TABLE `users` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `visit_purposes` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `departments` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `employees` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `visitors` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `access_areas` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `visits` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `user_devices` MODIFY `last_updated` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+ALTER TABLE `visit_members` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `audit_logs` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `visit_otps` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `support_requests` MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `user_sessions` 
+    MODIFY `last_activity` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    MODIFY `expires_at` datetime DEFAULT NULL,
+    MODIFY `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP;

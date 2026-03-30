@@ -48,7 +48,7 @@ try {
         `db_pass` varchar(100) DEFAULT '',
         `schema_version` int(11) DEFAULT 0,
         `status` enum('active','inactive') DEFAULT 'active',
-        `created_at` timestamp DEFAULT CURRENT_TIMESTAMP,
+        `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 

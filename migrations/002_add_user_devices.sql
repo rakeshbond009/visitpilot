@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `user_devices` (
   `user_id` int(11) NOT NULL,
   `fcm_token` text NOT NULL,
   `platform` varchar(20) DEFAULT 'android',
-  `last_updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `last_updated` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `user_devices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE

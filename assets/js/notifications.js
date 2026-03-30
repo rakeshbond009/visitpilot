@@ -37,11 +37,11 @@
             const currentOrigin = window.location.origin;
             const currentPath = window.location.pathname;
             const isInsideHost = currentPath.includes('/host/');
-            
+
             let apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL : (isInsideHost ? '../' : '');
             if (!apiPath.endsWith('/')) apiPath += '/';
             let url = apiPath + 'host/api/check_new_visits.php';
-            
+
             if (lastCheckTime) {
                 url += `?last_check=${encodeURIComponent(lastCheckTime)}`;
             }
