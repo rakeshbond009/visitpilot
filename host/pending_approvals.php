@@ -21,8 +21,7 @@ if (isset($_GET['ajax_action'])) {
         if ($host_employee_id && !$is_admin) {
             $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_by=?, approved_at=? WHERE id=? AND employee_id=?");
             $stmt->execute([$_SESSION['user_id'], $current_time, $v_id, $host_employee_id]);
-        }
-        else {
+        } else {
             // Security or Admin user - can approve any visit
             $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_by=?, approved_at=? WHERE id=?");
             $stmt->execute([$_SESSION['user_id'], $current_time, $v_id]);
@@ -41,8 +40,7 @@ if (isset($_GET['ajax_action'])) {
                 try {
                     require_once '../includes/pass_pdf_helper.php';
                     $pdfUrl = generatePassPdf($v_id, $pdo);
-                }
-                catch (Throwable $pdfErr) {
+                } catch (Throwable $pdfErr) {
                     $errLog = "[" . date('Y-m-d H:i:s') . "] PDF_GEN_ERR: " . $pdfErr->getMessage() . "\n";
                     file_put_contents('../whatsapp_log.txt', $errLog, FILE_APPEND);
                 }
@@ -50,26 +48,23 @@ if (isset($_GET['ajax_action'])) {
                     $visitor['mobile'],
                     "Your visit request has been approved.",
                     'visit_approval_visitor_notify',
-                ["*{$visitor['visitor_name']}*"],
+                    ["*{$visitor['visitor_name']}*"],
                     $pdfUrl
                 );
             }
-        }
-        catch (Throwable $e) {
+        } catch (Throwable $e) {
             $errLog = "[" . date('Y-m-d H:i:s') . "] APPROVAL_WA_ERR: " . $e->getMessage() . "\n";
             file_put_contents('../whatsapp_log.txt', $errLog, FILE_APPEND);
         }
 
         echo json_encode(['success' => true]);
-    }
-    elseif ($act == 'reject') {
+    } elseif ($act == 'reject') {
         $current_time = date('Y-m-d H:i:s');
         $reason = sanitize($_GET['reason'] ?? 'No reason provided');
         if ($host_employee_id && !$is_admin) {
             $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=?, rejection_reason=? WHERE id=? AND employee_id=?");
             $stmt->execute([$_SESSION['user_id'], $current_time, $reason, $v_id, $host_employee_id]);
-        }
-        else {
+        } else {
             // Security or Admin user - can reject any visit
             $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=?, rejection_reason=? WHERE id=?");
             $stmt->execute([$_SESSION['user_id'], $current_time, $reason, $v_id]);
@@ -86,13 +81,12 @@ if (isset($_GET['ajax_action'])) {
                 $visitor['mobile'],
                 "Your visit request has been rejected.",
                 'visit_rejection_visitor_notify',
-            ["*{$visitor['visitor_name']}*", "*{$reason}*"]
+                ["*{$visitor['visitor_name']}*", "*{$reason}*"]
             );
         }
 
         echo json_encode(['success' => true]);
-    }
-    elseif ($act == 'cancel_invite') {
+    } elseif ($act == 'cancel_invite') {
         if ($host_employee_id || $is_admin) {
             // Fetch visitor details before canceling for notification
             $sql = "SELECT vis.name, vis.mobile, e.name as host_name 
@@ -133,7 +127,7 @@ if (isset($_GET['ajax_action'])) {
                 try {
                     require_once '../includes/whatsapp_helper.php';
                     $visitorName = $visitor_info['name'] ?? ($_GET['visitor_name'] ?? 'Visitor');
-                    $hostName    = $visitor_info['host_name'] ?? ($_GET['host_name'] ?? 'your host');
+                    $hostName = $visitor_info['host_name'] ?? ($_GET['host_name'] ?? 'your host');
 
                     $waResponse = sendWhatsAppNotification(
                         $visitor_info['mobile'],
@@ -154,7 +148,7 @@ if (isset($_GET['ajax_action'])) {
             } else if ($waResponse === 'skipped_not_live') {
                 $message .= ' (WhatsApp API not configured)';
             } else if ($waResponse === true && !empty($visitor_info['mobile'])) {
-                 $message = 'The invitation has been rejected and visitor notified via WhatsApp.';
+                $message = 'The invitation has been rejected and visitor notified via WhatsApp.';
             }
 
             echo json_encode([
@@ -185,8 +179,7 @@ if ($host_employee_id && !$is_admin) {
                            WHERE v.employee_id = ? AND v.approval_status = 'pending' 
                            ORDER BY v.created_at DESC");
     $stmt->execute([$host_employee_id]);
-}
-else {
+} else {
     // Security user or Admin - show all pending
     $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name
                            FROM visits v 
@@ -211,9 +204,9 @@ $pending = $stmt->fetchAll();
             <h4 class="text-muted mt-3">All caught up!</h4>
             <p class="text-muted">No pending visitor requests at the moment.</p>
         </div>
-    <?php
-else:
-    foreach ($pending as $v): ?>
+        <?php
+    else:
+        foreach ($pending as $v): ?>
             <div class="col-md-6 mb-4" id="card-<?php echo $v['id']; ?>">
                 <div class="card shadow-sm border-warning rounded-4 h-100 overflow-hidden">
                     <div class="card-body p-4">
@@ -237,8 +230,8 @@ else:
                                 <i class="bi bi-laptop me-1"></i> <strong>Assets:</strong>
                                 <?php echo htmlspecialchars($v['assets_carried']); ?>
                             </div>
-                        <?php
-        endif; ?>
+                            <?php
+                        endif; ?>
                         <div id="actions-<?php echo $v['id']; ?>" class="d-grid gap-2 d-md-flex mt-3">
                             <button onclick="handleApprove(<?php echo $v['id']; ?>)"
                                 class="btn btn-success flex-grow-1 rounded-pill fw-bold btn-approve">
@@ -253,9 +246,9 @@ else:
                     </div>
                 </div>
             </div>
-        <?php
-    endforeach;
-endif; ?>
+            <?php
+        endforeach;
+    endif; ?>
 </div>
 
 <script>

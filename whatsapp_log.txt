@@ -427,3 +427,297 @@
 [2026-03-29 22:23:05] CALL: Template visitor_arrival_host_alert to 919873028739
 [2026-03-29 22:23:05] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
 [2026-03-29 22:23:05] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:02:06] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:02:06] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*DA09DE16*"}]}]}}
+[2026-03-30 21:02:07] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:07:44] CALL: Template visitor_otp_verification to 919873028739
+[2026-03-30 21:07:44] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"437393"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"437393"}]}]}}
+[2026-03-30 21:07:45] SUCCESS (200): Template visitor_otp_verification sent to 919873028739 (Lang: en)
+[2026-03-30 21:07:53] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:07:53] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:07:53] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 21:07:53] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:08:01] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:08:01] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:09:41] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:09:41] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*87D710C1*"}]}]}}
+[2026-03-30 21:09:42] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:11:27] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:11:27] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:11:27] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 21:11:28] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:11:57] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:11:57] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:13:12] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:13:12] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*3FA50CEE*"}]}]}}
+[2026-03-30 21:13:13] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:13:47] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:13:47] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:13:47] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 21:13:48] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:14:40] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:14:40] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*63037F2B*"}]}]}}
+[2026-03-30 21:14:41] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:15:11] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:15:11] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:15:11] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 21:15:12] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:15:24] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:15:24] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:15:42] CALL: Template visitor_meet_notify to 919152078513
+[2026-03-30 21:15:42] TRACE (Payload): To: 919152078513 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919152078513","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*SMFG India Home Finance Company Limited*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*684E9B8F*"}]}]}}
+[2026-03-30 21:15:43] SUCCESS (200): Template visitor_meet_notify sent to 919152078513 (Lang: en)
+[2026-03-30 21:16:12] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:16:12] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:16:12] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*SMFG India Home Finance Company Limited*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 21:16:12] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:16:16] CALL: Template visit_approval_visitor_notify to 919152078513
+[2026-03-30 21:16:16] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:16:42] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:16:42] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:16:42] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 21:16:43] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:16:54] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:16:54] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:16:55] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:16:57] TRACE: PDF Uploaded to Meta. Media ID: 1848003899076539
+[2026-03-30 21:16:57] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1848003899076539","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 21:16:58] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:22:13] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:22:13] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*1719C587*"}]}]}}
+[2026-03-30 21:22:14] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:23:41] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:23:41] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:23:41] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Meeting*"}]}]}}
+[2026-03-30 21:23:42] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:23:54] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:23:54] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:28:09] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:28:09] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*2E0C7AF5*"}]}]}}
+[2026-03-30 21:28:10] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:28:40] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:28:40] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:28:40] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 21:28:41] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:28:45] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:28:45] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:34:21] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:34:21] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*14F6A87D*"}]}]}}
+[2026-03-30 21:34:22] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:34:49] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:34:49] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:34:49] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 21:34:50] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:35:21] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:35:21] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:37:48] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:37:48] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*A80381E1*"}]}]}}
+[2026-03-30 21:37:49] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:38:17] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:38:17] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:38:17] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Maintenance*"}]}]}}
+[2026-03-30 21:38:18] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:38:31] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:38:31] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:44:24] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:44:24] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*FFE18D33*"}]}]}}
+[2026-03-30 21:44:24] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:44:47] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:44:47] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:44:47] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 21:44:48] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:45:00] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:45:00] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:55:55] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 21:55:55] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*BAFB4A13*"}]}]}}
+[2026-03-30 21:55:56] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 21:56:43] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 21:56:43] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 21:56:43] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 21:56:44] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 21:56:52] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:56:52] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 21:56:53] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 21:56:56] TRACE: PDF Uploaded to Meta. Media ID: 1250503100503213
+[2026-03-30 21:56:56] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1250503100503213","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 21:56:57] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 22:03:47] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 22:03:47] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*46DA6298*"}]}]}}
+[2026-03-30 22:03:48] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 22:05:49] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 22:05:49] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 22:05:49] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Maintenance*"}]}]}}
+[2026-03-30 22:05:50] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 22:05:57] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 22:05:57] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 22:09:52] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 22:09:52] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*FE393281*"}]}]}}
+[2026-03-30 22:09:53] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 22:10:14] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 22:10:14] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 22:10:14] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Maintenance*"}]}]}}
+[2026-03-30 22:10:15] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 22:10:29] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 22:10:29] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 22:27:46] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 22:27:46] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*775D9D51*"}]}]}}
+[2026-03-30 22:27:47] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 22:28:06] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 22:28:06] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 22:28:06] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 22:28:07] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 22:28:12] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 22:28:12] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:02:04] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:02:04] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:02:06] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:02:10] TRACE: PDF Uploaded to Meta. Media ID: 25957757627229467
+[2026-03-30 23:02:10] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"25957757627229467","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:02:11] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:03:00] CALL: Template visit_rejection_visitor_notify to 919873028739
+[2026-03-30 23:03:00] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*NO*"}]}]}}
+[2026-03-30 23:03:01] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:03:09] CALL: Template visit_rejection_visitor_notify to 919873028739
+[2026-03-30 23:03:09] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*NO*"}]}]}}
+[2026-03-30 23:03:09] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:03:20] CALL: Template visit_rejection_visitor_notify to 919873028739
+[2026-03-30 23:03:20] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*NO*"}]}]}}
+[2026-03-30 23:03:20] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:03:57] CALL: Template visit_rejection_visitor_notify to 919152078513
+[2026-03-30 23:03:57] TRACE (Payload): To: 919152078513 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919152078513","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*SMFG India Home Finance Company Limited*"},{"type":"text","text":"*NO*"}]}]}}
+[2026-03-30 23:03:57] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919152078513 (Lang: en)
+[2026-03-30 23:05:35] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 23:05:35] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*66A271F3*"}]}]}}
+[2026-03-30 23:05:36] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:06:01] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:06:01] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:06:01] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 23:06:01] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:06:07] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:06:07] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:06:08] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:06:11] TRACE: PDF Uploaded to Meta. Media ID: 988747527159510
+[2026-03-30 23:06:11] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"988747527159510","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:06:12] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:08:03] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 23:08:03] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*9BBE2ADC*"}]}]}}
+[2026-03-30 23:08:04] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:08:31] CALL: Template visitor_otp_verification to 919873028739
+[2026-03-30 23:08:31] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"119375"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"119375"}]}]}}
+[2026-03-30 23:08:32] SUCCESS (200): Template visitor_otp_verification sent to 919873028739 (Lang: en)
+[2026-03-30 23:08:37] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:08:37] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:08:37] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 23:08:37] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:08:44] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:08:44] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:08:45] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:08:48] TRACE: PDF Uploaded to Meta. Media ID: 1668326827951027
+[2026-03-30 23:08:48] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1668326827951027","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:08:49] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:09:40] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:09:40] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:09:40] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 23:09:40] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:09:44] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:09:44] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:09:45] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:09:47] TRACE: PDF Uploaded to Meta. Media ID: 852543077846615
+[2026-03-30 23:09:47] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"852543077846615","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:09:48] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:10:34] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:10:34] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:10:34] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Personal*"}]}]}}
+[2026-03-30 23:10:34] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:10:43] CALL: Template visit_rejection_visitor_notify to 919873028739
+[2026-03-30 23:10:43] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*No*"}]}]}}
+[2026-03-30 23:10:45] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:11:12] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:11:12] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:11:12] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Personal*"}]}]}}
+[2026-03-30 23:11:13] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:13:01] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:13:01] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:13:03] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:13:06] TRACE: PDF Uploaded to Meta. Media ID: 946913931423588
+[2026-03-30 23:13:06] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"946913931423588","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:13:06] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:14:07] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:14:07] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:14:07] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Personal*"}]}]}}
+[2026-03-30 23:14:08] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:14:12] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:14:12] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:14:13] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:14:15] TRACE: PDF Uploaded to Meta. Media ID: 2677634789303246
+[2026-03-30 23:14:15] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"2677634789303246","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:14:16] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:14:46] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:14:46] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:14:46] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Personal*"}]}]}}
+[2026-03-30 23:14:47] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:14:53] CALL: Template visit_rejection_visitor_notify to 919873028739
+[2026-03-30 23:14:53] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*NO*"}]}]}}
+[2026-03-30 23:14:54] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:15:25] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:15:25] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:15:25] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 23:15:25] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:15:29] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:15:29] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:15:30] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:15:32] TRACE: PDF Uploaded to Meta. Media ID: 1845552276154911
+[2026-03-30 23:15:32] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1845552276154911","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:15:33] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:16:17] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:16:17] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:16:17] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-03-30 23:16:18] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:16:27] CALL: Template visit_rejection_visitor_notify to 919873028739
+[2026-03-30 23:16:27] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*NO*"}]}]}}
+[2026-03-30 23:16:28] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:20:32] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 23:20:32] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*50425159*"}]}]}}
+[2026-03-30 23:20:33] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:21:03] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:21:03] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:21:03] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 23:21:03] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:21:08] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:21:08] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:21:09] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:21:12] TRACE: PDF Uploaded to Meta. Media ID: 1279386127467092
+[2026-03-30 23:21:12] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1279386127467092","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:21:13] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:21:42] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 23:21:42] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*FE87772C*"}]}]}}
+[2026-03-30 23:21:43] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:21:59] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:21:59] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:21:59] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Delivery*"}]}]}}
+[2026-03-30 23:22:00] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:22:04] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:22:04] ABORT: WhatsApp skipped for 'visit_approval_visitor_notify'. PDF not found in uploads/passes/.
+[2026-03-30 23:22:05] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:22:07] TRACE: PDF Uploaded to Meta. Media ID: 1258712603049883
+[2026-03-30 23:22:07] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1258712603049883","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:22:08] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:30:11] CALL: Template visitor_meet_notify to 919873028739
+[2026-03-30 23:30:11] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*30-Mar-2026*"},{"type":"text","text":"*6C86752E*"}]}]}}
+[2026-03-30 23:30:13] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:30:34] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-03-30 23:30:34] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-03-30 23:30:34] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Personal*"}]}]}}
+[2026-03-30 23:30:35] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-03-30 23:30:41] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:30:44] TRACE: PDF Uploaded to Meta. Media ID: 2015721499043168
+[2026-03-30 23:30:44] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"2015721499043168","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:30:45] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:40:08] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:40:11] TRACE: PDF Uploaded to Meta. Media ID: 1643820236952656
+[2026-03-30 23:40:11] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1643820236952656","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:40:12] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-03-30 23:40:13] CALL: Template visit_approval_visitor_notify to 919873028739
+[2026-03-30 23:40:15] TRACE: PDF Uploaded to Meta. Media ID: 1865897760781691
+[2026-03-30 23:40:15] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1865897760781691","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
+[2026-03-30 23:40:16] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)

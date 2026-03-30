@@ -8,7 +8,7 @@ try {
     $purposes = $purposes_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fetch Access Areas
-    $areas_stmt = $pdo->query("SELECT id, area_name FROM access_areas ORDER BY area_name ASC");
+    $areas_stmt = $pdo->query("SELECT id, area_name, machine_id FROM access_areas ORDER BY area_name ASC");
     $areas = $areas_stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Default fallbacks if tables are empty

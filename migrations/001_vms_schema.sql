@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS `system_settings` (
 CREATE TABLE IF NOT EXISTS `access_areas` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `area_name` varchar(100) NOT NULL,
+  `machine_id` varchar(100) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `area_name` (`area_name`)

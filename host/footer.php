@@ -9,7 +9,7 @@
                 class="text-decoration-none fw-bold text-primary">Codepilotx by Rakesh Verma</a>. All Rights
             Reserved.</small>
         <span class="badge bg-light text-secondary border rounded-pill mt-1" style="font-size: 0.65rem; padding: 4px 10px;">
-            VisitPilot v<?php echo defined('APP_VERSION') ? APP_VERSION : '2.0.0'; ?>
+            VisitPilot v<?php echo defined('APP_VERSION') ? APP_VERSION : '2.1.0'; ?>
         </span>
     </div>
 </footer>
@@ -22,7 +22,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script src="../assets/js/notifications.js?v=2.9"></script>
+<script src="../assets/js/notifications.js?v=<?php echo time(); ?>"></script>
 </body>
 
 </html>

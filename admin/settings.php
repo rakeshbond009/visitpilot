@@ -19,8 +19,15 @@ try {
     $pdo->exec("CREATE TABLE IF NOT EXISTS access_areas (
         id INT AUTO_INCREMENT PRIMARY KEY,
         area_name VARCHAR(100) NOT NULL UNIQUE,
+        machine_id VARCHAR(100) NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Ensure access_areas has machine_id column
+    $check_area_machine = $pdo->query("SHOW COLUMNS FROM access_areas LIKE 'machine_id'")->fetch();
+    if (!$check_area_machine) {
+        $pdo->exec("ALTER TABLE access_areas ADD COLUMN machine_id VARCHAR(100) NULL AFTER area_name");
+    }
 
     // Ensure visits table has access_area column
     $check_column = $pdo->query("SHOW COLUMNS FROM visits LIKE 'access_area'")->fetch();
@@ -213,10 +220,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     if (isset($_POST['add_access_area'])) {
         $area = sanitize($_POST['area_name']);
+        $machine_id = sanitize($_POST['machine_id'] ?? '');
+
         try {
-            $stmt = $pdo->prepare("INSERT INTO access_areas (area_name) VALUES (?)");
-            $stmt->execute([$area]);
-            logAction($pdo, $_SESSION['user_id'], "Added access area: $area");
+            $stmt = $pdo->prepare("INSERT INTO access_areas (area_name, machine_id) VALUES (?, ?)");
+            $stmt->execute([$area, $machine_id]);
+            logAction($pdo, $_SESSION['user_id'], "Added access area: $area (Machine ID: $machine_id)");
             $msg = "Access area added successfully!";
         } catch (PDOException $e) {
             $msg = "Error: Access area might already exist.";
@@ -1648,15 +1657,29 @@ $active_tab_id = false;
                             <p class="text-muted small mb-4">Define secure areas where visitors can be assigned permission
                                 during their stay.</p>
                             <form method="POST" class="mb-4">
-                                <div class="input-group p-1 bg-light rounded-pill border">
-                                    <span class="input-group-text bg-transparent border-0 ps-3 text-success"><i
-                                            class="bi bi-plus-circle fs-5"></i></span>
-                                    <input type="text" name="area_name" class="form-control border-0 bg-transparent"
-                                        placeholder="e.g., Data Center, VIP Lounge..." required>
-                                    <button type="submit" name="add_access_area"
-                                        class="btn btn-success rounded-pill px-4 shadow-sm fw-bold">
-                                        <i class="bi bi-plus-lg me-1"></i> Add Zone
-                                    </button>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <div class="input-group p-1 bg-light rounded-pill border">
+                                            <span class="input-group-text bg-transparent border-0 ps-3 text-success"><i
+                                                    class="bi bi-geo-alt fs-5"></i></span>
+                                            <input type="text" name="area_name" class="form-control border-0 bg-transparent"
+                                                placeholder="Area Name (e.g., VIP Lounge)" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="input-group p-1 bg-light rounded-pill border">
+                                            <span class="input-group-text bg-transparent border-0 ps-3 text-success"><i
+                                                    class="bi bi-cpu fs-5"></i></span>
+                                            <input type="text" name="machine_id" class="form-control border-0 bg-transparent"
+                                                placeholder="Machine ID (Optional)">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" name="add_access_area"
+                                            class="btn btn-success rounded-pill px-4 shadow-sm fw-bold w-100">
+                                            <i class="bi bi-plus-lg me-1"></i> Add
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                             <div class="list-group list-group-flush border rounded-4 overflow-hidden">
@@ -1674,8 +1697,12 @@ $active_tab_id = false;
                                             <div class="rounded-circle bg-success bg-opacity-10 p-2 me-3 text-success">
                                                 <i class="bi bi-geo-alt-fill"></i>
                                             </div>
-                                            <span
-                                                class="fw-bold text-dark"><?php echo htmlspecialchars($area['area_name']); ?></span>
+                                            <div>
+                                                <span class="fw-bold text-dark"><?php echo htmlspecialchars($area['area_name']); ?></span>
+                                                <?php if (!empty($area['machine_id'])): ?>
+                                                    <div class="small text-muted"><i class="bi bi-cpu me-1"></i>Machine ID: <?php echo htmlspecialchars($area['machine_id']); ?></div>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                         <a href="?delete_area=<?php echo $area['id']; ?>" class="btn btn-link text-danger p-0"
                                             onclick="return confirmAction(event, 'Remove this access zone?')">

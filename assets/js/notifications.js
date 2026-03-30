@@ -34,20 +34,24 @@
         }
 
         try {
-            let apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL + 'host/api/check_new_visits.php' : 'api/check_new_visits.php';
-            let url = apiPath;
+            const currentOrigin = window.location.origin;
+            const currentPath = window.location.pathname;
+            const isInsideHost = currentPath.includes('/host/');
+            
+            let apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL : (isInsideHost ? '../' : '');
+            if (!apiPath.endsWith('/')) apiPath += '/';
+            let url = apiPath + 'host/api/check_new_visits.php';
+            
             if (lastCheckTime) {
                 url += `?last_check=${encodeURIComponent(lastCheckTime)}`;
             }
 
             const response = await fetch(url);
             const data = await response.json();
-
             if (data.success) {
-                if (!lastCheckTime) {
-                    lastCheckTime = data.timestamp;
-                    return;
-                }
+                // Keep track of check time to only show NEW visits in subsequent loops, 
+                // but allow the first check to alert for any currently pending visits
+                const isFirstCheck = !lastCheckTime;
                 lastCheckTime = data.timestamp;
 
                 if (data.new_visits && data.new_visits.length > 0) {
@@ -117,7 +121,7 @@
                     `;
                     document.getElementById('btn-acknowledge').onclick = () => {
                         window.stopAlarm();
-                        approveAndPrepareShare();
+                        approveAndPrepareShare('btn-acknowledge');
                     };
                 }
             } else {
@@ -130,7 +134,7 @@
                 if (modalActions) {
                     modalActions.innerHTML = `
                         <div class="col-6">
-                            <button onclick="approveAndPrepareShare()" id="btn-approve"
+                            <button onclick="approveAndPrepareShare('btn-approve')" id="btn-approve"
                                 class="btn btn-success w-100 rounded-pill py-2 fw-bold btn-sm">
                                 <i class="bi bi-check-circle me-1"></i> APPROVE
                             </button>
@@ -243,14 +247,16 @@
     /**
      * Unified Approval & PDF Share Logic
      */
-    window.approveAndPrepareShare = async function () {
+    window.approveAndPrepareShare = async function (btnId = 'btn-approve') {
         if (!currentVisitorId) return;
         isSharingMode = true;
-        const btn = document.getElementById('btn-approve');
+        const btn = document.getElementById(btnId);
         const orgHtml = btn ? btn.innerHTML : '';
+        const isAcknowledge = (btnId === 'btn-acknowledge');
+
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Approving...';
+            btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> ${isAcknowledge ? 'Acknowledging...' : 'Approving...'}`;
         }
 
         try {

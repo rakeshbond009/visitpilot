@@ -653,9 +653,9 @@ if ($time_saved_minutes > 60) {
     });
 
     // --- REAL-TIME UPDATES ---
-    let adminFilterTerm = ''; // Store search filter
-    let overstaysCache = <?php echo json_encode($overstays); ?>; // Initial overstays from PHP
-    let todaysVisits = <?php echo json_encode($recent); ?>; // Store recent visits for table
+    var adminFilterTerm = ''; // Store search filter
+    var overstaysCache = <?php echo json_encode($overstays); ?>; // Initial overstays from PHP
+    var todaysVisits = <?php echo json_encode($recent); ?>; // Store recent visits for table
 
     async function refreshDashboardTable() {
         try {
