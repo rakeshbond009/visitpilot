@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS `visits` (
   `total_visitors` int(11) DEFAULT 1,
   `id_proof_type` varchar(50) DEFAULT NULL,
   `id_proof_number` varchar(100) DEFAULT NULL,
+  `visit_photo` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `visit_code` (`visit_code`),
   KEY `visitor_id` (`visitor_id`),

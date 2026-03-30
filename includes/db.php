@@ -513,10 +513,11 @@ function logAction($pdo, $user_id, $action)
 }
 
 // 11. COMPANY SETTINGS
-$company_settings = ['name' => 'CodePilotx VMS', 'logo' => 'assets/img/CodePilotx Logo.webp'];
-if (isset($pdo)) {
+$company_settings = ['name' => 'VisitPilot VMS', 'logo' => 'assets/img/logo.png'];
+// ALWAYS Pull from Master DB for Global Branding (Requested by User)
+if (isset($master_pdo)) {
     try {
-        $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('company_name', 'company_logo')");
+        $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('company_name', 'company_logo')");
         if ($stmt) {
             $db_settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             if (!empty($db_settings['company_name']))
@@ -525,6 +526,7 @@ if (isset($pdo)) {
                 $company_settings['logo'] = $db_settings['company_logo'];
         }
     } catch (Exception $e) {
+        // Fallback to default if table missing in master
     }
 }
 

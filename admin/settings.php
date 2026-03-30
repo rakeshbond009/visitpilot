@@ -29,7 +29,12 @@ try {
         $pdo->exec("ALTER TABLE access_areas ADD COLUMN machine_id VARCHAR(100) NULL AFTER area_name");
     }
 
-    // Ensure visits table has access_area column
+    // Ensure visits table has required columns
+    $check_visit_photo = $pdo->query("SHOW COLUMNS FROM visits LIKE 'visit_photo'")->fetch();
+    if (!$check_visit_photo) {
+        $pdo->exec("ALTER TABLE visits ADD COLUMN visit_photo VARCHAR(255) NULL AFTER visitor_id");
+    }
+
     $check_column = $pdo->query("SHOW COLUMNS FROM visits LIKE 'access_area'")->fetch();
     if (!$check_column) {
         $pdo->exec("ALTER TABLE visits ADD COLUMN access_area VARCHAR(100) NULL AFTER purpose");
