@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "CodePilotxVMS",
-    "slug": "codepilotxvms",
+    "name": "VisitPilot",
+    "slug": "visitpilot",
     "version": "1.0.1",
     "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",

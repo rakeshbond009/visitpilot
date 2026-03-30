@@ -14,8 +14,7 @@ try {
     $total_emps = $pdo->query("SELECT count(*) FROM employees")->fetchColumn() ?: 0;
     $total_visits = $pdo->query("SELECT count(*) FROM visits")->fetchColumn() ?: 0;
     $today_visits = $pdo->query("SELECT count(*) FROM visits WHERE date(created_at) = CURDATE()")->fetchColumn() ?: 0;
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 // Fetch System Settings
@@ -25,13 +24,12 @@ try {
     if ($settings_stmt) {
         $settings_map = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
-$start_h = (int)($settings_map['office_start_hour'] ?? 8);
-$end_h = (int)($settings_map['office_end_hour'] ?? 18);
-$max_capacity = (int)($settings_map['max_capacity'] ?? 50);
+$start_h = (int) ($settings_map['office_start_hour'] ?? 8);
+$end_h = (int) ($settings_map['office_end_hour'] ?? 18);
+$max_capacity = (int) ($settings_map['max_capacity'] ?? 50);
 
 // Recent - Initial
 $recent = [];
@@ -44,8 +42,7 @@ try {
     if ($recent_stmt) {
         $recent = $recent_stmt->fetchAll();
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 // Top Hosts
@@ -59,8 +56,7 @@ try {
     if ($top_hosts_stmt) {
         $top_hosts = $top_hosts_stmt->fetchAll();
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 // Chart Data: Last 7 Days
@@ -75,8 +71,7 @@ try {
     if ($chart_stmt) {
         $chart_data_raw = $chart_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 // Fill missing days with 0
@@ -99,8 +94,7 @@ try {
     if ($active_stmt) {
         $active_visitors = $active_stmt->fetchColumn() ?: 0;
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 $crowd_density = ($max_capacity > 0) ? min(100, round(($active_visitors / $max_capacity) * 100)) : 0;
@@ -113,8 +107,7 @@ if ($crowd_density > 80) {
     $density_status = "Critical Surge";
     $density_color = "text-danger";
     $progress_color = "bg-danger";
-}
-elseif ($crowd_density > 50) {
+} elseif ($crowd_density > 50) {
     $density_status = "Moderate Traffic";
     $density_color = "text-warning";
     $progress_color = "bg-warning";
@@ -134,8 +127,7 @@ try {
     if ($overstay_stmt) {
         $overstays = $overstay_stmt->fetchAll();
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 $security_status = "Perimeter Secure";
@@ -158,8 +150,7 @@ try {
     if ($zone_stmt) {
         $zones = $zone_stmt->fetchAll();
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 // Peak Congestion & Best Slot (Last 30 Days)
@@ -173,8 +164,7 @@ try {
     if ($peak_stmt) {
         $peak_hour = $peak_stmt->fetchColumn() ?: 11;
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 $peak_end = $peak_hour + 1;
@@ -200,8 +190,7 @@ try {
     if ($slot_stmt) {
         $best_hour = $slot_stmt->fetchColumn() ?: $start_h;
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
 $best_time = ($best_hour > 12 ? $best_hour - 12 : $best_hour) . ":00 " . ($best_hour >= 12 ? "PM" : "AM");
@@ -213,8 +202,7 @@ try {
     if ($completed_stmt) {
         $completed_visits = $completed_stmt->fetchColumn() ?: 0;
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 $time_saved_minutes = $completed_visits * 2;
 $time_saved_text = $time_saved_minutes . " mins";
@@ -233,7 +221,7 @@ if ($time_saved_minutes > 60) {
         <div class="bg-white p-2 px-3 rounded-pill shadow-sm border d-inline-block">
             <div class="form-check form-switch mb-0">
                 <input class="form-check-input" type="checkbox" id="backgroundToggle"
-                    onchange="toggleBackgroundMode(this)" <?php echo($_SESSION['bg_mode'] ?? 0) ? 'checked' : ''; ?>>
+                    onchange="toggleBackgroundMode(this)" <?php echo ($_SESSION['bg_mode'] ?? 0) ? 'checked' : ''; ?>>
                 <label class="form-check-label fw-bold small text-muted" for="backgroundToggle">
                     <i class="bi bi-cpu me-1"></i> BG Mode
                 </label>
@@ -242,8 +230,8 @@ if ($time_saved_minutes > 60) {
         <?php if (canView('view_employee_report')): ?>
             <a href="<?php echo BASE_URL; ?>security/employee_visits_report.php"
                 class="btn btn-primary rounded-pill ms-2 shadow-sm"><i class="bi bi-table me-2"></i>Employee Report</a>
-        <?php
-endif; ?>
+            <?php
+        endif; ?>
     </div>
 </div>
 
@@ -353,8 +341,8 @@ endif; ?>
                         <i class="bi bi-shield-check display-4 text-success opacity-50"></i>
                         <p class="mt-3 text-muted mb-0">No overstays detected. All clear.</p>
                     </div>
-                <?php
-else: ?>
+                    <?php
+                else: ?>
                     <ul class="list-group list-group-flush">
                         <?php foreach ($overstays as $os): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 border-0">
@@ -366,18 +354,18 @@ else: ?>
                                 </div>
                                 <span class="badge bg-danger rounded-pill">Over 8h</span>
                             </li>
-                        <?php
-    endforeach; ?>
+                            <?php
+                        endforeach; ?>
                     </ul>
-                <?php
-endif; ?>
+                    <?php
+                endif; ?>
             </div>
             <?php if (!empty($overstays)): ?>
                 <div class="card-footer bg-white border-0 text-center py-3">
                     <!-- Removed Detailed Report button -->
                 </div>
-            <?php
-endif; ?>
+                <?php
+            endif; ?>
         </div>
     </div>
 
@@ -400,14 +388,14 @@ endif; ?>
                     <div class="text-center py-4">
                         <p class="text-muted mb-0 small">No active visitors in any zone.</p>
                     </div>
-                <?php
-else: ?>
+                    <?php
+                else: ?>
                     <?php foreach ($zones as $z):
-        $limit = $max_capacity > 0 ? $max_capacity : 50;
-        $pct = min(100, ($z['count'] / $limit) * 100);
-        $color = ($pct > 80) ? 'danger' : (($pct > 40) ? 'warning' : 'success');
-        $status = ($pct > 80) ? 'High Congestion' : (($pct > 40) ? 'Moderate Traffic' : 'Low Activity');
-?>
+                        $limit = $max_capacity > 0 ? $max_capacity : 50;
+                        $pct = min(100, ($z['count'] / $limit) * 100);
+                        $color = ($pct > 80) ? 'danger' : (($pct > 40) ? 'warning' : 'success');
+                        $status = ($pct > 80) ? 'High Congestion' : (($pct > 40) ? 'Moderate Traffic' : 'Low Activity');
+                        ?>
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>
                                 <h6 class="mb-0 fw-bold"><?php echo htmlspecialchars($z['name']); ?></h6>
@@ -422,10 +410,10 @@ else: ?>
                                 </div>
                             </div>
                         </div>
+                        <?php
+                    endforeach; ?>
                     <?php
-    endforeach; ?>
-                <?php
-endif; ?>
+                endif; ?>
             </div>
             <div class="card-footer bg-light border-0 py-3">
                 <div class="row g-2">
@@ -459,8 +447,8 @@ endif; ?>
                 <ul id="top-hosts-list" class="list-group list-group-flush">
                     <?php if (empty($top_hosts)): ?>
                         <li class="list-group-item text-center text-muted py-4 border-0">No data available</li>
-                    <?php
-else: ?>
+                        <?php
+                    else: ?>
                         <?php foreach ($top_hosts as $index => $host): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 border-0">
                                 <div class="d-flex align-items-center">
@@ -470,10 +458,10 @@ else: ?>
                                 </div>
                                 <span class="badge bg-primary rounded-pill"><?php echo $host['visit_count']; ?> Visits</span>
                             </li>
+                            <?php
+                        endforeach; ?>
                         <?php
-    endforeach; ?>
-                    <?php
-endif; ?>
+                    endif; ?>
                 </ul>
             </div>
         </div>
@@ -481,40 +469,39 @@ endif; ?>
 
     <!-- Efficiency Stats -->
     <?php
-// Calculate Real Efficiency Metrics from DB
-
-// 1. Avg Check-in Time (Time between registration and actual check-in)
+    // Calculate Real Efficiency Metrics from DB
+    
+    // 1. Avg Check-in Time (Time between registration and actual check-in)
 // We use check_in_time which records when they entered
 // Note: If you want time between 'Arrival' and 'Check-in', you need created_at vs check_in_time
-$eff_sql = "SELECT AVG(ABS(TIMESTAMPDIFF(SECOND, created_at, check_in_time))) as avg_seconds 
+    $eff_sql = "SELECT AVG(ABS(TIMESTAMPDIFF(SECOND, created_at, check_in_time))) as avg_seconds 
                 FROM visits 
                 WHERE status IN ('checked_in', 'checked_out') 
                 AND check_in_time IS NOT NULL";
-$avg_seconds = $pdo->query($eff_sql)->fetchColumn() ?: 0;
+    $avg_seconds = $pdo->query($eff_sql)->fetchColumn() ?: 0;
 
-// Format Minutes and Seconds
-$mins = floor($avg_seconds / 60);
-$secs = round($avg_seconds % 60);
-$avg_time_str = "{$mins}m {$secs}s";
+    // Format Minutes and Seconds
+    $mins = floor($avg_seconds / 60);
+    $secs = round($avg_seconds % 60);
+    $avg_time_str = "{$mins}m {$secs}s";
 
-// 2. Visitor Satisfaction (inferred from Wait Time < 10 mins)
-$total_processed = $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out')")->fetchColumn();
+    // 2. Visitor Satisfaction (inferred from Wait Time < 10 mins)
+    $total_processed = $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out')")->fetchColumn();
 
-if ($total_processed > 0) {
-    $happy_visitors = $pdo->query("SELECT COUNT(*) FROM visits 
+    if ($total_processed > 0) {
+        $happy_visitors = $pdo->query("SELECT COUNT(*) FROM visits 
                                       WHERE status IN ('checked_in', 'checked_out') 
                                       AND check_in_time IS NOT NULL
                                       AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 10")->fetchColumn();
-    $satisfaction = round(($happy_visitors / $total_processed) * 100);
-}
-else {
-    $satisfaction = 100; // Default if no data
-}
+        $satisfaction = round(($happy_visitors / $total_processed) * 100);
+    } else {
+        $satisfaction = 100; // Default if no data
+    }
 
-// Dynamic Bar Colors
-$sat_color = $satisfaction >= 80 ? 'bg-info' : ($satisfaction >= 50 ? 'bg-warning' : 'bg-danger');
-$sat_text = $satisfaction >= 80 ? 'text-info' : ($satisfaction >= 50 ? 'text-warning' : 'text-danger');
-?>
+    // Dynamic Bar Colors
+    $sat_color = $satisfaction >= 80 ? 'bg-info' : ($satisfaction >= 50 ? 'bg-warning' : 'bg-danger');
+    $sat_text = $satisfaction >= 80 ? 'text-info' : ($satisfaction >= 50 ? 'text-warning' : 'text-danger');
+    ?>
 
     <div class="col-md-6 mb-4 mb-md-0">
         <div class="card shadow-sm border-0 rounded-4 h-100">
@@ -935,8 +922,10 @@ $sat_text = $satisfaction >= 80 ? 'text-info' : ($satisfaction >= 50 ? 'text-war
                 </div>
                 <div class="d-flex align-items-center flex-grow-1 mx-3">
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-0 rounded-start-pill"><i class="bi bi-search text-primary"></i></span>
-                        <input type="text" id="statsModalSearch" class="form-control border-0 rounded-end-pill" placeholder="Search..." onkeyup="filterStatsModalTable()">
+                        <span class="input-group-text bg-white border-0 rounded-start-pill"><i
+                                class="bi bi-search text-primary"></i></span>
+                        <input type="text" id="statsModalSearch" class="form-control border-0 rounded-end-pill"
+                            placeholder="Search..." onkeyup="filterStatsModalTable()">
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>

@@ -183,7 +183,7 @@ export default function LoginScreen({ navigation }) {
         >
             <View style={styles.innerContainer}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>VMS</Text>
+                    <Text style={styles.title}>VisitPilot</Text>
                     <Text style={styles.subtitle}>Visitor Management System</Text>
                 </View>
 
@@ -229,7 +229,7 @@ export default function LoginScreen({ navigation }) {
                 </View>
 
                 <View style={styles.footer}>
-                    <Text style={styles.footerText}>© 2026 CodePilot VMS. All Rights Reserved.</Text>
+                    <Text style={styles.footerText}>© 2026 VisitPilot. A CodePilotx Architecture.All Rights Reserved.</Text>
                 </View>
             </View>
         </KeyboardAvoidingView>

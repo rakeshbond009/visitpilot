@@ -113,7 +113,7 @@ Notifications.setNotificationHandler({
 const Stack = createStackNavigator();
 
 const linking = {
-    prefixes: ['https://visitor.codepilotx.com', 'com.codepilot.vms://'],
+    prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
     config: {
         screens: {
             Login: 'login',

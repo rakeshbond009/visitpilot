@@ -566,7 +566,8 @@ $active_tab_id = false;
                         <div class="mt-4">
                             <div class="small opacity-75 text-uppercase ls-1">Account Role</div>
                             <div class="badge bg-white text-primary rounded-pill px-4 py-2 mt-2 fw-bold">
-                                <?php echo strtoupper($_SESSION['role']); ?></div>
+                                <?php echo strtoupper($_SESSION['role']); ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1354,7 +1355,8 @@ $active_tab_id = false;
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold small text-uppercase text-muted">Meta App ID</label>
+                                        <label class="form-label fw-bold small text-uppercase text-muted">Meta App
+                                            ID</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-0"><i
                                                     class="bi bi-window-sidebar text-success"></i></span>
@@ -1365,11 +1367,13 @@ $active_tab_id = false;
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold small text-uppercase text-muted">Template Language</label>
+                                        <label class="form-label fw-bold small text-uppercase text-muted">Template
+                                            Language</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-0"><i
                                                     class="bi bi-translate text-success"></i></span>
-                                            <select name="whatsapp_template_language" class="form-select border-0 bg-light rounded-end">
+                                            <select name="whatsapp_template_language"
+                                                class="form-select border-0 bg-light rounded-end">
                                                 <option value="en" <?php echo ($config['whatsapp_template_language'] ?? 'en') == 'en' ? 'selected' : ''; ?>>English (en)</option>
                                                 <option value="en_US" <?php echo ($config['whatsapp_template_language'] ?? '') == 'en_US' ? 'selected' : ''; ?>>English US (en_US)</option>
                                                 <option value="en_GB" <?php echo ($config['whatsapp_template_language'] ?? '') == 'en_GB' ? 'selected' : ''; ?>>English UK (en_GB)</option>
@@ -1575,7 +1579,8 @@ $active_tab_id = false;
 
     <!-- Tab 4: Info (SUPER ADMIN ONLY) -->
     <?php if (canView('admin_audit')): ?>
-        <div class="tab-pane fade <?php echo ($active_tab_id === 'info') ? 'show active' : ''; ?>" id="info" role="tabpanel">
+        <div class="tab-pane fade <?php echo ($active_tab_id === 'info') ? 'show active' : ''; ?>" id="info"
+            role="tabpanel">
             <div class="row g-4">
                 <div class="col-lg-5">
                     <div class="card shadow-sm rounded-4 border-0 hover-shadow transition-all">

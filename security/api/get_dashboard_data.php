@@ -50,13 +50,13 @@ try {
     $visits = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Also get stats
-    $active_visitors = (int)$pdo->query("SELECT count(*) FROM visits WHERE status = 'checked_in'")->fetchColumn();
+    $active_visitors = (int) $pdo->query("SELECT count(*) FROM visits WHERE status = 'checked_in'")->fetchColumn();
 
     // Fetch System Settings for Peak/Best Slot
     $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('office_start_hour', 'office_end_hour')");
     $settings_map = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-    $start_h = (int)($settings_map['office_start_hour'] ?? 8);
-    $end_h = (int)($settings_map['office_end_hour'] ?? 18);
+    $start_h = (int) ($settings_map['office_start_hour'] ?? 8);
+    $end_h = (int) ($settings_map['office_end_hour'] ?? 18);
     if ($start_h <= 0)
         $start_h = 8;
     if ($end_h <= 0)
@@ -66,12 +66,12 @@ try {
     $active_sql = "SELECT count(*) FROM visits WHERE status = 'checked_in'";
     if ($limit_employee_id)
         $active_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
-    $active_visitors = (int)$pdo->query($active_sql)->fetchColumn();
+    $active_visitors = (int) $pdo->query($active_sql)->fetchColumn();
 
     $completed_sql = "SELECT count(*) FROM visits WHERE status = 'checked_out'";
     if ($limit_employee_id)
         $completed_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
-    $completed_count = (int)$pdo->query($completed_sql)->fetchColumn();
+    $completed_count = (int) $pdo->query($completed_sql)->fetchColumn();
 
     $time_saved_min = $completed_count * 2;
     $time_saved_fmt = $time_saved_min . " mins";
@@ -94,15 +94,15 @@ try {
         $checkin_pending_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
 
     $stats = [
-        'total_today' => (int)$pdo->query($today_sql)->fetchColumn(),
+        'total_today' => (int) $pdo->query($today_sql)->fetchColumn(),
         'active' => $active_visitors,
-        'pending' => (int)$pdo->query($pending_sql)->fetchColumn(),
-        'checkin_pending' => (int)$pdo->query($checkin_pending_sql)->fetchColumn(),
-        'time_saved_fmt' => (string)$time_saved_fmt
+        'pending' => (int) $pdo->query($pending_sql)->fetchColumn(),
+        'checkin_pending' => (int) $pdo->query($checkin_pending_sql)->fetchColumn(),
+        'time_saved_fmt' => (string) $time_saved_fmt
     ];
 
     // AI Metrics Calculation (Same logic as initial load)
-    $max_capacity = (int)$pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'max_capacity'")->fetchColumn() ?: 50;
+    $max_capacity = (int) $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'max_capacity'")->fetchColumn() ?: 50;
     $crowd_density = ($max_capacity > 0) ? min(100, round(($active_visitors / $max_capacity) * 100)) : 0;
 
     $avg_sql = "SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, check_in_time)) 
@@ -197,8 +197,7 @@ try {
         ]
     ]);
 
-}
-catch (Exception $e) {
+} catch (Exception $e) {
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage()

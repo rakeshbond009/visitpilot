@@ -36,7 +36,8 @@ try {
 
     // --- IMMEDIATE SUCCESS RESPONSE ---
     // This allows the user to navigate away while emails send in background
-    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    if (session_status() === PHP_SESSION_ACTIVE)
+        session_write_close();
     ignore_user_abort(true);
     set_time_limit(0);
 
@@ -58,7 +59,7 @@ try {
     // Fetch config for email content
     $sett_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE (setting_key LIKE 'smtp_%' OR setting_key = 'company_email')");
     $email_config = $sett_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-    
+
     $admin_email = $email_config['company_email'] ?? 'hello@codepilotx.com';
     $from_name = (!empty($email_config['smtp_from_name'])) ? $email_config['smtp_from_name'] : 'VisitPilot';
 
@@ -93,8 +94,7 @@ try {
     </div>";
 
     @sendVMSEmail($email, "Acknowledgement: " . $subject, $customer_body);
-}
-catch (Exception $e) {
+} catch (Exception $e) {
     if (!headers_sent()) {
         http_response_code(500);
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

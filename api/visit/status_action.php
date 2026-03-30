@@ -43,12 +43,11 @@ try {
 
                 // Push to Security
                 sendPushNotificationToRole($pdo, 'security', 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
-                    'visit_id' => (string)$id,
+                    'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
             }
-        }
-        catch (Throwable $e) {
+        } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
         }
 
@@ -84,19 +83,16 @@ try {
 
                 if (isset($syncResult['success']) && !$syncResult['success']) {
                     error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                }
-                else {
+                } else {
                     logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
                 }
             }
-        }
-        catch (Exception $e) {
+        } catch (Exception $e) {
             error_log("Dahua Integration Error: " . $e->getMessage());
         }
         sendResponse('success', 'Visit Approved', $responseData);
 
-    }
-    elseif ($action === 'reject') {
+    } elseif ($action === 'reject') {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW() WHERE id=?");
         $stmt->execute([$id]);
 
@@ -116,12 +112,11 @@ try {
 
                 // Push to Security
                 sendPushNotificationToRole($pdo, 'security', 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
-                    'visit_id' => (string)$id,
+                    'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
             }
-        }
-        catch (Exception $e) {
+        } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());
         }
 
@@ -132,8 +127,7 @@ try {
         }
         sendResponse('success', 'Visit Rejected', $responseData);
 
-    }
-    elseif ($action === 'checkin') {
+    } elseif ($action === 'checkin') {
         // Check if visit is approved
         $stmt = $pdo->prepare("SELECT approval_status FROM visits WHERE id=?");
         $stmt->execute([$id]);
@@ -147,14 +141,12 @@ try {
         $stmt->execute([$id]);
         sendResponse('success', 'Check-in successful');
 
-    }
-    elseif ($action === 'checkout') {
+    } elseif ($action === 'checkout') {
         $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW() WHERE id=?");
         $stmt->execute([$id]);
         sendResponse('success', 'Check-out successful');
 
-    }
-    elseif ($action === 'qr_process') {
+    } elseif ($action === 'qr_process') {
         $code = $data['code'];
         $stmt = $pdo->prepare("SELECT id, status, approval_status, is_invited FROM visits WHERE visit_code = ?");
         $stmt->execute([$code]);
@@ -184,22 +176,17 @@ try {
             // Condition 3: Error for other conditions
             elseif ($visit['status'] == 'checked_out') {
                 sendResponse('error', 'Visitor already checked out');
-            }
-            elseif ($visit['status'] == 'registered') {
+            } elseif ($visit['status'] == 'registered') {
                 sendResponse('error', 'Visit request is pending host approval');
-            }
-            else {
+            } else {
                 sendResponse('error', 'Invalid visit status: ' . str_replace('_', ' ', $visit['status']));
             }
-        }
-        else {
+        } else {
             sendResponse('error', 'Invalid QR Code');
         }
-    }
-    else {
+    } else {
         sendResponse('error', 'Invalid action');
     }
-}
-catch (Exception $e) {
+} catch (Exception $e) {
     sendResponse('error', 'Database error: ' . $e->getMessage());
 }

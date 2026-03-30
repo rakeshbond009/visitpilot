@@ -40,8 +40,10 @@ try {
     $stmt = $master_pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'hostinger_webhook'");
     $stmt->execute();
     $res = $stmt->fetch();
-    if ($res) $current_webhook = $res['setting_value'];
-} catch (Exception $e) {}
+    if ($res)
+        $current_webhook = $res['setting_value'];
+} catch (Exception $e) {
+}
 
 include_once 'header.php';
 ?>
@@ -52,12 +54,15 @@ include_once 'header.php';
             <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
                 <div class="card-header bg-white border-0 py-4 px-4 d-flex align-items-center justify-content-between">
                     <h4 class="mb-0 fw-bold text-dark flex-grow-1">
-                        🚀 Cloud Deployment 
-                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill ms-2 text-uppercase" style="font-size: 0.6rem; letter-spacing: 0.5px;">Super Admin Only</span>
+                        🚀 Cloud Deployment
+                        <span
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill ms-2 text-uppercase"
+                            style="font-size: 0.6rem; letter-spacing: 0.5px;">Super Admin Only</span>
                     </h4>
                 </div>
                 <div class="card-body p-4 pt-0">
-                    <p class="text-secondary mb-4">Use this tool to save your latest changes to the cloud. This will automatically prepare your code for deployment to Hostinger.</p>
+                    <p class="text-secondary mb-4">Use this tool to save your latest changes to the cloud. This will
+                        automatically prepare your code for deployment to Hostinger.</p>
 
                     <div class="bg-primary-subtle bg-opacity-10 border border-primary-subtle rounded-4 p-4 mb-5">
                         <ul class="list-unstyled mb-0">
@@ -91,36 +96,50 @@ include_once 'header.php';
                     <form method="POST" class="mb-5">
                         <label class="form-label fw-semibold text-dark mb-2">Hostinger Webhook URL (Optional):</label>
                         <div class="input-group mb-2">
-                            <input type="url" name="hostinger_webhook" class="form-control bg-light border-0 py-2 ps-3 shadow-none" 
-                                   placeholder="https://webhooks.hostinger.com/deploy/..." 
-                                   value="<?php echo htmlspecialchars($current_webhook); ?>">
-                            <button type="submit" name="save_webhook" class="btn btn-secondary px-4 fw-bold text-uppercase" style="font-size: 0.85rem;">Save URL</button>
+                            <input type="url" name="hostinger_webhook"
+                                class="form-control bg-light border-0 py-2 ps-3 shadow-none"
+                                placeholder="https://webhooks.hostinger.com/deploy/..."
+                                value="<?php echo htmlspecialchars($current_webhook); ?>">
+                            <button type="submit" name="save_webhook"
+                                class="btn btn-secondary px-4 fw-bold text-uppercase" style="font-size: 0.85rem;">Save
+                                URL</button>
                         </div>
-                        <span class="text-muted small">(Stored in database table system_settings under key hostinger_webhook)</span>
+                        <span class="text-muted small">(Stored in database table system_settings under key
+                            hostinger_webhook)</span>
                     </form>
 
                     <form id="pushForm">
                         <div class="mb-4">
-                            <label class="form-label fw-semibold text-dark mb-2">Commit Remarks / Version Details (Optional):</label>
-                            <input type="text" id="commit_remarks" class="form-control bg-light border-0 py-2 ps-3 shadow-none" 
-                                   placeholder="E.g., Fixed login bug, added new report section...">
-                            <span class="text-muted small mt-2 d-block">(This will be attached to your code's history log on GitHub.)</span>
+                            <label class="form-label fw-semibold text-dark mb-2">Commit Remarks / Version Details
+                                (Optional):</label>
+                            <input type="text" id="commit_remarks"
+                                class="form-control bg-light border-0 py-2 ps-3 shadow-none"
+                                placeholder="E.g., Fixed login bug, added new report section...">
+                            <span class="text-muted small mt-2 d-block">(This will be attached to your code's history
+                                log on GitHub.)</span>
                         </div>
 
                         <div class="mt-4 d-flex flex-column gap-2">
-                            <button type="button" id="pushBtn" class="btn btn-primary w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                            <button type="button" id="pushBtn"
+                                class="btn btn-primary w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
                                 <i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)
                             </button>
-                            
-                            <a href="api/repair_sync.php" onclick="return confirm('WARNING: This will discard any manual changes on the SERVER and force it to match your latest GitHub code. Are you sure?')" class="btn btn-outline-danger w-100 py-2 rounded-3 fw-bold small d-flex align-items-center justify-content-center gap-2" style="font-size: 0.8rem;">
+
+                            <a href="api/repair_sync.php"
+                                onclick="return confirm('WARNING: This will discard any manual changes on the SERVER and force it to match your latest GitHub code. Are you sure?')"
+                                class="btn btn-outline-danger w-100 py-2 rounded-3 fw-bold small d-flex align-items-center justify-content-center gap-2"
+                                style="font-size: 0.8rem;">
                                 <i class="bi bi-tools"></i> Stuck? Repair Hostinger Sync Conflict
                             </a>
                         </div>
-                        
+
                         <?php if (empty($current_webhook)): ?>
-                            <p class="text-muted small italic mt-3 mb-0 text-center">*Note: If Webhook is set, deployment is automated. Otherwise, manual deploy on Hostinger is needed.</p>
+                            <p class="text-muted small italic mt-3 mb-0 text-center">*Note: If Webhook is set, deployment is
+                                automated. Otherwise, manual deploy on Hostinger is needed.</p>
                         <?php else: ?>
-                            <p class="text-success small italic mt-3 mb-0 text-center"><i class="bi bi-check-circle-fill me-1"></i> Webhook configured: Automated deployment is active.</p>
+                            <p class="text-success small italic mt-3 mb-0 text-center"><i
+                                    class="bi bi-check-circle-fill me-1"></i> Webhook configured: Automated deployment is
+                                active.</p>
                         <?php endif; ?>
                     </form>
 
@@ -130,7 +149,8 @@ include_once 'header.php';
                             <h6 class="fw-bold mb-0">Deployment Process</h6>
                             <span id="pushStatus" class="badge bg-warning rounded-pill px-3">In Progress...</span>
                         </div>
-                        <div class="bg-dark text-success p-3 rounded-4 overflow-auto" id="logContent" style="height: 250px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem;">
+                        <div class="bg-dark text-success p-3 rounded-4 overflow-auto" id="logContent"
+                            style="height: 250px; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem;">
                             <!-- Output will stream here -->
                         </div>
                     </div>
@@ -141,60 +161,60 @@ include_once 'header.php';
 </div>
 
 <script>
-document.getElementById('pushBtn').addEventListener('click', function() {
-    const remarks = document.getElementById('commit_remarks').value;
-    const outputDiv = document.getElementById('deploymentOutput');
-    const logContent = document.getElementById('logContent');
-    const statusBadge = document.getElementById('pushStatus');
-    const btn = this;
+    document.getElementById('pushBtn').addEventListener('click', function () {
+        const remarks = document.getElementById('commit_remarks').value;
+        const outputDiv = document.getElementById('deploymentOutput');
+        const logContent = document.getElementById('logContent');
+        const statusBadge = document.getElementById('pushStatus');
+        const btn = this;
 
-    // UI Feedback
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Syncing to Cloud...';
-    outputDiv.classList.remove('d-none');
-    logContent.innerHTML = 'Initialising deployment sequence...\n';
-    
-    // API Call
-    fetch('api/cloud_push.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'remarks=' + encodeURIComponent(remarks)
-    })
-    .then(response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
+        // UI Feedback
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Syncing to Cloud...';
+        outputDiv.classList.remove('d-none');
+        logContent.innerHTML = 'Initialising deployment sequence...\n';
 
-        function read() {
-            return reader.read().then(({ done, value }) => {
-                if (done) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)';
-                    return;
-                }
-                const chunk = decoder.decode(value, { stream: true });
-                logContent.innerHTML += chunk;
-                logContent.scrollTop = logContent.scrollHeight;
-                
-                if (chunk.includes('FAILED') || chunk.includes('Error')) {
-                    statusBadge.className = 'badge bg-danger rounded-pill px-3';
-                    statusBadge.innerText = 'Failed';
-                } else if (chunk.includes('SUCCESSFULLY COMPLETED')) {
-                    statusBadge.className = 'badge bg-success rounded-pill px-3';
-                    statusBadge.innerText = 'Completed';
+        // API Call
+        fetch('api/cloud_push.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'remarks=' + encodeURIComponent(remarks)
+        })
+            .then(response => {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                function read() {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)';
+                            return;
+                        }
+                        const chunk = decoder.decode(value, { stream: true });
+                        logContent.innerHTML += chunk;
+                        logContent.scrollTop = logContent.scrollHeight;
+
+                        if (chunk.includes('FAILED') || chunk.includes('Error')) {
+                            statusBadge.className = 'badge bg-danger rounded-pill px-3';
+                            statusBadge.innerText = 'Failed';
+                        } else if (chunk.includes('SUCCESSFULLY COMPLETED')) {
+                            statusBadge.className = 'badge bg-success rounded-pill px-3';
+                            statusBadge.innerText = 'Completed';
+                        }
+                        return read();
+                    });
                 }
                 return read();
+            })
+            .catch(err => {
+                logContent.innerHTML += '\n[Error]: ' + err.message;
+                statusBadge.className = 'badge bg-danger rounded-pill px-3';
+                statusBadge.innerText = 'Failed';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)';
             });
-        }
-        return read();
-    })
-    .catch(err => {
-        logContent.innerHTML += '\n[Error]: ' + err.message;
-        statusBadge.className = 'badge bg-danger rounded-pill px-3';
-        statusBadge.innerText = 'Failed';
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)';
     });
-});
 </script>
 
 <?php include_once 'footer.php'; ?>

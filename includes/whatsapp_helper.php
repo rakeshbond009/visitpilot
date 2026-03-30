@@ -17,7 +17,7 @@ function sendWhatsAppNotification($mobile, $message, $templateName = null, $temp
     }
     // If 12 digits and starts with 91, it's already full
     elseif (strlen($cleanMobile) === 12 && strpos($cleanMobile, '91') === 0) {
-    // Keep as is
+        // Keep as is
     }
 
     // --- CONFIGURATION ---
@@ -28,8 +28,7 @@ function sendWhatsAppNotification($mobile, $message, $templateName = null, $temp
         try {
             $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'whatsapp_%'");
             $config = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-        }
-        catch (Exception $e) {
+        } catch (Exception $e) {
             error_log("WhatsApp settings fetch error: " . $e->getMessage());
         }
     }
@@ -46,13 +45,11 @@ function sendWhatsAppNotification($mobile, $message, $templateName = null, $temp
         $enabledOptions = json_decode($enabledProcessesStr, true);
         if (is_array($enabledOptions)) {
             $isProcessEnabled = in_array($templateName, $enabledOptions);
-        }
-        else {
+        } else {
             // If settings are missing or invalid, we default to false for security/compliance
             $isProcessEnabled = false;
         }
-    }
-    else {
+    } else {
         // If no template (direct message), allow it if live
         $isProcessEnabled = true;
     }
@@ -69,10 +66,10 @@ function sendWhatsAppNotification($mobile, $message, $templateName = null, $temp
 
         // Use configured template language from DB, default to 'en'
         $lang = $config['whatsapp_template_language'] ?? 'en';
-        
+
         // Specific override if needed, though DB setting should generally rule
         if ($lang === 'en_US' && str_contains($templateName, 'meet')) {
-            $lang = 'en'; 
+            $lang = 'en';
         }
 
         return sendWhatsAppTemplate($cleanMobile, $templateName, $templateParams, $accessToken, $phoneNumberId, $headerDocumentUrl, $lang, $headerText);
@@ -195,13 +192,11 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
                     if ($mediaId) {
                         $mediaLog = "[" . date('Y-m-d H:i:s') . "] TRACE: PDF Uploaded to Meta. Media ID: $mediaId\n";
                         file_put_contents(__DIR__ . '/../whatsapp_log.txt', $mediaLog, FILE_APPEND);
-                    }
-                    else {
+                    } else {
                         $mediaLog = "[" . date('Y-m-d H:i:s') . "] TRACE: PDF Upload FAILED at Meta API.\n";
                         file_put_contents(__DIR__ . '/../whatsapp_log.txt', $mediaLog, FILE_APPEND);
                     }
-                }
-                else {
+                } else {
                     $localPathAttempt = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . $relativePath;
                     $mediaLog = "[" . date('Y-m-d H:i:s') . "] TRACE: Media file not found (realpath failed): $localPathAttempt | CWD: " . getcwd() . "\n";
                     file_put_contents(__DIR__ . '/../whatsapp_log.txt', $mediaLog, FILE_APPEND);
@@ -220,8 +215,7 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
                     'filename' => 'VisitorPass.pdf'
                 ]
             ];
-        }
-        else {
+        } else {
             // FALLBACK: If upload failed or no local path, use a public link or the template handle
             // Note: Public links often fail on localhost, handles expire. Media ID is preferred.
             $fallbackUrl = 'https://scontent.whatsapp.net/v/t61.29466-34/637101546_1464613275160503_7644617372404680691_n.pdf?ccb=1-7&_nc_sid=8b1bef&_nc_ohc=pnI5cUdZg3gQ7kNvwF4M2NH&_nc_oc=AdkduWU3Fjw1NboB33ypyovUkR-JM4dlIm8mInI7DhLRn1onzcdl4LwPYVWMqVT2wfIOrYT1H6IxUD3xwPXjbsqh&_nc_zt=3&_nc_ht=scontent.whatsapp.net&edm=AH51TzQEAAAA&_nc_gid=cuz9hKTBJhDU5HhCj9_IyA&_nc_tpa=Q5bMBQFvvLsa5o-mkuqsxPtslymL_cczI28Iyh0SFm6MN3CfClqJRpKOFdY-3v-fJjbmVSOXccIg1wHSWw&oh=01_Q5Aa4AFb7G1LXPKMbxWa8DyOqYcT9008RIlRJaZz-sV1SDCgeQ&oe=69DCCFF9';
@@ -239,7 +233,7 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
     if (!empty($parameters)) {
         $params = [];
         foreach ($parameters as $param) {
-            $params[] = ['type' => 'text', 'text' => (string)$param];
+            $params[] = ['type' => 'text', 'text' => (string) $param];
         }
         $components[] = [
             'type' => 'body',
@@ -253,7 +247,7 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
                 'sub_type' => 'url',
                 'index' => '0',
                 'parameters' => [
-                    ['type' => 'text', 'text' => (string)$parameters[0]]
+                    ['type' => 'text', 'text' => (string) $parameters[0]]
                 ]
             ];
         }
@@ -294,8 +288,8 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
             'Content-Type: application/json'
         ]);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5); 
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10); 
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -316,7 +310,8 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
                 $msg = "WhatsApp Sent: Template [$templateName] to [$mobile] (Lang: $currentLangCode)";
                 $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
                 $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
-            } catch (Exception $log_e) {}
+            } catch (Exception $log_e) {
+            }
 
             return true;
         }
@@ -340,7 +335,8 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
         $msg = "WhatsApp FAILED: Template [$templateName] to [$mobile]. Error: $lastHttpCode";
         $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
         $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
-    } catch (Exception $log_e) {}
+    } catch (Exception $log_e) {
+    }
 
     return false;
 }

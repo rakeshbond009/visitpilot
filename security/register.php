@@ -85,8 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
-        }
-        else {
+        } else {
             // New Visitor
             $stmt = $pdo->prepare("INSERT INTO visitors (name, mobile, email, address, photo_path, id_proof_type, id_proof_number) VALUES (?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$name, $mobile, $email, $address, $photo_path, $id_proof_type, $id_proof_number]);
@@ -103,8 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, created_at=? WHERE id=?");
             $stmt->execute([$assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $visit_id]);
             logAction($pdo, $_SESSION['user_id'], "Invited visitor arrived, awaiting host acknowledgement. (Visit ID: $visit_id)");
-        }
-        else {
+        } else {
             // Create New Visit with pending status (requires host approval)
             $visit_code = generateVisitCode();
 
@@ -162,12 +160,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $visitorObj = $stmtVis->fetch(PDO::FETCH_ASSOC);
 
             $pushData = [
-                'visitor_id' => (string)$visitor_id,
-                'visit_id' => (string)$visit_id,
-                'visitor_name' => (string)$name,
-                'visitor_mobile' => (string)($visitorObj['mobile'] ?? ''),
-                'purpose' => (string)$purpose,
-                'company' => (string)($visitorObj['company'] ?? 'General Visitor'),
+                'visitor_id' => (string) $visitor_id,
+                'visit_id' => (string) $visit_id,
+                'visitor_name' => (string) $name,
+                'visitor_mobile' => (string) ($visitorObj['mobile'] ?? ''),
+                'purpose' => (string) $purpose,
+                'company' => (string) ($visitorObj['company'] ?? 'General Visitor'),
                 'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
                 'type' => 'visitor_arrival'
             ];
@@ -178,12 +176,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $stmt->execute([$visit_id]);
                 $employee_id = $stmt->fetchColumn();
                 sendPushNotification($pdo, $employee_id, "Invited Visitor Arrived", "$name has arrived at the security gate.", $pushData);
-            }
-            else {
+            } else {
                 sendPushNotification($pdo, $employee_id, "New Visitor Waiting", "$name is at the gate for $purpose. Tap to open.", $pushData);
             }
-        }
-        catch (Exception $e) {
+        } catch (Exception $e) {
             error_log("Push Error: " . $e->getMessage());
         }
 
@@ -204,15 +200,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $host['mobile'],
                     "Visitor $name has arrived to meet you.",
                     'visitor_arrival_host_alert',
-                ["*{$host['name']}*", "*$name*", "*$purpose*"]
+                    ["*{$host['name']}*", "*$name*", "*$purpose*"]
                 );
-            }
-            else {
+            } else {
                 $trace_msg = "[" . current_datetime() . "] TRACE (security/register): Host NOT found or mobile empty for ID: $employee_id\n";
                 file_put_contents(__DIR__ . '/../whatsapp_log.txt', $trace_msg, FILE_APPEND);
             }
-        }
-        catch (Exception $e) {
+        } catch (Exception $e) {
             error_log("WhatsApp System Error in security/register: " . $e->getMessage());
             $trace_msg = "[" . current_datetime() . "] TRACE (security/register): Error: " . $e->getMessage() . "\n";
             file_put_contents(__DIR__ . '/../whatsapp_log.txt', $trace_msg, FILE_APPEND);
@@ -223,20 +217,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $waStatusParam = "";
         if ($waResponse === 'skipped_disabled') {
             $waStatusParam = "&wa_status=skipped_disabled";
-        }
-        else if ($waResponse === 'skipped_not_live') {
+        } else if ($waResponse === 'skipped_not_live') {
             $waStatusParam = "&wa_status=skipped_not_live";
         }
 
         if ($invited_visit_id) {
             redirect($home_url . "?new_visit_id=$visit_id&msg=" . urlencode("Visitor arrival registered. Awaiting host acknowledgement.") . $waStatusParam);
-        }
-        else {
+        } else {
             redirect($home_url . "?new_visit_id=$visit_id" . $waStatusParam);
         }
 
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
         $pdo->rollBack();
         echo "<script>alert('Error: " . addslashes($e->getMessage()) . "');</script>";
     }
@@ -505,7 +496,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 </style>
 
 <div id="fullPageLoader">
-    <div class="spinner-border text-primary shadow-sm" style="width: 4rem; height: 4rem; border-width: 0.4rem;" role="status">
+    <div class="spinner-border text-primary shadow-sm" style="width: 4rem; height: 4rem; border-width: 0.4rem;"
+        role="status">
         <span class="visually-hidden">Loading...</span>
     </div>
     <div class="mt-4 text-center">
@@ -602,13 +594,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <div class="col-md-6">
                                             <div class="form-floating">
                                                 <select name="id_proof_type" class="form-select" id="idProofSelect">
-                                                    <option value="Aadhaar" <?php echo($visitor['id_proof_type'] == 'Aadhaar') ? 'selected' : ''; ?>>
+                                                    <option value="Aadhaar" <?php echo ($visitor['id_proof_type'] == 'Aadhaar') ? 'selected' : ''; ?>>
                                                         Aadhaar Card</option>
-                                                    <option value="PAN" <?php echo($visitor['id_proof_type'] == 'PAN') ? 'selected' : ''; ?>>PAN Card</option>
-                                                    <option value="Driving License" <?php echo($visitor['id_proof_type'] == 'Driving License') ? 'selected' : ''; ?>>Driving License</option>
-                                                    <option value="Voter ID" <?php echo($visitor['id_proof_type'] == 'Voter ID') ? 'selected' : ''; ?>>
+                                                    <option value="PAN" <?php echo ($visitor['id_proof_type'] == 'PAN') ? 'selected' : ''; ?>>PAN Card</option>
+                                                    <option value="Driving License" <?php echo ($visitor['id_proof_type'] == 'Driving License') ? 'selected' : ''; ?>>Driving License</option>
+                                                    <option value="Voter ID" <?php echo ($visitor['id_proof_type'] == 'Voter ID') ? 'selected' : ''; ?>>
                                                         Voter ID</option>
-                                                    <option value="Other" <?php echo($visitor['id_proof_type'] == 'Other') ? 'selected' : ''; ?>>Other
+                                                    <option value="Other" <?php echo ($visitor['id_proof_type'] == 'Other') ? 'selected' : ''; ?>>Other
                                                     </option>
                                                 </select>
                                                 <label for="idProofSelect">ID Proof Type</label>
@@ -653,8 +645,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                     <option value="<?php echo $emp['id']; ?>">
                                                         <?php echo htmlspecialchars($emp['name'] . ' (' . $emp['department'] . ')'); ?>
                                                     </option>
-                                                <?php
-endforeach; ?>
+                                                    <?php
+                                                endforeach; ?>
                                             </select>
                                             <label for="hostSelect">Who to Meet?</label>
                                         </div>
@@ -666,8 +658,8 @@ endforeach; ?>
                                                     <option value="<?php echo htmlspecialchars($p['purpose_name']); ?>">
                                                         <?php echo htmlspecialchars($p['purpose_name']); ?>
                                                     </option>
-                                                <?php
-endforeach; ?>
+                                                    <?php
+                                                endforeach; ?>
                                                 <option value="Other">Other Reason</option>
                                             </select>
                                             <label for="purposeSelect">Purpose</label>
@@ -681,8 +673,8 @@ endforeach; ?>
                                                     <option value="<?php echo htmlspecialchars($aa['area_name']); ?>">
                                                         <?php echo htmlspecialchars($aa['area_name']); ?>
                                                     </option>
-                                                <?php
-endforeach; ?>
+                                                    <?php
+                                                endforeach; ?>
                                             </select>
                                             <label for="areaSelect">Designated Access Area (Optional)</label>
                                         </div>
@@ -726,9 +718,10 @@ endforeach; ?>
                                         for="requireOtpToggle">
                                         Enable OTP Check
                                         <?php if (!$is_otp_enabled): ?>
-                                            <span class="text-danger ms-2" style="font-size: 0.7rem;">(WhatsApp Disabled)</span>
-                                        <?php
-endif; ?>
+                                            <span class="text-danger ms-2" style="font-size: 0.7rem;">(WhatsApp
+                                                Disabled)</span>
+                                            <?php
+                                        endif; ?>
                                     </label>
                                 </div>
                             </div>
@@ -1000,7 +993,7 @@ endif; ?>
 
     async function handleRegistration(e) {
         if (e) e.preventDefault();
-        
+
         const mobile = document.getElementById('mobileInput').value;
         if (!mobile || mobile.length !== 10 || isNaN(mobile)) {
             Swal.fire({
@@ -1149,7 +1142,7 @@ endif; ?>
                     document.getElementById('otp_verified_flag').value = "1";
                     const m = bootstrap.Modal.getInstance(document.getElementById('otpModal'));
                     if (m) m.hide();
-                    
+
                     // Final submit via AJAX
                     submitRegistrationForm();
                 }, 800);

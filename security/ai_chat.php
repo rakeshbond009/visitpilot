@@ -27,28 +27,35 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                     </div>
                     <div>
                         <h4 class="mb-0 fw-800 text-dark ls-tight">VisitPilot AI</h4>
-                        <span class="text-muted small fw-medium"><i class="bi bi-shield-check text-success"></i> Secure Enterprise Assistant</span>
+                        <span class="text-muted small fw-medium"><i class="bi bi-shield-check text-success"></i> Secure
+                            Enterprise Assistant</span>
                     </div>
                 </div>
                 <div class="d-flex gap-2">
-                    <button id="talkbackToggle" class="btn glass-badge text-primary rounded-pill px-3 py-2" onclick="toggleTalkback()" title="Toggle AI Voice">
-                        <i id="talkbackIcon" class="bi bi-volume-up-fill me-1"></i> <span id="talkbackStatus" class="d-none d-md-inline">Talkback ON</span>
+                    <button id="talkbackToggle" class="btn glass-badge text-primary rounded-pill px-3 py-2"
+                        onclick="toggleTalkback()" title="Toggle AI Voice">
+                        <i id="talkbackIcon" class="bi bi-volume-up-fill me-1"></i> <span id="talkbackStatus"
+                            class="d-none d-md-inline">Talkback ON</span>
                     </button>
-                    <span class="badge glass-badge text-primary rounded-pill px-3 py-2 d-none d-md-inline-block"><i class="bi bi-database-check me-1"></i> Data-Live</span>
-                    <button class="btn btn-glass-icon" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i></button>
+                    <span class="badge glass-badge text-primary rounded-pill px-3 py-2 d-none d-md-inline-block"><i
+                            class="bi bi-database-check me-1"></i> Data-Live</span>
+                    <button class="btn btn-glass-icon" onclick="window.location.reload()"><i
+                            class="bi bi-arrow-clockwise"></i></button>
                 </div>
             </div>
-            
+
             <!-- Chat Body -->
             <div class="card-body p-4 p-lg-5" id="chat-container">
                 <div class="chat-bubble ai-bubble mb-4 animate__animated animate__fadeInUp">
                     <div class="avatar-box bg-white shadow-sm"><i class="bi bi-robot"></i></div>
                     <div class="message-wrapper">
                         <div class="message shadow-soft">
-                            Hello! I am your **VisitPilot AI Assistant**. I'm ready to help you with visitor logs, department stats, or security insights. 
+                            Hello! I am your **VisitPilot AI Assistant**. I'm ready to help you with visitor logs,
+                            department stats, or security insights.
                             What would you like to know?
                         </div>
-                        <button class="speaker-btn-premium mt-2" onclick="speakText(this, 'Hello! I am your VisitPilot AI Assistant. I\'m ready to help you with visitor logs, department stats, or security insights. What would you like to know?')">
+                        <button class="speaker-btn-premium mt-2"
+                            onclick="speakText(this, 'Hello! I am your VisitPilot AI Assistant. I\'m ready to help you with visitor logs, department stats, or security insights. What would you like to know?')">
                             <i class="bi bi-volume-up"></i> Listen Response
                         </button>
                     </div>
@@ -58,12 +65,19 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
             <!-- Footer -->
             <div class="card-footer border-0 bg-transparent p-4 pb-0">
                 <div class="quick-questions-menu d-flex flex-wrap gap-2 mb-3">
-                    <button class="btn q-chip" onclick="quickQuery('summary of dashboard')"><i class="bi bi-graph-up text-primary me-1"></i> Dashboard Summary</button>
-                    <button class="btn q-chip" onclick="quickQuery('who is in right now?')"><i class="bi bi-people text-info me-1"></i> Who is In?</button>
-                    <button class="btn q-chip" onclick="quickQuery('visits today')"><i class="bi bi-calendar-event text-success me-1"></i> Today's Visits</button>
-                    <button class="btn q-chip" onclick="quickQuery('month wise visits')"><i class="bi bi-bar-chart text-warning me-1"></i> Monthly Report</button>
-                    <button class="btn q-chip" onclick="quickQuery('employee wise visits')"><i class="bi bi-person-badge text-danger me-1"></i> Host Performance</button>
-                    <button class="btn q-chip bg-primary text-white" data-bs-toggle="modal" data-bs-target="#knowledgeMenuModal"><i class="bi bi-book-half me-1"></i> Full Knowledge Menu</button>
+                    <button class="btn q-chip" onclick="quickQuery('summary of dashboard')"><i
+                            class="bi bi-graph-up text-primary me-1"></i> Dashboard Summary</button>
+                    <button class="btn q-chip" onclick="quickQuery('who is in right now?')"><i
+                            class="bi bi-people text-info me-1"></i> Who is In?</button>
+                    <button class="btn q-chip" onclick="quickQuery('visits today')"><i
+                            class="bi bi-calendar-event text-success me-1"></i> Today's Visits</button>
+                    <button class="btn q-chip" onclick="quickQuery('month wise visits')"><i
+                            class="bi bi-bar-chart text-warning me-1"></i> Monthly Report</button>
+                    <button class="btn q-chip" onclick="quickQuery('employee wise visits')"><i
+                            class="bi bi-person-badge text-danger me-1"></i> Host Performance</button>
+                    <button class="btn q-chip bg-primary text-white" data-bs-toggle="modal"
+                        data-bs-target="#knowledgeMenuModal"><i class="bi bi-book-half me-1"></i> Full Knowledge
+                        Menu</button>
                 </div>
             </div>
 
@@ -72,7 +86,8 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                     <button class="btn btn-icon-round mic-btn-xl" id="micBtn" title="Speak to AI">
                         <i class="bi bi-mic-fill"></i>
                     </button>
-                    <input type="text" id="chatInput" class="form-control border-0 bg-transparent px-3 fs-5" placeholder="Ask anything... (e.g. 'Who is in right now?')">
+                    <input type="text" id="chatInput" class="form-control border-0 bg-transparent px-3 fs-5"
+                        placeholder="Ask anything... (e.g. 'Who is in right now?')">
                     <button class="btn btn-primary-premium rounded-pill" id="sendBtn">
                         <i class="bi bi-send-fill me-2"></i> Send
                     </button>
@@ -130,7 +145,8 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         margin-left: auto;
     }
 
-    .avatar-box, .avatar-header {
+    .avatar-box,
+    .avatar-header {
         width: 45px;
         height: 45px;
         border-radius: 12px;
@@ -155,7 +171,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
     .user-bubble .avatar-box {
         background: white;
         color: #6c757d;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
     }
 
     .message-wrapper {
@@ -195,8 +211,10 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .mic-btn-xl:hover { background: #e9ecef; }
-    
+    .mic-btn-xl:hover {
+        background: #e9ecef;
+    }
+
     .mic-active {
         background: #dc3545 !important;
         color: white !important;
@@ -204,9 +222,17 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
     }
 
     @keyframes pulse-red-premium {
-        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
-        70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        0% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 15px rgba(220, 53, 69, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        }
     }
 
     .speaker-btn-premium {
@@ -223,13 +249,15 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         transition: opacity 0.2s;
     }
 
-    .speaker-btn-premium:hover { opacity: 1; }
+    .speaker-btn-premium:hover {
+        opacity: 1;
+    }
 
     .glass-input-group {
         background: white;
         display: flex;
         align-items: center;
-        border: 1px solid rgba(0,0,0,0.05);
+        border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
     .btn-primary-premium {
@@ -262,20 +290,28 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         position: relative;
     }
 
-    .ls-tight { letter-spacing: -0.5px; }
-    .shadow-soft { box-shadow: 0 10px 30px rgba(0,0,0,0.03); }
-    .fw-800 { font-weight: 800; }
+    .ls-tight {
+        letter-spacing: -0.5px;
+    }
+
+    .shadow-soft {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    }
+
+    .fw-800 {
+        font-weight: 800;
+    }
 
     .q-chip {
-        background: rgba(255,255,255,0.7);
-        border: 1px solid rgba(13,110,253,0.1);
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(13, 110, 253, 0.1);
         border-radius: 50px;
         padding: 5px 15px;
         font-size: 0.85rem;
         font-weight: 600;
         color: #495057;
         transition: all 0.2s;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02);
     }
 
     .q-chip:hover {
@@ -285,7 +321,10 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         border-color: transparent;
         box-shadow: 0 6px 15px rgba(13, 110, 253, 0.2);
     }
-    .q-chip:hover i { color: white !important; }
+
+    .q-chip:hover i {
+        color: white !important;
+    }
 
     .q-link-btn {
         cursor: pointer;
@@ -320,7 +359,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         text-overflow: ellipsis;
         padding: 12px 15px !important;
         border-radius: 10px !important;
-        border: 1px solid rgba(0,0,0,0.03) !important;
+        border: 1px solid rgba(0, 0, 0, 0.03) !important;
         margin-bottom: 5px;
         text-align: left;
     }
@@ -331,8 +370,10 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
     <div class="modal-dialog modal-xl modal-dialog-centered modal-massive">
         <div class="modal-content border-0 shadow-2xl rounded-5 overflow-hidden">
             <div class="modal-header bg-primary text-white border-0 p-4">
-                <h5 class="modal-title fw-800"><i class="bi bi-book-half me-2"></i> VisitPilot AI Master Knowledge Syllabus</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title fw-800"><i class="bi bi-book-half me-2"></i> VisitPilot AI Master Knowledge
+                    Syllabus</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
             </div>
             <div class="modal-body p-5">
                 <!-- <p class="text-muted text-center mb-5 fs-5">Select any operational query below for instant AI analysis and reporting.</p> -->
@@ -344,13 +385,20 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                                 <i class="bi bi-speedometer2 fs-4 me-3"></i> Global & Current
                             </h6>
                             <div class="list-group list-group-flush bg-transparent">
-                                <button class="q-link-btn" onclick="modalQuery('dashboard summary')">📊 Dashboard Summary</button>
-                                <button class="q-link-btn" onclick="modalQuery('who is in')">🏢 Total Onsite Visitors</button>
-                                <button class="q-link-btn" onclick="modalQuery('visits today')">📅 Total Visitors Today</button>
-                                <button class="q-link-btn" onclick="modalQuery('all pending visits')">⏳ Pending Approvals</button>
-                                <button class="q-link-btn" onclick="modalQuery('total visit')">📚 Total Visit History</button>
-                                <button class="q-link-btn" onclick="modalQuery('total visitor')">👥 Unique Visitor Count</button>
-                                <button class="q-link-btn" onclick="modalQuery('repeat visitor')">🔄 Repeat Visitors</button>
+                                <button class="q-link-btn" onclick="modalQuery('dashboard summary')">📊 Dashboard
+                                    Summary</button>
+                                <button class="q-link-btn" onclick="modalQuery('who is in')">🏢 Total Onsite
+                                    Visitors</button>
+                                <button class="q-link-btn" onclick="modalQuery('visits today')">📅 Total Visitors
+                                    Today</button>
+                                <button class="q-link-btn" onclick="modalQuery('all pending visits')">⏳ Pending
+                                    Approvals</button>
+                                <button class="q-link-btn" onclick="modalQuery('total visit')">📚 Total Visit
+                                    History</button>
+                                <button class="q-link-btn" onclick="modalQuery('total visitor')">👥 Unique Visitor
+                                    Count</button>
+                                <button class="q-link-btn" onclick="modalQuery('repeat visitor')">🔄 Repeat
+                                    Visitors</button>
                                 <button class="q-link-btn" onclick="modalQuery('help')">💡 AI Help</button>
                             </div>
                         </div>
@@ -363,14 +411,22 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                                 <i class="bi bi-clock-history fs-4 me-3"></i> Staff & History
                             </h6>
                             <div class="list-group list-group-flush bg-transparent">
-                                <button class="q-link-btn" onclick="modalQuery('yesterday count')">⏪ Yesterday Summary</button>
-                                <button class="q-link-btn" onclick="modalQuery('rejected yesterday')">🚫 Yesterday Rejections</button>
-                                <button class="q-link-btn" onclick="modalQuery('visits tomorrow')">⏩ Tomorrow Schedule</button>
-                                <button class="q-link-btn" onclick="modalQuery('host performance')">🏆 Top Hosting Staff</button>
-                                <button class="q-link-btn" onclick="modalQuery('staff attendance')">📋 Today Attendance</button>
-                                <button class="q-link-btn" onclick="modalQuery('dept breakdown')">🏢 Department-wise Visitors</button>
-                                <button class="q-link-btn" onclick="modalQuery('total staff')">👤 Total Staff Count</button>
-                                <button class="q-link-btn" onclick="modalQuery('inactive employee')">🔒 Inactive Staff</button>
+                                <button class="q-link-btn" onclick="modalQuery('yesterday count')">⏪ Yesterday
+                                    Summary</button>
+                                <button class="q-link-btn" onclick="modalQuery('rejected yesterday')">🚫 Yesterday
+                                    Rejections</button>
+                                <button class="q-link-btn" onclick="modalQuery('visits tomorrow')">⏩ Tomorrow
+                                    Schedule</button>
+                                <button class="q-link-btn" onclick="modalQuery('host performance')">🏆 Top Hosting
+                                    Staff</button>
+                                <button class="q-link-btn" onclick="modalQuery('staff attendance')">📋 Today
+                                    Attendance</button>
+                                <button class="q-link-btn" onclick="modalQuery('dept breakdown')">🏢 Department-wise
+                                    Visitors</button>
+                                <button class="q-link-btn" onclick="modalQuery('total staff')">👤 Total Staff
+                                    Count</button>
+                                <button class="q-link-btn" onclick="modalQuery('inactive employee')">🔒 Inactive
+                                    Staff</button>
                             </div>
                         </div>
                     </div>
@@ -382,14 +438,19 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                                 <i class="bi bi-graph-up-arrow fs-4 me-3"></i> Trends & Analytics
                             </h6>
                             <div class="list-group list-group-flush bg-transparent">
-                                <button class="q-link-btn" onclick="modalQuery('month wise visits')">📈 Monthly Chart</button>
+                                <button class="q-link-btn" onclick="modalQuery('month wise visits')">📈 Monthly
+                                    Chart</button>
                                 <button class="q-link-btn" onclick="modalQuery('busiest hour')">🕐 Peak Hour</button>
                                 <button class="q-link-btn" onclick="modalQuery('busiest day')">🗓️ Busiest Day</button>
                                 <button class="q-link-btn" onclick="modalQuery('avg duration')">⏱️ Average Stay</button>
-                                <button class="q-link-btn" onclick="modalQuery('visitor growth')">📊 Total Visitor Growth</button>
-                                <button class="q-link-btn" onclick="modalQuery('busiest area')">📍 Entry Point Traffic</button>
-                                <button class="q-link-btn" onclick="modalQuery('overstay alerts')">⚠️ Overstay Alerts</button>
-                                <button class="q-link-btn" onclick="modalQuery('security summary')">🚨 Security Summary</button>
+                                <button class="q-link-btn" onclick="modalQuery('visitor growth')">📊 Total Visitor
+                                    Growth</button>
+                                <button class="q-link-btn" onclick="modalQuery('busiest area')">📍 Entry Point
+                                    Traffic</button>
+                                <button class="q-link-btn" onclick="modalQuery('overstay alerts')">⚠️ Overstay
+                                    Alerts</button>
+                                <button class="q-link-btn" onclick="modalQuery('security summary')">🚨 Security
+                                    Summary</button>
                             </div>
                         </div>
                     </div>
@@ -401,12 +462,16 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                                 <i class="bi bi-file-earmark-bar-graph fs-4 me-3"></i> Pro Reports
                             </h6>
                             <div class="list-group list-group-flush bg-transparent">
-                                <button class="q-link-btn" onclick="modalQuery('department density')">🏢 Department Density</button>
+                                <button class="q-link-btn" onclick="modalQuery('department density')">🏢 Department
+                                    Density</button>
                                 <button class="q-link-btn" onclick="modalQuery('area density')">📍 Area Density</button>
-                                <button class="q-link-btn" onclick="modalQuery('overstay clients')">🚩 Overstay Visitor List</button>
+                                <button class="q-link-btn" onclick="modalQuery('overstay clients')">🚩 Overstay Visitor
+                                    List</button>
                                 <button class="q-link-btn" onclick="modalQuery('ai insights')">✨ AI Predictions</button>
-                                <button class="q-link-btn" onclick="modalQuery('rejected today')">🚫 Rejection Details</button>
-                                <button class="q-link-btn" onclick="modalQuery('who visited recently')">🕒 Recent Check-ins</button>
+                                <button class="q-link-btn" onclick="modalQuery('rejected today')">🚫 Rejection
+                                    Details</button>
+                                <button class="q-link-btn" onclick="modalQuery('who visited recently')">🕒 Recent
+                                    Check-ins</button>
                             </div>
                         </div>
                     </div>
@@ -428,31 +493,31 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
         const icon = document.getElementById('talkbackIcon');
         const status = document.getElementById('talkbackStatus');
         const btn = document.getElementById('talkbackToggle');
-        
+
         if (talkbackEnabled) {
             icon.className = 'bi bi-volume-up-fill me-1';
-            if(status) status.innerText = 'Talkback ON';
+            if (status) status.innerText = 'Talkback ON';
             btn.classList.add('text-primary');
             btn.classList.remove('text-muted');
         } else {
             icon.className = 'bi bi-volume-mute-fill me-1';
-            if(status) status.innerText = 'Talkback OFF';
+            if (status) status.innerText = 'Talkback OFF';
             btn.classList.remove('text-primary');
             btn.classList.add('text-muted');
             // IMMEDIATELY stop currently playing speech
-            if('speechSynthesis' in window) {
+            if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
             }
         }
     }
 
-    window.quickQuery = function(text) {
+    window.quickQuery = function (text) {
         if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         chatInput.value = text;
         sendMessage();
     };
 
-    window.modalQuery = function(text) {
+    window.modalQuery = function (text) {
         const modalEl = document.getElementById('knowledgeMenuModal');
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
@@ -462,7 +527,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
     function appendMessage(role, text) {
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble ${role}-bubble mb-4 animate__animated animate__fadeInUp`;
-        
+
         const avatar = role === 'ai' ? '<i class="bi bi-robot"></i>' : '<i class="bi bi-person-fill"></i>';
         const speakerBtn = role === 'ai' ? `<button class="speaker-btn-premium mt-2" onclick="speakText(this, '${text.replace(/'/g, "\\'").replace(/\n/g, " ")}')"><i class="bi bi-volume-up"></i> Listen Response</button>` : '';
 
@@ -473,7 +538,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                 ${speakerBtn}
             </div>
         `;
-        
+
         chatContainer.appendChild(bubble);
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
@@ -501,8 +566,8 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                 icon: 'warning',
                 title: 'AI API Key not configured.',
                 html: 'You need to link your API key in **AI Integration Settings** to use the assistant.<br><br>' +
-                      'Don\'t have an API key? <a href="https://aistudio.google.com/app/apikey" target="_blank" class="fw-bold text-primary">Get your Gemini API Key here (Free)</a>' +
-                      (isAdmin ? '<br><br><a href="../admin/settings.php?tab=ai" class="btn btn-primary btn-sm rounded-pill px-3">Link your API here</a>' : ''),
+                    'Don\'t have an API key? <a href="https://aistudio.google.com/app/apikey" target="_blank" class="fw-bold text-primary">Get your Gemini API Key here (Free)</a>' +
+                    (isAdmin ? '<br><br><a href="../admin/settings.php?tab=ai" class="btn btn-primary btn-sm rounded-pill px-3">Link your API here</a>' : ''),
                 confirmButtonText: 'Got it'
             });
             return;
@@ -566,8 +631,8 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
 
     if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.continuous = true; 
-        recognition.interimResults = true; 
+        recognition.continuous = true;
+        recognition.interimResults = true;
         recognition.lang = 'en-IN';
 
         let silenceTimer;
@@ -580,7 +645,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
             } else {
                 chatInput.value = '';
                 isStartedManually = true;
-                try { recognition.start(); } catch(e) {}
+                try { recognition.start(); } catch (e) { }
             }
         };
 
@@ -591,7 +656,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
 
         recognition.onend = () => {
             if (isStartedManually) {
-                try { recognition.start(); return; } catch(e) {}
+                try { recognition.start(); return; } catch (e) { }
             }
             micBtn.classList.remove('mic-active');
             chatInput.placeholder = "Ask anything... (e.g. 'Who is in right now?') text here...";
@@ -609,7 +674,7 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                 transcript += segment;
             }
             chatInput.value = transcript;
-            
+
             // Wait 3 seconds of silence before submitting
             silenceTimer = setTimeout(() => {
                 if (chatInput.value.trim()) {
@@ -633,11 +698,11 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
     function speakText(btn, text, isAuto = false) {
         // If it's an auto-read (isAuto is true), respect the global toggle
         if (isAuto && !talkbackEnabled) return;
-        
+
         if ('speechSynthesis' in window) {
             // Cancel any ongoing speech
             window.speechSynthesis.cancel();
-            
+
             // Clean text for cleaner speech (remove markdown including headers)
             let cleanText = text
                 .replace(/###\s+/g, '')        // Remove H3 headers
@@ -645,18 +710,18 @@ $tenant_key_val = $_SESSION['tenant_key'] ?? 'default';
                 .replace(/\[(.*?)\]/g, '$1')     // Remove brackets
                 .replace(/⚠️|✅|📊|👋|💡/g, '')   // Remove emojis for speech
                 .replace(/\n/g, '. ');           // Replace newlines with pauses
-            
+
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.rate = 1.05;
             utterance.pitch = 1.0;
-            
+
             const icon = btn ? btn.querySelector('i') : null; // Only update icon if a button is provided
             if (icon) icon.className = 'bi bi-volume-up-fill';
-            
+
             utterance.onend = () => {
                 if (icon) icon.className = 'bi bi-volume-up';
             };
-            
+
             window.speechSynthesis.speak(utterance);
         } else if (!isAuto) {
             Swal.fire('Not Supported', 'Your browser does not support text-to-speech.', 'error');

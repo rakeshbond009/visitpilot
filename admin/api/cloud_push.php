@@ -14,15 +14,18 @@ header('X-Accel-Buffering: no'); // For Nginx if applicable
 ob_implicit_flush(true);
 ob_end_flush();
 
-function streamOutput($text) {
+function streamOutput($text)
+{
     echo $text . "\n";
-    if (ob_get_level() > 0) ob_flush();
+    if (ob_get_level() > 0)
+        ob_flush();
     flush();
 }
 
 // 2. Deployment Parameters
 $remarks = $_POST['remarks'] ?? 'Cloud Sync: Updated code and permissions';
-if (empty($remarks)) $remarks = 'Cloud Sync: System Updated';
+if (empty($remarks))
+    $remarks = 'Cloud Sync: System Updated';
 
 // Fetch Hostinger Webhook
 $webhook = '';
@@ -30,8 +33,10 @@ try {
     $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'hostinger_webhook'");
     $stmt->execute();
     $res = $stmt->fetch();
-    if ($res) $webhook = $res['setting_value'];
-} catch (Exception $e) {}
+    if ($res)
+        $webhook = $res['setting_value'];
+} catch (Exception $e) {
+}
 
 streamOutput("[STATUS]: Starting Preparation Sequence...");
 
@@ -56,13 +61,15 @@ if (file_exists($init_file)) {
 // Step 1: Add all files
 streamOutput("[SYSTEM]: Running 'git add .'...");
 $output = shell_exec('git add . 2>&1');
-if ($output) streamOutput("[GIT LOG]: " . trim($output));
+if ($output)
+    streamOutput("[GIT LOG]: " . trim($output));
 
 // Step 2: Commit changes
 streamOutput("[SYSTEM]: Committing changes with remarks: '$remarks'...");
 $commit_cmd = 'git commit -m "' . addslashes($remarks) . '" 2>&1';
 $output = shell_exec($commit_cmd);
-if ($output) streamOutput("[GIT LOG]: " . trim($output));
+if ($output)
+    streamOutput("[GIT LOG]: " . trim($output));
 
 if (strpos($output, 'nothing to commit') !== false || strpos($output, 'On branch main') !== false) {
     streamOutput("[WARN]: No new changes to commit. Proceeding to push local updates...");
@@ -72,7 +79,8 @@ if (strpos($output, 'nothing to commit') !== false || strpos($output, 'On branch
 streamOutput("[SYSTEM]: Pushing to GitHub (origin main)...");
 $push_cmd = 'git push origin main 2>&1';
 $output = shell_exec($push_cmd);
-if ($output) streamOutput("[GIT LOG]: " . trim($output));
+if ($output)
+    streamOutput("[GIT LOG]: " . trim($output));
 
 if (strpos($output, 'Permission to') !== false || strpos($output, 'fatal') !== false || strpos($output, 'error') !== false) {
     if (strpos($output, '403') !== false) {
@@ -101,7 +109,7 @@ if (!empty($webhook)) {
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
     if ($http_code === 200 || $http_code === 202) {
         streamOutput("[STATUS]: Webhook triggered successfully (HTTP $http_code).");
     } else {

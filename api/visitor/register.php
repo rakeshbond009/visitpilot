@@ -62,8 +62,7 @@ try {
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
-    }
-    else {
+    } else {
         $stmt = $pdo->prepare("INSERT INTO visitors (name, mobile, email, address, id_proof_type, id_proof_number, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $data['name'],
@@ -107,8 +106,7 @@ try {
             $total_visitors,
             $visit_id
         ]);
-    }
-    else {
+    } else {
         // Create New Visit with pending status (requires host approval)
         $visit_code = generateVisitCode();
         $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?)");
@@ -153,8 +151,7 @@ try {
 
             // Update visit with QR code path
             $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
-        }
-        else {
+        } else {
             error_log("QR Generation Error: " . $curl_error);
         }
     }
@@ -192,14 +189,12 @@ try {
 
                 if (isset($syncResult['success']) && !$syncResult['success']) {
                     error_log("Dahua Sync Failed (Register) for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                }
-                else {
+                } else {
                     logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success (Register/Entry) for Visit $visit_id");
                 }
             }
         }
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
         error_log("Dahua Integration Error in Register: " . $e->getMessage());
     }
 
@@ -226,12 +221,12 @@ try {
         $visitor = $stmt->fetch(PDO::FETCH_ASSOC);
 
         $pushData = [
-            'visitor_id' => (string)$visitor_id,
-            'visit_id' => (string)$visit_id,
-            'visitor_name' => (string)$visitor['name'],
-            'visitor_mobile' => (string)$visitor['mobile'],
-            'purpose' => (string)$data['purpose'],
-            'company' => (string)($visitor['address'] ?? ($visitor['company'] ?? 'General Visitor')),
+            'visitor_id' => (string) $visitor_id,
+            'visit_id' => (string) $visit_id,
+            'visitor_name' => (string) $visitor['name'],
+            'visitor_mobile' => (string) $visitor['mobile'],
+            'purpose' => (string) $data['purpose'],
+            'company' => (string) ($visitor['address'] ?? ($visitor['company'] ?? 'General Visitor')),
             'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
             'type' => 'visitor_arrival'
         ];
@@ -252,15 +247,13 @@ try {
                 $host['mobile'],
                 "Visitor {$visitor['name']} has arrived to meet you.",
                 'visitor_arrival_host_alert',
-            ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]
+                ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]
             );
-        }
-        else {
+        } else {
             $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Host NOT found or mobile empty for ID: " . ($data['employee_id'] ?? 'NONE') . "\n";
             file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
         }
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
         error_log("Notification System Error: " . $e->getMessage());
     }
 
@@ -270,8 +263,7 @@ try {
         'qr_code_url' => $qr_code_path ? $qr_code_path : null
     ]);
 
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }

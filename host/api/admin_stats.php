@@ -136,7 +136,7 @@ if ($peak_hour_data) {
     $peak_hour = $peak_hour_data['hr'];
     $peak_end = $peak_hour + 1;
     $peak_time = ($peak_hour > 12 ? $peak_hour - 12 : ($peak_hour == 0 ? 12 : $peak_hour)) . ":00 " . ($peak_hour >= 12 ? "PM" : "AM") . " - " .
-                 ($peak_end > 12 ? $peak_end - 12 : ($peak_end == 0 ? 12 : $peak_end)) . ":00 " . ($peak_end >= 12 ? "PM" : "AM");
+        ($peak_end > 12 ? $peak_end - 12 : ($peak_end == 0 ? 12 : $peak_end)) . ":00 " . ($peak_end >= 12 ? "PM" : "AM");
 }
 
 // 3. Visitor Satisfaction (from web app)

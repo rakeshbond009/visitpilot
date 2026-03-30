@@ -30,8 +30,7 @@ function safeFetchColumn($pdo, $sql, $default = 0)
     try {
         $stmt = $pdo->query($sql);
         return $stmt ? $stmt->fetchColumn() : $default;
-    }
-    catch (PDOException $e) {
+    } catch (PDOException $e) {
         return $default;
     }
 }
@@ -41,15 +40,14 @@ function safeFetchAll($pdo, $sql, $mode = PDO::FETCH_ASSOC)
     try {
         $stmt = $pdo->query($sql);
         return $stmt ? $stmt->fetchAll($mode) : [];
-    }
-    catch (PDOException $e) {
+    } catch (PDOException $e) {
         return [];
     }
 }
 
 // stats
 $total_today = safeFetchColumn($pdo, "SELECT count(*) FROM visits WHERE date(created_at) = CURDATE()");
-$active_visitors = (int)safeFetchColumn($pdo, "SELECT count(*) FROM visits WHERE status = 'checked_in'");
+$active_visitors = (int) safeFetchColumn($pdo, "SELECT count(*) FROM visits WHERE status = 'checked_in'");
 
 $stats = [
     'total_emps' => safeFetchColumn($pdo, "SELECT count(*) FROM employees"),
@@ -59,7 +57,7 @@ $stats = [
 ];
 
 // AI Metrics Calculation
-$max_capacity = (int)safeFetchColumn($pdo, "SELECT setting_value FROM system_settings WHERE setting_key = 'max_capacity'") ?: 50;
+$max_capacity = (int) safeFetchColumn($pdo, "SELECT setting_value FROM system_settings WHERE setting_key = 'max_capacity'") ?: 50;
 $crowd_density = ($max_capacity > 0) ? min(100, round(($active_visitors / $max_capacity) * 100)) : 0;
 
 $avg_sql = "SELECT AVG(ABS(TIMESTAMPDIFF(SECOND, created_at, check_in_time))) 
@@ -125,12 +123,11 @@ try {
     if ($settings_stmt) {
         $settings_map = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     }
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
 }
 
-$start_h = (int)($settings_map['office_start_hour'] ?? 8);
-$end_h = (int)($settings_map['office_end_hour'] ?? 18);
+$start_h = (int) ($settings_map['office_start_hour'] ?? 8);
+$end_h = (int) ($settings_map['office_end_hour'] ?? 18);
 
 // Construct dynamic hours union for SQL
 $hours_array = [];

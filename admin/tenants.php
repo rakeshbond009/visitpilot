@@ -251,7 +251,7 @@ endif; ?>
                 <h5 class="modal-title fw-bold" id="modalTitle">Add New Client</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" onsubmit="return confirm('🛑 FINAL CHECK: Have you verified that the Database and User are already active in Hostinger with these EXACT credentials?\n\nSaving without a matching Hostinger database will cause a connection error. Proceed?')">
+            <form method="POST">
                 <div class="modal-body p-4">
                     <input type="hidden" name="tenant_id" id="t_id">
 
@@ -292,9 +292,10 @@ endif; ?>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-muted text-uppercase">DB Password</label>
                             <div class="input-group">
-                                <input type="text" name="db_pass" id="t_pass" class="form-control" 
-                                       placeholder="Optional">
-                                <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('t_pass').value = generateRandomPass(12)">
+                                <input type="text" name="db_pass" id="t_pass" class="form-control"
+                                    placeholder="Optional">
+                                <button class="btn btn-outline-secondary" type="button"
+                                    onclick="document.getElementById('t_pass').value = generateRandomPass(12)">
                                     <i class="bi bi-shuffle"></i>
                                 </button>
                             </div>
@@ -321,7 +322,6 @@ endif; ?>
         }
         return retVal;
     }
-
 
     let pendingAction = null;
 
@@ -355,7 +355,7 @@ endif; ?>
         document.getElementById('t_id').value = '';
         document.getElementById('t_key').value = '';
         document.getElementById('t_host').value = 'localhost';
-        document.getElementById('t_db').value = '';
+        // document.getElementById('t_db').value = ''; // Let it stay as placeholder
         document.getElementById('t_user').value = 'root';
         
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -377,7 +377,6 @@ endif; ?>
 
         new bootstrap.Modal(document.getElementById('tenantModal')).show();
     }
-
 </script>
 
 <?php require_once 'footer.php'; ?>

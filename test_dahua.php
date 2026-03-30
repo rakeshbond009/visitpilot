@@ -216,7 +216,8 @@ if ($appId && $appSecret) {
                     <div class="mb-3">
                         <div class="label">Target Devices</div>
                         <div class="value text-info small">
-                            <?php echo $deviceSns ?: '<span class="text-danger">None Found</span>'; ?></div>
+                            <?php echo $deviceSns ?: '<span class="text-danger">None Found</span>'; ?>
+                        </div>
                     </div>
                 </div>
 
@@ -257,7 +258,8 @@ if ($appId && $appSecret) {
 
                     <p class="small text-white-50 mb-3">Below is the exact data structure being sent to the Dahua
                         <code>/visitor/add</code> endpoint. The <strong class="text-white">visitor_id</strong> maps to
-                        your internal Visitor ID.</p>
+                        your internal Visitor ID.
+                    </p>
 
                     <?php if ($payload): ?>
                         <pre id="json-preview"><?php echo json_encode($payload, JSON_PRETTY_PRINT); ?></pre>

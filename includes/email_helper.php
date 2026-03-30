@@ -6,7 +6,8 @@
 
 require_once __DIR__ . '/db.php';
 
-function sendVMSEmail($to, $subject, $body, $replyTo = null) {
+function sendVMSEmail($to, $subject, $body, $replyTo = null)
+{
     global $pdo;
 
     // 1. Fetch Email Settings
@@ -17,7 +18,7 @@ function sendVMSEmail($to, $subject, $body, $replyTo = null) {
     $smtp_port = $config['smtp_port'] ?? '587';
     $smtp_user = $config['smtp_user'] ?? '';
     $smtp_pass = $config['smtp_pass'] ?? '';
-    $smtp_enc  = $config['smtp_enc'] ?? 'tls';
+    $smtp_enc = $config['smtp_enc'] ?? 'tls';
     $from_email = $config['smtp_from_email'] ?? ($config['company_email'] ?? '');
     $from_name = $config['smtp_from_name'] ?? 'VisitPilot';
 
@@ -35,16 +36,19 @@ function sendVMSEmail($to, $subject, $body, $replyTo = null) {
     return sendBasicSMTP($to, $subject, $body, $from_email, $from_name, $smtp_host, $smtp_port, $smtp_user, $smtp_pass, $smtp_enc, $replyTo);
 }
 
-function _vms_get_smtp_response($socket) {
+function _vms_get_smtp_response($socket)
+{
     $res = "";
     while ($str = fgets($socket, 515)) {
         $res .= $str;
-        if (substr($str, 3, 1) == " ") break;
+        if (substr($str, 3, 1) == " ")
+            break;
     }
     return $res;
 }
 
-function sendBasicSMTP($to, $subject, $body, $from_email, $from_name, $host, $port, $user, $pass, $enc, $replyTo = null) {
+function sendBasicSMTP($to, $subject, $body, $from_email, $from_name, $host, $port, $user, $pass, $enc, $replyTo = null)
+{
     $timeout = 10;
     $localhost = $_SERVER['HTTP_HOST'] ?? 'localhost';
     $newLine = "\r\n";

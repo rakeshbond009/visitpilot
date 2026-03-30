@@ -11,8 +11,7 @@ function safeFetchColumn($pdo, $sql, $params = [])
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchColumn() ?: 0;
-    }
-    catch (PDOException $e) {
+    } catch (PDOException $e) {
         return 0;
     }
 }
@@ -25,8 +24,7 @@ function safeFetchAll($pdo, $sql, $params = [])
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-    catch (PDOException $e) {
+    } catch (PDOException $e) {
         return [];
     }
 }
@@ -53,10 +51,9 @@ try {
             if ($settings_stmt) {
                 $settings_map = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             }
+        } catch (PDOException $e) {
         }
-        catch (PDOException $e) {
-        }
-        $max_capacity = (int)($settings_map['max_capacity'] ?? 50);
+        $max_capacity = (int) ($settings_map['max_capacity'] ?? 50);
         $crowd_density = ($max_capacity > 0) ? min(100, round(($inside_now / $max_capacity) * 100)) : 0;
 
         // Trends
@@ -70,14 +67,13 @@ try {
         $chart_data_raw = [];
         try {
             $chart_data_raw = $pdo->query($chart_sql)->fetchAll(PDO::FETCH_KEY_PAIR);
-        }
-        catch (PDOException $e) {
+        } catch (PDOException $e) {
         }
 
         for ($i = 6; $i >= 0; $i--) {
             $day_abbr = date('D', strtotime("-$i days"));
             $trends_labels[] = $day_abbr;
-            $trends_data[] = (int)($chart_data_raw[$day_abbr] ?? 0);
+            $trends_data[] = (int) ($chart_data_raw[$day_abbr] ?? 0);
         }
 
         // Efficiency
@@ -192,8 +188,8 @@ try {
         $employee_list = safeFetchAll($pdo, "SELECT id, name, department, mobile FROM employees ORDER BY name ASC LIMIT 50");
 
         // Best Time Slot Calculation (matching web app)
-        $start_h = (int)($settings_map['office_start_hour'] ?? 8);
-        $end_h = (int)($settings_map['office_end_hour'] ?? 18);
+        $start_h = (int) ($settings_map['office_start_hour'] ?? 8);
+        $end_h = (int) ($settings_map['office_end_hour'] ?? 18);
         $hours_array = [];
         for ($h = $start_h; $h <= $end_h; $h++) {
             $hours_array[] = "SELECT $h as hour";
@@ -211,18 +207,18 @@ try {
         $best_time = ($best_hour > 12 ? $best_hour - 12 : ($best_hour == 0 ? 12 : $best_hour)) . ":00 " . ($best_hour >= 12 ? "PM" : "AM");
 
         $response_data = [
-            'total_employees' => (int)$total_emps,
-            'total_visits' => (int)$total_visits,
-            'today_visitors' => (int)$today_visitors,
-            'inside_now' => (int)$inside_now,
-            'max_capacity' => (int)$max_capacity,
+            'total_employees' => (int) $total_emps,
+            'total_visits' => (int) $total_visits,
+            'today_visitors' => (int) $today_visitors,
+            'inside_now' => (int) $inside_now,
+            'max_capacity' => (int) $max_capacity,
             'time_saved' => $time_saved_text,
             'trends' => ['labels' => $trends_labels, 'data' => $trends_data],
             'ai_insights' => [
-                'prediction_tomorrow' => (int)$prediction,
+                'prediction_tomorrow' => (int) $prediction,
                 'prediction_change' => $prediction_change,
                 'crowd_density' => $crowd_density,
-                'active_visitors' => (int)$active_visitors,
+                'active_visitors' => (int) $active_visitors,
                 'overstay_count' => $overstay_count,
                 'overstay_list' => $overstay_list,
                 'peak_time' => $peak_time,
@@ -249,8 +245,7 @@ try {
 
         sendResponse('success', 'Admin dashboard data retrieved', $response_data);
 
-    }
-    else if ($role === 'security') {
+    } else if ($role === 'security') {
         // --- SECURITY DASHBOARD DATA ---
         $today_visitors = $pdo->query("SELECT COUNT(*) FROM visits WHERE DATE(created_at) = CURDATE()")->fetchColumn();
         $inside_now = $pdo->query("SELECT COUNT(*) FROM visits WHERE status = 'checked_in'")->fetchColumn();
@@ -288,8 +283,8 @@ try {
 
         $response_data = [
             'stats' => [
-                'today_visitors' => (int)$today_visitors,
-                'inside_now' => (int)$inside_now,
+                'today_visitors' => (int) $today_visitors,
+                'inside_now' => (int) $inside_now,
                 'overstay_count' => $overstay_count
             ],
             'recent_activity' => $recent_activity,
@@ -301,22 +296,19 @@ try {
 
         sendResponse('success', 'Security dashboard data retrieved', $response_data);
 
-    }
-    else if ($employee_id) {
+    } else if ($employee_id) {
         // Host Stats (Legacy/Fallback)
         $today_visitors = $pdo->query("SELECT COUNT(*) FROM visits WHERE employee_id = " . intval($employee_id) . " AND DATE(created_at) = CURDATE()")->fetchColumn();
         $inside_now = $pdo->query("SELECT COUNT(*) FROM visits WHERE employee_id = " . intval($employee_id) . " AND status = 'checked_in'")->fetchColumn();
 
         sendResponse('success', 'Host stats retrieved', [
-            'today_visitors' => (int)$today_visitors,
-            'inside_now' => (int)$inside_now
+            'today_visitors' => (int) $today_visitors,
+            'inside_now' => (int) $inside_now
         ]);
-    }
-    else {
+    } else {
         sendResponse('error', 'Unauthorized role or missing ID');
     }
 
-}
-catch (Exception $e) {
+} catch (Exception $e) {
     sendResponse('error', 'Error: ' . $e->getMessage());
 }

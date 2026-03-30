@@ -13,9 +13,9 @@ $total_today = $stmt->fetchColumn();
 // Fetch System Settings
 $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('office_start_hour', 'office_end_hour', 'max_capacity')");
 $settings_map = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-$start_h = (int)($settings_map['office_start_hour'] ?? 8);
-$end_h = (int)($settings_map['office_end_hour'] ?? 18);
-$max_capacity = (int)($settings_map['max_capacity'] ?? 50);
+$start_h = (int) ($settings_map['office_start_hour'] ?? 8);
+$end_h = (int) ($settings_map['office_end_hour'] ?? 18);
+$max_capacity = (int) ($settings_map['max_capacity'] ?? 50);
 
 $stmt = $pdo->query("SELECT count(*) FROM visits WHERE status = 'checked_in'");
 $active_visitors = $stmt->fetchColumn();
@@ -84,8 +84,7 @@ if ($crowd_density > 80) {
     $density_status = "Critical Surge";
     $density_color = "text-danger";
     $progress_color = "bg-danger";
-}
-elseif ($crowd_density > 50) {
+} elseif ($crowd_density > 50) {
     $density_status = "Moderate Traffic";
     $density_color = "text-warning";
     $progress_color = "bg-warning";
@@ -158,12 +157,12 @@ if ($time_saved_min > 60) {
             <a href="<?php echo BASE_URL; ?>security/employee_visits_report.php"
                 class="btn btn-outline-primary btn-sm rounded-pill me-2"><i class="bi bi-table me-1"></i> Employee
                 Report</a>
-        <?php
-endif; ?>
+            <?php
+        endif; ?>
         <div class="bg-white p-2 px-3 rounded-pill shadow-sm border d-inline-block">
             <div class="form-check form-switch mb-0">
                 <input class="form-check-input" type="checkbox" id="backgroundToggle"
-                    onchange="toggleBackgroundMode(this)" <?php echo($_SESSION['bg_mode'] ?? 0) ? 'checked' : ''; ?>>
+                    onchange="toggleBackgroundMode(this)" <?php echo ($_SESSION['bg_mode'] ?? 0) ? 'checked' : ''; ?>>
                 <label class="form-check-label fw-bold small text-muted" for="backgroundToggle">
                     <i class="bi bi-cpu me-1"></i> BG Mode
                 </label>
@@ -315,8 +314,8 @@ endif; ?>
                         <i class="bi bi-shield-check display-4 text-success opacity-50"></i>
                         <p class="mt-3 text-muted mb-0">No overstays detected. All clear.</p>
                     </div>
-                <?php
-else: ?>
+                    <?php
+                else: ?>
                     <ul class="list-group list-group-flush">
                         <?php foreach ($overstays as $os): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
@@ -328,11 +327,11 @@ else: ?>
                                 </div>
                                 <span class="badge bg-danger rounded-pill">Over 8h</span>
                             </li>
-                        <?php
-    endforeach; ?>
+                            <?php
+                        endforeach; ?>
                     </ul>
-                <?php
-endif; ?>
+                    <?php
+                endif; ?>
             </div>
         </div>
     </div>
@@ -356,13 +355,13 @@ endif; ?>
                     <div class="text-center py-4">
                         <p class="text-muted mb-0 small">No active visitors in any zone.</p>
                     </div>
-                <?php
-else: ?>
+                    <?php
+                else: ?>
                     <?php foreach ($zones as $z):
-        $pct = min(100, ($z['count'] / 10) * 100); // Assume 10 per dept is 'Full'
-        $color = ($pct > 80) ? 'danger' : (($pct > 40) ? 'warning' : 'success');
-        $status = ($pct > 80) ? 'High Congestion' : (($pct > 40) ? 'Moderate Traffic' : 'Low Activity');
-?>
+                        $pct = min(100, ($z['count'] / 10) * 100); // Assume 10 per dept is 'Full'
+                        $color = ($pct > 80) ? 'danger' : (($pct > 40) ? 'warning' : 'success');
+                        $status = ($pct > 80) ? 'High Congestion' : (($pct > 40) ? 'Moderate Traffic' : 'Low Activity');
+                        ?>
                         <div class="d-flex align-items-center justify-content-between mb-3">
                             <div>
                                 <h6 class="mb-0 fw-bold"><?php echo htmlspecialchars($z['zone']); ?></h6>
@@ -377,10 +376,10 @@ else: ?>
                                 </div>
                             </div>
                         </div>
+                        <?php
+                    endforeach; ?>
                     <?php
-    endforeach; ?>
-                <?php
-endif; ?>
+                endif; ?>
             </div>
 
             <div class="mt-4 row g-2">
@@ -414,10 +413,10 @@ endif; ?>
         // Real Data
         const hourlyData = <?php echo json_encode($traffic_data); ?>;
         const labels = <?php
-echo json_encode(array_map(function ($h) {
-    return ($h > 12 ? $h - 12 : $h) . ($h >= 12 ? 'pm' : 'am');
-}, $traffic_hours));
-?>;
+        echo json_encode(array_map(function ($h) {
+            return ($h > 12 ? $h - 12 : $h) . ($h >= 12 ? 'pm' : 'am');
+        }, $traffic_hours));
+        ?>;
 
         new Chart(ctx, {
             type: 'bar',
@@ -451,15 +450,18 @@ echo json_encode(array_map(function ($h) {
 <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <div
+                class="modal-header bg-primary text-white border-0 py-3 d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
                     <i class="bi bi-list-check fs-4 me-2"></i>
                     <h5 class="modal-title fw-bold" id="modalTitle">Visit Details</h5>
                 </div>
                 <div class="d-flex align-items-center flex-grow-1 mx-3">
                     <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-0 rounded-start-pill"><i class="bi bi-search text-primary"></i></span>
-                        <input type="text" id="detailsModalSearch" class="form-control border-0 rounded-end-pill" placeholder="Search..." onkeyup="filterDetailsModalTable()">
+                        <span class="input-group-text bg-white border-0 rounded-start-pill"><i
+                                class="bi bi-search text-primary"></i></span>
+                        <input type="text" id="detailsModalSearch" class="form-control border-0 rounded-end-pill"
+                            placeholder="Search..." onkeyup="filterDetailsModalTable()">
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
@@ -816,33 +818,32 @@ echo json_encode(array_map(function ($h) {
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
     <?php if (isset($_GET['new_visit_id'])):
-    $msgTitle = 'Visitor Registered!';
-    $msgText = 'Approval request sent to host.';
-    if (isset($_GET['msg'])) {
-        $msgText = htmlspecialchars($_GET['msg']);
-        $msgTitle = 'Check-in Successful';
-    }
+        $msgTitle = 'Visitor Registered!';
+        $msgText = 'Approval request sent to host.';
+        if (isset($_GET['msg'])) {
+            $msgText = htmlspecialchars($_GET['msg']);
+            $msgTitle = 'Check-in Successful';
+        }
 
-    if (isset($_GET['wa_status'])) {
-        if ($_GET['wa_status'] == 'skipped_disabled') {
-            $msgText .= ' (WhatsApp Disabled in Settings)';
+        if (isset($_GET['wa_status'])) {
+            if ($_GET['wa_status'] == 'skipped_disabled') {
+                $msgText .= ' (WhatsApp Disabled in Settings)';
+            } else if ($_GET['wa_status'] == 'skipped_not_live') {
+                $msgText .= ' (WhatsApp API not configured)';
+            }
         }
-        else if ($_GET['wa_status'] == 'skipped_not_live') {
-            $msgText .= ' (WhatsApp API not configured)';
-        }
-    }
-?>
-            window.addEventListener('load', () => {
-                Swal.fire({
-                    title: '<?php echo $msgTitle; ?>',
-                    text: '<?php echo addslashes($msgText); ?>',
-                    icon: 'success',
-                    confirmButtonText: 'OK'
-                });
-                setTimeout(() => { window.history.replaceState({}, document.title, window.location.pathname); }, 1000);
+        ?>
+        window.addEventListener('load', () => {
+            Swal.fire({
+                title: '<?php echo $msgTitle; ?>',
+                text: '<?php echo addslashes($msgText); ?>',
+                icon: 'success',
+                confirmButtonText: 'OK'
             });
+            setTimeout(() => { window.history.replaceState({}, document.title, window.location.pathname); }, 1000);
+        });
         <?php
-endif; ?>
+    endif; ?>
 
     const serverToday = '<?php echo date("Y-m-d"); ?>';
 
@@ -856,7 +857,7 @@ endif; ?>
         };
         const tbody = document.getElementById('modalTableBody');
         tbody.innerHTML = '';
-        
+
         const searchInput = document.getElementById('detailsModalSearch');
         if (searchInput) searchInput.value = '';
 
@@ -956,7 +957,7 @@ endif; ?>
     }
 
     // --- SUCCESS DIALOG FOR CHECK-IN/OUT ---
-    (function() {
+    (function () {
         const urlParams = new URLSearchParams(window.location.search);
         const action = urlParams.get('action_success');
         const vId = urlParams.get('v_id');

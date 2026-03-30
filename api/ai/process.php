@@ -93,8 +93,7 @@ function fetchSafeStat($pdo, $query, $type = 'column')
         if ($type === 'assoc')
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         return 0;
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
         file_put_contents(__DIR__ . '/ai_sql_error.log', "Query failed: $query | Error: " . $e->getMessage() . "\n", FILE_APPEND);
         return ($type === 'list' ? [] : ($type === 'row' ? null : 0));
     }
@@ -102,8 +101,8 @@ function fetchSafeStat($pdo, $query, $type = 'column')
 
 $today = date('Y-m-d');
 $yesterday = date('Y-m-d', strtotime('-1 day'));
-$month = (int)date('m');
-$year = (int)date('Y');
+$month = (int) date('m');
+$year = (int) date('Y');
 
 // Strict Privacy Filter Logic
 $role = $_SESSION['role'] ?? 'host';
@@ -123,8 +122,7 @@ $is_elevated = (strtolower($role) === 'admin' || strtolower($role) === 'security
 if (!$is_elevated) {
     $auth_filter = "employee_id = $my_id";
     $v_auth_filter = "v.employee_id = $my_id";
-}
-else {
+} else {
     $auth_filter = "1=1";
     $v_auth_filter = "1=1";
 }
@@ -349,10 +347,46 @@ foreach ($intents as $key => $patterns) {
         // Analytical Check - If it matches a local pattern, ensure it's not a complex search
         // Force-Local Keywords: If the query contains these, we MUST try to answer locally first.
         $analytical_keywords = [
-            'who is in', 'who rejects', 'who visited', 'recently', 'busiest', 'longest', 'overstay', 'spend most', 'stayed for',
-            'traffic', 'average', 'growth', 'increase', 'trend', 'pending', 'waiting', 'inside', 'visitors',
-            'count', 'total', 'hour', 'day', 'month', 'host', 'employee', 'staff', 'purpose', 'stay', 'spent',
-            'rejection', 'denied', 'denies', 'rejected', 'check in', 'check out', 'attendance', 'list of', 'names of', 'tomorrow', 'scheduled'
+            'who is in',
+            'who rejects',
+            'who visited',
+            'recently',
+            'busiest',
+            'longest',
+            'overstay',
+            'spend most',
+            'stayed for',
+            'traffic',
+            'average',
+            'growth',
+            'increase',
+            'trend',
+            'pending',
+            'waiting',
+            'inside',
+            'visitors',
+            'count',
+            'total',
+            'hour',
+            'day',
+            'month',
+            'host',
+            'employee',
+            'staff',
+            'purpose',
+            'stay',
+            'spent',
+            'rejection',
+            'denied',
+            'denies',
+            'rejected',
+            'check in',
+            'check out',
+            'attendance',
+            'list of',
+            'names of',
+            'tomorrow',
+            'scheduled'
         ];
         $is_actually_local = false;
         foreach ($analytical_keywords as $auk) {
@@ -393,8 +427,7 @@ if (($max_weight < $MATCH_THRESHOLD || !$matched_key) && !$needs_detailed_search
     if (in_array($query_lower, ['hi', 'hello', 'namaste', 'morning', 'hey'])) {
         // Fallback for greetings if weight was low
         $matched_key = 'greetings';
-    }
-    else {
+    } else {
         $msg = "I'm your dedicated VMS Assistant and specialize only in your visitor and staff data. Please ask something related to the system or choose from the **Knowledge Menu** below. 👋";
         echo json_encode(['status' => 'success', 'type' => 'chat_response', 'message' => $msg]);
         exit;
@@ -430,7 +463,7 @@ if ($matched_key && $mode !== 'search') {
         case 'rejected_today':
             $count_today = $quick_stats['rejected_today_count'] ?? 0;
             $list = $quick_stats['rejected_today_list'] ?? [];
-            
+
             if ($count_today > 0) {
                 $details = "There were **$count_today** rejections today.\n\n**Today's Cases:**\n";
                 foreach ($list as $rej) {
@@ -442,11 +475,13 @@ if ($matched_key && $mode !== 'search') {
                 $details = "No rejections recorded today. Here are the **Latest 5 Rejections** from the history:\n\n";
                 $i = 0;
                 foreach ($list as $rej) {
-                    if ($i >= 5) break;
+                    if ($i >= 5)
+                        break;
                     $details .= "- **" . $rej['name'] . "** (Host: " . $rej['host'] . ") on " . date('d M', strtotime($rej['created_at'])) . "\n";
                     $i++;
                 }
-                if (empty($list)) $details = "The system has no rejection records found.";
+                if (empty($list))
+                    $details = "The system has no rejection records found.";
             }
             $msg = "### 🚫 Rejection & Security Log\n" . $details;
             break;
@@ -545,8 +580,7 @@ if ($matched_key && $mode !== 'search') {
             $lv = $quick_stats['latest_visitors_detail'] ?? [];
             if (empty($lv)) {
                 $msg = "No recent visit records found.";
-            }
-            else {
+            } else {
                 $msg = "The most recent guests were: \n";
                 foreach ($lv as $v) {
                     $msg .= "- **" . $v['name'] . "** (Reason: " . $v['purpose'] . ", Host: " . $v['host'] . ")\n";
@@ -640,8 +674,7 @@ if ($matched_key && $mode !== 'search') {
                 $msg .= "**Security & Efficiency:**\n";
                 if (($quick_stats['overstay_count'] ?? 0) > 0) {
                     $msg .= "- ⚠️ **Alert:** **" . $quick_stats['overstay_count'] . "** visitors have overstayed (>8h).\n";
-                }
-                else {
+                } else {
                     $msg .= "- ✅ Perimeter Secure: No overstays detected.\n";
                 }
 
@@ -655,8 +688,7 @@ if ($matched_key && $mode !== 'search') {
                 $msg .= "**Staffing:**\n";
                 $msg .= "- Active Employees: **" . ($quick_stats['total_employees'] ?? 0) . "** across **" . ($quick_stats['total_departments'] ?? 0) . "** departments.\n";
                 $msg .= "- Busiest Host: **" . ($quick_stats['top_host']['name'] ?? 'N/A') . "**.\n";
-            }
-            else if ($role === 'security') {
+            } else if ($role === 'security') {
                 // Security Summary: Watchtower View
                 $msg = "### 🛡️ Security Operations Summary (" . date('h:i A') . ")\n\n";
                 $msg .= "**Active Perimeter Snapshot:**\n";
@@ -674,8 +706,7 @@ if ($matched_key && $mode !== 'search') {
                     $msg .= "- **" . $v['name'] . "** (Visiting: " . $v['host'] . " for " . $v['purpose'] . ").\n";
                 }
                 $msg .= "\n*Perimeter status is currently green. Use 'overstay clients' for a full list.*";
-            }
-            else {
+            } else {
                 // Host/Employee Summary: Personal Focus
                 $p_count = intval($quick_stats['my_pending_count'] ?? 0);
                 $o_count = intval($quick_stats['my_checked_in'] ?? 0);
@@ -685,25 +716,22 @@ if ($matched_key && $mode !== 'search') {
 
                 // 1. Pending Approvals
                 if ($p_count > 0) {
-                    $msg .= "✅ **Pending Approvals ($p_count):** " . implode(", ", (array)($quick_stats['my_pending_list'] ?? [])) . " are waiting for your response.\n";
-                }
-                else {
+                    $msg .= "✅ **Pending Approvals ($p_count):** " . implode(", ", (array) ($quick_stats['my_pending_list'] ?? [])) . " are waiting for your response.\n";
+                } else {
                     $msg .= "- No guests waiting for your approval right now.\n";
                 }
 
                 // 2. Onsite Visitors
                 if ($o_count > 0) {
-                    $msg .= "📍 **Currently Meeting You ($o_count):** " . implode(", ", (array)($quick_stats['my_onsite_list'] ?? [])) . " is currently onsite.\n";
-                }
-                else {
+                    $msg .= "📍 **Currently Meeting You ($o_count):** " . implode(", ", (array) ($quick_stats['my_onsite_list'] ?? [])) . " is currently onsite.\n";
+                } else {
                     $msg .= "- No visitors checked in to see you at the moment.\n";
                 }
 
                 // 3. Invitations
                 if ($i_count > 0) {
-                    $msg .= "✉️ **Total Active Invitations ($i_count):** Your upcoming guests include " . implode(", ", (array)($quick_stats['my_upcoming_list'] ?? [])) . ".\n";
-                }
-                else {
+                    $msg .= "✉️ **Total Active Invitations ($i_count):** Your upcoming guests include " . implode(", ", (array) ($quick_stats['my_upcoming_list'] ?? [])) . ".\n";
+                } else {
                     $msg .= "- You don't have any upcoming invitations scheduled.\n";
                 }
 
@@ -721,8 +749,7 @@ if ($matched_key && $mode !== 'search') {
             $data = $quick_stats['month_wise_summary'] ?? [];
             if (empty($data)) {
                 $msg = "I don't have enough historical data to generate a month-wise report yet.";
-            }
-            else {
+            } else {
                 $msg = "### 📅 Month-wise Visit Summary\nHere is the traffic trend for the last 6 months:\n\n";
                 $msg .= "| Month | Visit Count |\n| :--- | :--- |\n";
                 foreach ($data as $month => $count) {
@@ -736,8 +763,7 @@ if ($matched_key && $mode !== 'search') {
             $data = $quick_stats['employee_wise_summary'] ?? [];
             if (empty($data)) {
                 $msg = "No employee-wise visit data found.";
-            }
-            else {
+            } else {
                 $msg = "### 👥 Top 10 Busiest Employees\nHosts with the highest visitor interactions:\n\n";
                 $msg .= "| Rank | Employee Name | Total Visits |\n| :--- | :--- | :--- |\n";
                 $rank = 1;
@@ -773,8 +799,7 @@ if ($matched_key && $mode !== 'search') {
             $list = $quick_stats['overstay_list'] ?? [];
             if (empty($list)) {
                 $msg = "✅ Perimeter Secure: No visitors are currently overstaying (>8h).";
-            }
-            else {
+            } else {
                 $msg = "### 🚩 Current Overstay Clients\nThe following visitors have exceeded the 8-hour stay limit:\n\n";
                 foreach ($list as $row) {
                     $msg .= "- **" . $row['name'] . "** (Entered: " . date('h:i A', strtotime($row['check_in_time'])) . ")\n";
@@ -866,16 +891,14 @@ try {
     $stmt = $pdo->query($sql_query);
     $raw_data = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $data_context = json_encode($raw_data);
-}
-catch (Exception $e) {
+} catch (Exception $e) {
     $data_context = "Error executing query: " . $e->getMessage();
 }
 
 // Step C: Output Final Result
 if ($mode === 'search') {
     echo json_encode(['status' => 'success', 'type' => 'search_results', 'sql' => $sql_query, 'data' => $raw_data]);
-}
-else {
+} else {
     // Final Answer (RAG)
     $final_prompt = "User: $query\nSystem Found Data: $data_context\nInstruction: Summarize the data found into a concise natural language answer.";
     $finalResponse = callGemini($api_key, $final_prompt, $ai_model);

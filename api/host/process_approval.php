@@ -94,20 +94,17 @@ if ($action == 'approve') {
 
                 if (isset($syncResult['success']) && !$syncResult['success']) {
                     error_log("Dahua Sync Failed for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                }
-                else {
+                } else {
                     logAction($pdo, $_SESSION['user_id'], "Dahua Sync Success for Visit $visit_id");
                 }
             }
         }
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
         error_log("Dahua Integration Error: " . $e->getMessage());
     }
 
     echo json_encode(['success' => true, 'message' => 'Visitor Approved and Synced to Security Terminals']);
-}
-else {
+} else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=NOW(), rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $reason, $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Rejected visit ID: $visit_id via Popup");
