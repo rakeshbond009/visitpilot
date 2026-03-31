@@ -998,7 +998,7 @@ export default function AdminDashboard({ navigation }) {
             <View style={styles.zoneCard}>
                 <View style={styles.cardHeaderRow}>
                     <View>
-                        <Text style={styles.cardTitle}>Zone Density</Text>
+                        <Text style={styles.cardTitle}>Current Zone Density</Text>
                         <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Currently Checked-In Only</Text>
                     </View>
                     <View style={styles.toggleContainer}>

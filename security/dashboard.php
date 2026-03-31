@@ -340,7 +340,7 @@ if ($time_saved_min > 60) {
     <div class="col-md-6">
         <div class="card shadow-sm border-0 rounded-4 h-100">
             <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill me-2 text-primary"></i>Zone Density</h5>
+                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill me-2 text-primary"></i>Current Zone Density</h5>
                 <div class="btn-group btn-group-sm rounded-pill border p-1" role="group">
                     <input type="radio" class="btn-check" name="densityView" id="viewDept" value="department" checked
                         onchange="refreshDashboardTable()">

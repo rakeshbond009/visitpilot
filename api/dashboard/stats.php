@@ -101,10 +101,10 @@ try {
         $secs = round($avg_seconds % 60);
         $avg_checkin = "{$mins}m {$secs}s";
 
-        $total_processed = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out')");
-        $satisfaction = "0%";
+        $total_processed = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(check_in_time) = CURDATE()");
+        $satisfaction = "100%";
         if ($total_processed > 0) {
-            $happy_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND ABS(TIMESTAMPDIFF(MINUTE, created_at, check_in_time)) < 10");
+            $happy_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(check_in_time) = CURDATE() AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 30");
             $satisfaction = round(($happy_visitors / $total_processed) * 100) . "%";
         }
 

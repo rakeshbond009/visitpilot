@@ -445,7 +445,7 @@ export default function SecurityDashboard({ navigation }) {
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
                     <View>
-                        <Text style={styles.sectionTitle}>Zone Density</Text>
+                        <Text style={styles.sectionTitle}>Current Zone Density</Text>
                         <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Active Inside Now</Text>
                     </View>
                     <View style={styles.viewToggle}>

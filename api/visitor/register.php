@@ -262,7 +262,9 @@ try {
     sendResponse('success', 'Visitor registered successfully', [
         'visit_id' => $visit_id,
         'visit_code' => $visit_code,
-        'qr_code_url' => $qr_code_path ? $qr_code_path : null
+        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
+        'status' => $invitation_id ? 'approved' : 'pending',
+        'approval_status' => $invitation_id ? 'approved' : 'pending'
     ]);
 
 } catch (PDOException $e) {

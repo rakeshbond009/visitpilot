@@ -375,6 +375,8 @@ export default function RegisterVisitor({ navigation, route }) {
                     visitor_name: name,
                     visit_code: newVisitCode,
                     qr_code_url: result.data.qr_code_url,
+                    status: result.data.status || 'pending',
+                    approval_status: result.data.approval_status || 'pending',
                     visit_date: new Date().toISOString()
                 });
                 setShowSuccess(true);
@@ -819,22 +821,45 @@ export default function RegisterVisitor({ navigation, route }) {
                             </Text>
 
                             <View style={styles.qrCard}>
-                                {registerResult?.qr_code_url ? (
-                                    <Image
-                                        source={{ uri: `${BASE_URL}${registerResult.qr_code_url}` }}
-                                        style={styles.qrImage}
-                                        resizeMode="contain"
-                                    />
+                                {registerResult?.status === 'approved' ? (
+                                    <>
+                                        {registerResult?.qr_code_url ? (
+                                            <Image
+                                                source={{ uri: `${BASE_URL}${registerResult.qr_code_url}` }}
+                                                style={styles.qrImage}
+                                                resizeMode="contain"
+                                            />
+                                        ) : (
+                                            <Icon name="qrcode" size={100} color="#2563eb" style={{ marginBottom: 16 }} />
+                                        )}
+                                        <Text style={styles.visitCode}>{registerResult?.visit_code}</Text>
+                                        <Text style={styles.visitCodeLabel}>VISITOR PASS CODE</Text>
+                                        <View style={[styles.scheduledTag, { backgroundColor: '#dcfce7' }]}>
+                                            <Text style={[styles.scheduledText, { color: '#166534' }]}>
+                                                Status: Checked-in / Approved
+                                            </Text>
+                                        </View>
+                                    </>
                                 ) : (
-                                    <Icon name="clock-outline" size={80} color="#2563eb" style={{ marginBottom: 16 }} />
+                                    <>
+                                        <View style={styles.pendingIconWrapper}>
+                                            <Icon name="timer-sand" size={80} color="#f59e0b" style={{ marginBottom: 16 }} />
+                                        </View>
+                                        <Text style={styles.visitCode}>{registerResult?.visit_code}</Text>
+                                        <Text style={styles.visitCodeLabel}>APPLICATION REFERENCE</Text>
+                                        <View style={styles.scheduledTag}>
+                                            <Text style={styles.scheduledText}>
+                                                Status: Pending Host Approval
+                                            </Text>
+                                        </View>
+                                        <View style={styles.pendingNoticeAlert}>
+                                            <Icon name="information" size={16} color="#0369a1" />
+                                            <Text style={styles.pendingNoticeText}>
+                                                The visitor pass will be issued once the host approves this visit request.
+                                            </Text>
+                                        </View>
+                                    </>
                                 )}
-                                <Text style={styles.visitCode}>{registerResult?.visit_code}</Text>
-                                <Text style={styles.visitCodeLabel}>VISITOR PASS CODE</Text>
-                                <View style={styles.scheduledTag}>
-                                    <Text style={styles.scheduledText}>
-                                        Status: Pending Host Approval
-                                    </Text>
-                                </View>
                             </View>
 
                             <View style={styles.modalActions}>
@@ -1365,5 +1390,33 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    pendingIconWrapper: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: '#fffbeb',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#fde68a',
+    },
+    pendingNoticeAlert: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f0f9ff',
+        padding: 12,
+        borderRadius: 10,
+        marginTop: 20,
+        borderWidth: 1,
+        borderColor: '#bae6fd',
+    },
+    pendingNoticeText: {
+        fontSize: 12,
+        color: '#0369a1',
+        marginLeft: 8,
+        flex: 1,
+        fontWeight: '500',
     },
 });
