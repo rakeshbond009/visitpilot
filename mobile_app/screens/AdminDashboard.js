@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
     StyleSheet,
     View,
@@ -28,6 +28,8 @@ import { usePermissions } from '../context/PermissionContext';
 import VisitDetailModal from '../components/VisitDetailModal';
 import VisitListModal from '../components/VisitListModal';
 
+
+import { checkOverlayPermission } from '../utils/notificationManager';
 
 const { width, height } = Dimensions.get('window');
 
@@ -308,6 +310,13 @@ export default function AdminDashboard({ navigation }) {
             setRefreshing(false);
         }
     };
+
+    useEffect(() => {
+        if (userData?.id) {
+            // Wait a bit to ensure UI is ready
+            setTimeout(() => checkOverlayPermission(userData.id), 2000);
+        }
+    }, [userData?.id]);
 
     useFocusEffect(
         useCallback(() => {
@@ -2052,7 +2061,7 @@ export default function AdminDashboard({ navigation }) {
                         <TouchableOpacity
                             style={styles.logoutBtn}
                             onPress={async () => {
-                                await AsyncStorage.clear();
+                                await AsyncStorage.removeItem('userData');
                                 navigation.replace('Login');
                             }}
                         >

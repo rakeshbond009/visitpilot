@@ -183,15 +183,18 @@ const AppDialog = {
     }
 };
 
-window.Swal = {
-    fire: function () {
-        if (arguments.length > 1 || typeof arguments[0] === 'string') {
-            return AppDialog.show({
-                title: arguments[0] || 'Notification',
-                text: arguments[1] || '',
-                icon: arguments[2] || 'info'
-            });
+// Only define the Swal mock if the real SweetAlert2 library is not loaded
+if (typeof Swal === 'undefined') {
+    window.Swal = {
+        fire: function () {
+            if (arguments.length > 1 || typeof arguments[0] === 'string') {
+                return AppDialog.show({
+                    title: arguments[0] || 'Notification',
+                    text: arguments[1] || '',
+                    icon: arguments[2] || 'info'
+                });
+            }
+            return AppDialog.show(arguments[0]);
         }
-        return AppDialog.show(arguments[0]);
-    }
-};
+    };
+}

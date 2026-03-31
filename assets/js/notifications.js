@@ -298,6 +298,13 @@
                 const uploadData = await uploadRes.json();
 
                 if (uploadData.success) {
+                    Swal.fire({
+                        title: 'Approved!',
+                        text: 'Visitor has been successfully approved.',
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                     const modalActions = document.getElementById('modal-actions');
                     const modalShareArea = document.getElementById('modal-share-area');
                     if (modalActions) modalActions.classList.add('d-none');
@@ -509,8 +516,8 @@
         if (!token) return;
         const lastToken = localStorage.getItem('last_registered_fcm');
 
-        // Debug Alert
-        alert("Mobile Token Found: " + token.substring(0, 10) + "...");
+        // Debug log (removed alert for better UX)
+        console.log("Mobile Token Found: " + token.substring(0, 10) + "...");
 
         if (lastToken === token) {
             console.log("Token already registered, skipping.");
@@ -526,12 +533,20 @@
         }).then(res => res.json()).then(data => {
             if (data.success) {
                 localStorage.setItem('last_registered_fcm', token);
-                alert("FCM Registered Successfully!");
+                Swal.fire({
+                    title: 'Sync Successful',
+                    text: 'Mobile Notifications Active',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    position: 'top-end',
+                    toast: true
+                });
             } else {
-                alert("FCM Registration Failed: " + data.message);
+                Swal.fire('Registration Failed', data.message, 'error');
             }
         }).catch(e => {
-            alert("FCM Network Error: " + e);
+                Swal.fire('Network Error', 'Notification sync failed', 'error');
         });
     };
 

@@ -27,6 +27,8 @@ import { usePermissions } from '../context/PermissionContext';
 import VisitDetailModal from '../components/VisitDetailModal';
 import VisitListModal from '../components/VisitListModal';
 
+import { checkOverlayPermission } from '../utils/notificationManager';
+
 const { width, height } = Dimensions.get('window');
 
 export default function SecurityDashboard({ navigation }) {
@@ -125,6 +127,13 @@ export default function SecurityDashboard({ navigation }) {
     };
 
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+    useEffect(() => {
+        if (userData?.id) {
+            // Wait a bit to ensure UI is ready
+            setTimeout(() => checkOverlayPermission(userData.id), 2000);
+        }
+    }, [userData?.id]);
 
     const fetchVisitDetails = async (visitId) => {
         try {
@@ -1505,7 +1514,7 @@ export default function SecurityDashboard({ navigation }) {
                     <Text style={styles.greeting}>Security Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Officer'}</Text>
                 </View>
-                <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.clear(); navigation.replace('Login'); }}>
+                <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('userData'); navigation.replace('Login'); }}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
             </View>

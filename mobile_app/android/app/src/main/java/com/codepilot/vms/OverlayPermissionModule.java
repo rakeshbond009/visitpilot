@@ -2,8 +2,11 @@ package com.codepilot.vms;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import android.view.WindowManager;
+import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -19,6 +22,33 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
     @Override
     public String getName() {
         return "OverlayPermissionModule";
+    }
+
+    @ReactMethod
+    public void hasOverlayPermission(Promise promise) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                promise.resolve(Settings.canDrawOverlays(reactContext));
+            } else {
+                promise.resolve(true);
+            }
+        } catch (Exception e) {
+            promise.reject("ERR_OVERLAY_PERMISSION", e.getMessage());
+        }
+    }
+
+    @ReactMethod
+    public void openOverlaySettings() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + reactContext.getPackageName()));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                reactContext.startActivity(intent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @ReactMethod

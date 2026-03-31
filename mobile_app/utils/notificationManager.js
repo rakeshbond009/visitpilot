@@ -20,44 +20,53 @@ Notifications.setNotificationHandler({
 export async function checkOverlayPermission(userId = null) {
   if (Platform.OS === 'android') {
     try {
-      // DEBUG: Force reset for testing if needed
-      // await AsyncStorage.removeItem(`overlay_permission_requested_${userId}`);
-
-      // MODIFIED: Changed key version to 'v3' to force re-prompt for all users in this update
-      const storageKey = userId ? `overlay_permission_v3_${userId}` : 'overlay_permission_v3_generic';
-      
-      const hasRequested = await AsyncStorage.getItem(storageKey);
-      console.log(`[Permission Check] User: ${userId}, Key: ${storageKey}, Status: ${hasRequested}`);
-
-      if (!userId) {
-          console.error("[Permission Check] CRITICAL: userId is missing! Using generic key.");
+      // 1. Check if permission is ALREADY granted natively
+      if (OverlayPermissionModule && OverlayPermissionModule.hasOverlayPermission) {
+          const isGranted = await OverlayPermissionModule.hasOverlayPermission();
+          if (isGranted) {
+              console.log("[Permission Check] Overlay permission is already GRANTED.");
+              return;
+          }
       }
 
+      // 2. If not granted, check if we've already prompted the user to avoid annoyance
+      // Note: We use a persistent key that isn't cleared on logout if we use removeItem('userData') instead of clear()
+      const storageKey = userId ? `overlay_perm_prompt_v4_${userId}` : 'overlay_perm_prompt_v4_generic';
+      
+      const hasRequested = await AsyncStorage.getItem(storageKey);
+      console.log(`[Permission Check] User: ${userId}, Key: ${storageKey}, PromptedBefore: ${hasRequested}`);
+
       if (hasRequested === 'true') {
-        // Already requested and presumably handled.
-        // For debugging, you might want to comment this out to force it every time.
+        // We already prompted the user once, don't bother them again on every login
         return;
       }
 
       // If we are here, we should prompt
       Alert.alert(
         "Enable Full Screen Alerts",
-        "To receive visitor approval calls on your lock screen, you MUST enable 'Appear on top' permission. Please find 'VMS' in the list and enable it.",
+        "To receive visitor approval calls on your lock screen, you MUST enable 'Appear on top' permission. We will now take you to the specific setting to enable it for 'VMS'.",
         [
           { 
             text: "Skip", 
             style: "cancel",
             onPress: async () => {
-                 // Mark as requested, but maybe we should allow re-prompt later?
-                 // For now, mark true to avoid loop
+                 // Mark as prompted to avoid loop
                  await AsyncStorage.setItem(storageKey, 'true');
             }
           },
           {
             text: "Open Settings",
             onPress: async () => {
-              RNLinking.openSettings();
+              // Mark as prompted
               await AsyncStorage.setItem(storageKey, 'true');
+              
+              // 3. Open the SPECIFIC overlay settings page instead of generic app settings
+              if (OverlayPermissionModule && OverlayPermissionModule.openOverlaySettings) {
+                  OverlayPermissionModule.openOverlaySettings();
+              } else {
+                  // Fallback to generic if module fails
+                  RNLinking.openSettings();
+              }
             }
           }
         ],

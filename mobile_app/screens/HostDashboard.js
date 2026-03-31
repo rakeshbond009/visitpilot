@@ -1173,7 +1173,7 @@ export default function HostDashboard({ navigation }) {
                     <Text style={styles.greeting}>Host Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
                 </View>
-                <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.clear(); navigation.replace('Login'); }}>
+                <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('userData'); navigation.replace('Login'); }}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
             </View>
