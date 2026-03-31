@@ -26,6 +26,7 @@ import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { usePermissions } from '../context/PermissionContext';
 import VisitDetailModal from '../components/VisitDetailModal';
+import VisitListModal from '../components/VisitListModal';
 
 
 const { width, height } = Dimensions.get('window');
@@ -1681,12 +1682,12 @@ export default function AdminDashboard({ navigation }) {
             <Modal
                 animationType="fade"
                 transparent={false}
-                visible={modalVisible}
+                visible={modalVisible && modalType !== 'visits' && modalType !== 'overstays'}
                 onRequestClose={() => setModalVisible(false)}
             >
                 <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
                     <View style={[styles.fullModalHeader, { 
-                        backgroundColor: modalType === 'employees' ? '#ef4444' : (modalFilter === 'today' ? '#3b82f6' : '#8b5cf6') 
+                        backgroundColor: modalType === 'employees' ? '#ef4444' : '#8b5cf6'
                     }]}>
                         <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.fullModalBack}>
                             <Icon name="arrow-left" size={24} color="#fff" />
@@ -1699,8 +1700,6 @@ export default function AdminDashboard({ navigation }) {
 
                     <View style={{ flex: 1 }}>
                         {modalType === 'employees' && renderEmployeeRecords()}
-                        {modalType === 'visits' && renderVisitRecords(modalFilter)}
-                        {modalType === 'overstays' && renderOverstayList()}
                         {modalType === 'efficiency' && (
                             <ScrollView style={styles.modalScroll}>
                                 <Text style={styles.modalBody}>
@@ -1711,6 +1710,22 @@ export default function AdminDashboard({ navigation }) {
                     </View>
                 </SafeAreaView>
             </Modal>
+
+            <VisitListModal
+                visible={modalVisible && (modalType === 'visits' || modalType === 'overstays')}
+                onClose={() => setModalVisible(false)}
+                title={modalTitle}
+                color={modalFilter === 'today' ? '#3b82f6' : (modalType === 'overstays' ? '#ef4444' : '#8b5cf6')}
+                visits={(() => {
+                    if (modalType === 'overstays') return aiInsights.overstay_list || [];
+                    if (modalTitle === "Today's Visits") return todayVisits || [];
+                    return records.visits || [];
+                })()}
+                onVisitPress={(visit) => {
+                    setModalVisible(false);
+                    handleRecordClick(visit, 'visits');
+                }}
+            />
 
             {/* Visit Details Modal */}
             <VisitDetailModal
