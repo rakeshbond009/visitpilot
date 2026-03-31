@@ -179,6 +179,24 @@ try {
         return $z;
     }, $area_zones_raw);
 
+    // Hourly Traffic (Last 12 Hours)
+    $traffic_sql = "SELECT HOUR(created_at) as h, COUNT(*) as c 
+                    FROM visits 
+                    WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 HOUR)
+                    GROUP BY h ORDER BY h ASC";
+    $traffic_raw = $pdo->query($traffic_sql)->fetchAll(PDO::FETCH_KEY_PAIR);
+    $traffic_chart = [];
+    for ($i = 0; $i < 12; $i++) {
+        $hr = (int) date('H', strtotime("-$i hours"));
+        $label = date('h A', strtotime("-$i hours"));
+        $traffic_chart[] = [
+            'label' => $label,
+            'count' => (int) ($traffic_raw[$hr] ?? 0),
+            'hour' => $hr
+        ];
+    }
+    $traffic_chart = array_reverse($traffic_chart); // Chronological order
+
     echo json_encode([
         'success' => true,
         'visits' => $visits,
@@ -190,6 +208,7 @@ try {
             'overstays_list' => $overstay_list,
             'peak_time' => $peak_time,
             'best_time' => $best_time,
+            'traffic' => $traffic_chart,
             'zones' => [
                 'department' => $dept_zones,
                 'access_area' => $area_zones

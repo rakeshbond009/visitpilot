@@ -8,8 +8,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_X_FORWARDED_ORIGIN'] ?? null
 if ($origin) {
     header("Access-Control-Allow-Origin: $origin");
     header('Access-Control-Allow-Credentials: true');
-}
-else {
+} else {
     header("Access-Control-Allow-Origin: *");
 }
 header('Access-Control-Max-Age: 86400'); // cache for 1 day
@@ -30,7 +29,9 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/db_api.php';
 
-// Auth session handling
+// Auth session handling (Restore session and load permissions if needed)
+handlePersistentLogin();
+
 $user_id = $_SESSION['user_id'] ?? null;
 $role = $_SESSION['role'] ?? null;
 $employee_id = $_SESSION['employee_id'] ?? null;

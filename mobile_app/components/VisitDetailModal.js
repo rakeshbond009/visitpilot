@@ -1,9 +1,8 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
 import { CONFIG } from '../utils/config';
 
 const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
-    const scrollRef = useRef(null);
     if (!visit) return null;
 
     const getPhotoUrl = (url) => {
@@ -14,30 +13,21 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
     };
 
     const getStatusColor = (status) => {
-        switch (status) {
+        if (!status) return '#6c757d';
+        switch (status.toLowerCase()) {
+            case 'approved': return '#0d6efd';
+            case 'checked_in': return '#198754';
+            case 'rejected': return '#dc3545';
+            case 'checked_out': return '#212529';
             case 'pending': return '#f59e0b';
-            case 'approved': return '#10b981';
-            case 'checked_in': return '#3b82f6';
-            case 'checked_out': return '#64748b';
-            case 'rejected': return '#ef4444';
-            default: return '#94a3b8';
+            case 'completed': return '#212529'; // same as checked_out
+            default: return '#6c757d';
         }
     };
 
-    const formatDate = (dateStr) => {
-        if (!dateStr) return 'N/A';
-        try {
-            const date = new Date(dateStr);
-            return date.toLocaleString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        } catch (e) {
-            return dateStr;
-        }
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleString();
     };
 
     const photoUri = getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path);
@@ -60,7 +50,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView ref={scrollRef} style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
+                        <ScrollView style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
                             <View style={styles.detailsHeader}>
                                 <View style={styles.photoContainer}>
                                     <Image
@@ -80,22 +70,53 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
 
                             <View style={styles.detailsCard}>
                                 <Text style={styles.detailsSectionTitle}>Visit Information</Text>
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                    {[
-                                        { label: 'Host Name', value: visit.host_name },
-                                        { label: 'Department', value: visit.department },
-                                        { label: 'Purpose', value: visit.purpose },
-                                        { label: 'Visit Code', value: visit.visit_code ? `#${visit.visit_code}` : null },
-                                        { label: 'Company', value: visit.company },
-                                        { label: 'Email', value: visit.email },
-                                        { label: 'ID Type', value: visit.id_proof_type },
-                                        { label: 'ID Number', value: visit.id_proof_number },
-                                    ].map((item, index) => (
-                                        <View key={index} style={styles.detailsItem}>
-                                            <Text style={styles.detailsLabel}>{item.label}</Text>
-                                            <Text style={styles.detailsValue}>{item.value || '-'}</Text>
-                                        </View>
-                                    ))}
+                                <View style={styles.detailsGrid}>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Host Name</Text>
+                                        <Text style={styles.detailsValue}>{visit.host_name || '-'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Department</Text>
+                                        <Text style={styles.detailsValue}>{visit.department || '-'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Purpose</Text>
+                                        <Text style={styles.detailsValue}>{visit.purpose || '-'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Visit Code</Text>
+                                        <Text style={styles.detailsValue}>#{visit.visit_code || '-'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Company</Text>
+                                        <Text style={styles.detailsValue}>{visit.company || '-'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Email</Text>
+                                        <Text style={styles.detailsValue}>{visit.email || '-'}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.detailsCard}>
+                                <Text style={styles.detailsSectionTitle}>Identity Verification</Text>
+                                <View style={styles.detailsGrid}>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>ID Type</Text>
+                                        <Text style={styles.detailsValue}>{visit.id_proof_type || 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>ID Number</Text>
+                                        <Text style={styles.detailsValue}>{visit.id_proof_number || 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Assets</Text>
+                                        <Text style={styles.detailsValue}>{visit.assets_carried || 'None'}</Text>
+                                    </View>
+                                    <View style={styles.detailsItem}>
+                                        <Text style={styles.detailsLabel}>Access Area</Text>
+                                        <Text style={styles.detailsValue}>{visit.access_area || 'Not Assigned'}</Text>
+                                    </View>
                                 </View>
                             </View>
 
@@ -129,7 +150,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                             </View>
 
                             {onAction && (
-                                <View style={styles.actionsContainer}>
+                                <View style={{ padding: 15 }}>
                                     {visit.visit_code && (
                                         <TouchableOpacity 
                                             style={[styles.modalActionBtn, { backgroundColor: '#1e293b', marginBottom: 12, flex: 0, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]} 
@@ -139,17 +160,17 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                                         </TouchableOpacity>
                                     )}
                                     
-                                    <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                                    <View style={styles.actionsContainer}>
                                         {visit.status === 'pending' && (
                                             <>
-                                                <TouchableOpacity 
-                                                    style={[styles.modalActionBtn, styles.rejectBtn, { flex: 1 }]} 
+                                                <TouchableOpacity
+                                                    style={[styles.modalActionBtn, styles.rejectBtn]}
                                                     onPress={() => onAction(visit.id, 'reject')}
                                                 >
                                                     <Text style={styles.modalActionText}>Reject</Text>
                                                 </TouchableOpacity>
-                                                <TouchableOpacity 
-                                                    style={[styles.modalActionBtn, styles.approveBtn, { flex: 1 }]} 
+                                                <TouchableOpacity
+                                                    style={[styles.modalActionBtn, styles.approveBtn]}
                                                     onPress={() => onAction(visit.id, 'approve')}
                                                 >
                                                     <Text style={styles.modalActionText}>Approve</Text>
@@ -157,16 +178,16 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                                             </>
                                         )}
                                         {visit.status === 'approved' && (
-                                            <TouchableOpacity 
-                                                style={[styles.modalActionBtn, styles.checkInBtn, { flex: 1 }]} 
+                                            <TouchableOpacity
+                                                style={[styles.modalActionBtn, styles.checkInBtn]}
                                                 onPress={() => onAction(visit.id, 'checkin')}
                                             >
                                                 <Text style={styles.modalActionText}>Check-In Visitor</Text>
                                             </TouchableOpacity>
                                         )}
                                         {visit.status === 'checked_in' && (
-                                            <TouchableOpacity 
-                                                style={[styles.modalActionBtn, styles.checkOutBtn, { flex: 1 }]} 
+                                            <TouchableOpacity
+                                                style={[styles.modalActionBtn, styles.checkOutBtn]}
                                                 onPress={() => onAction(visit.id, 'checkout')}
                                             >
                                                 <Text style={styles.modalActionText}>Check-Out Visitor</Text>
@@ -189,6 +210,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                 </View>
             </Modal>
 
+            {/* Dedicated Pass Modal */}
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -231,9 +253,6 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
             </Modal>
         </>
     );
-            </View>
-        </Modal>
-    );
 };
 
 const styles = StyleSheet.create({
@@ -272,7 +291,7 @@ const styles = StyleSheet.create({
     passLabel: { fontSize: 12, color: '#94a3b8', fontWeight: '800', letterSpacing: 1.5 },
     passCode: { fontSize: 24, fontWeight: '900', color: '#1e293b', marginTop: 5 },
 
-    actionsContainer: { flexDirection: 'column', padding: 15, gap: 10 },
+    actionsContainer: { flexDirection: 'row', padding: 15, gap: 10, justifyContent: 'space-between' },
     modalActionBtn: { flex: 1, paddingVertical: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 },
     approveBtn: { backgroundColor: '#10b981' },
     rejectBtn: { backgroundColor: '#ef4444' },

@@ -307,6 +307,8 @@ function loadUserPermissions()
         $_SESSION['role_perms'] = [];
     }
 
+    // Consolidate for unified permission checks in API files
+    $_SESSION['permissions'] = array_unique(array_merge($_SESSION['my_perms'] ?: [], $_SESSION['role_perms'] ?: []));
     $_SESSION['permissions_loaded'] = true;
 }
 
