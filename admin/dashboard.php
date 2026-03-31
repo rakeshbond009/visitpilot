@@ -660,7 +660,8 @@ if ($time_saved_minutes > 60) {
 
     async function refreshDashboardTable() {
         try {
-            const response = await fetch('api/get_dashboard_data.php');
+            // Add cache buster to prevent stale data
+            const response = await fetch('api/get_dashboard_data.php?t=' + new Date().getTime());
             const data = await response.json();
 
             if (data.success) {
@@ -675,6 +676,9 @@ if ($time_saved_minutes > 60) {
                     const aim = data.ai_metrics;
                     const dBar = document.getElementById('ai-density-bar');
                     const dStatus = document.getElementById('ai-density-status');
+                    
+                    const activeCount = aim.active_count !== undefined ? aim.active_count : 0;
+                    const maxCap = aim.max_capacity !== undefined ? aim.max_capacity : 50;
 
                     dBar.style.width = aim.crowd_density + '%';
                     dBar.setAttribute('aria-valuenow', aim.crowd_density);
@@ -684,7 +688,7 @@ if ($time_saved_minutes > 60) {
                     else if (aim.crowd_density > 50) { dText = 'Moderate Traffic'; bColor = 'bg-warning'; }
 
                     dBar.className = 'progress-bar ' + bColor;
-                    dStatus.innerHTML = `<i class="bi bi-graph-up me-1"></i> ${dText} (${aim.active_count}/${aim.max_capacity})`;
+                    dStatus.innerHTML = `<i class="bi bi-graph-up me-1"></i> ${dText} (${activeCount}/${maxCap})`;
 
                     const secStatus = document.getElementById('ai-security-status');
                     const secMsg = document.getElementById('ai-security-msg');
