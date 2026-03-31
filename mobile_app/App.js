@@ -16,66 +16,36 @@ const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 import { NativeModules } from 'react-native';
 const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 
-TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error, executionContext }) => {
+TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
     if (error) {
-        console.error("Background task error:", error);
+        console.error("[BG Task] Error:", error);
         return;
     }
-    if (data) {
-        // Handle data-only messages from FCM
-        const body = data.notification ? data.notification.data : data.data;
-        const payload = body || data;
-
-        console.log("[DEBUG] Background Task Data:", JSON.stringify(payload));
-
-        // --- NEW: ROLE CHECK ---
-        // Fetch current user role from storage to filter notifications
-        let userRole = null;
-        try {
-            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-            userRole = await AsyncStorage.getItem('user_role');
-            console.log("[DEBUG] Current User Role in Background:", userRole);
-        } catch (e) {
-            console.log("[DEBUG] Error fetching role in background:", e);
-        }
+    if (data && data.notification) {
+        const payload = data.notification.data || data.notification;
+        console.log("[BG Task] Received Payload:", JSON.stringify(payload));
 
         const isArrival = payload.type === 'visitor_arrival' || payload.is_call_priority === 'true';
         const isApprovalUpdate = payload.type === 'approval_status';
 
-        // Logic check:
-        // 1. visitor_arrival is for Hosts (but server sends to host tokens so we show it)
-        // 2. approval_status is for Security/Admin ONLY
-        let shouldShow = false;
-
         if (isArrival) {
-            shouldShow = true; // Hosts should see arrivals intended for them
-        } else if (isApprovalUpdate) {
-            // ONLY show approval updates if user is Security or Admin
-            if (userRole === 'security' || userRole === 'admin') {
-                shouldShow = true;
-            } else {
-                console.log("[DEBUG] Skipping approval notification for non-security role:", userRole);
-            }
-        }
-
-        if (shouldShow) {
-            // --- NEW: WAKE UP DEVICE ---
+            // WAKE UP DEVICE IMMEDIATELY
             if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-                console.log("[DEBUG] Waking up app via Native Module");
+                console.log("[BG Task] Waking up device for visitor arrival...");
                 OverlayPermissionModule.wakeUpApp();
             }
 
             await Notifications.scheduleNotificationAsync({
                 content: {
-                    title: payload.title || (isArrival ? "Visitor Arrival" : "Visit Update"),
-                    body: payload.body || (isArrival ? "A visitor is waiting" : "A visit status has changed"),
-                    data: { ...payload, fullScreenIntent: isArrival ? 'true' : 'false' },
-                    categoryIdentifier: isArrival ? 'visitor_arrival' : 'visit_update',
+                    title: payload.title || "Visitor Arrival",
+                    body: payload.body || "A visitor is waiting at the gate",
+                    data: { ...payload, fullScreenIntent: 'true' },
+                    categoryIdentifier: 'visitor_arrival',
                     sound: true,
                     priority: Notifications.AndroidNotificationPriority.MAX,
                     vibrate: [0, 250, 250, 250],
                 },
-                trigger: null, // Show immediately
+                trigger: null,
                 channelId: 'vms_urgent_alerts_v2',
             });
         }

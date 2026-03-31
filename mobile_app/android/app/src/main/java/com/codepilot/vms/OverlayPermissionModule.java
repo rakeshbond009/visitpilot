@@ -41,10 +41,17 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
     public void openOverlaySettings() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + reactContext.getPackageName()));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                reactContext.startActivity(intent);
+                // Use current activity if available for better deep-linking on some Android versions
+                Activity currentActivity = getCurrentActivity();
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+                intent.setData(Uri.parse("package:" + reactContext.getPackageName()));
+                
+                if (currentActivity != null) {
+                    currentActivity.startActivity(intent);
+                } else {
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    reactContext.startActivity(intent);
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();

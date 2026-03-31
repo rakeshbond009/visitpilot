@@ -71,20 +71,22 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         $message = [
             'message' => [
                 'token' => (string)$user['fcm_token'],
-                // NO root 'notification' key to prevent default Android system tray behavior
+                'notification' => [
+                    'title' => (string)$title,
+                    'body' => (string)$body,
+                ],
                 'data' => array_merge([
                     'title' => (string)$title,
                     'body' => (string)$body,
                     'type' => 'visitor_arrival',
                     'is_call_priority' => 'true',
-                    // Redundant keys to ensure compatibility with different parsers
                     'visitId' => (string)($data['visit_id'] ?? ''),
+                    'visit_id' => (string)($data['visit_id'] ?? ''),
                     'click_action' => 'visitor_arrival_action'
                 ], $data),
                 'android' => [
                     'priority' => 'high',
                     'ttl' => '0s',
-                    // Intentionally OMIT 'notification' block here so it remains Data-Only for Android
                 ],
                 'apns' => [
                     'payload' => [
