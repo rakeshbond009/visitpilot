@@ -84,6 +84,7 @@ export default function AdminDashboard({ navigation }) {
     const [modalType, setModalType] = useState(null); // 'employees', 'visits', 'overstays', 'efficiency'
     const [modalFilter, setModalFilter] = useState(null);
     const [modalSearchTerm, setModalSearchTerm] = useState('');
+    const [selectedVisit, setSelectedVisit] = useState(null);
     const [detailsVisible, setDetailsVisible] = useState(false);
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [employeeDetailsVisible, setEmployeeDetailsVisible] = useState(false);

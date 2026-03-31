@@ -129,7 +129,7 @@ try {
         $recent_activity = safeFetchAll($pdo, $recent_sql);
 
         // Zone Density
-        $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(e.department, 'Other') as name, COUNT(v.id) as count 
+        $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as name, COUNT(v.id) as count 
                                    FROM visits v 
                                    LEFT JOIN employees e ON v.employee_id = e.id 
                                    WHERE v.status = 'checked_in' 
@@ -141,7 +141,7 @@ try {
             return $z;
         }, $dept_zones_raw);
 
-        $area_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(access_area, 'Unassigned') as name, COUNT(id) as count 
+        $area_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as name, COUNT(id) as count 
                                    FROM visits 
                                    WHERE status = 'checked_in' 
                                    GROUP BY name 
