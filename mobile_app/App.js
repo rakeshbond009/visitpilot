@@ -342,11 +342,11 @@ function AppContent() {
                     {(hasPermission('host_invite') || role === 'admin') && (
                         <Stack.Screen name="InviteVisitor" component={InviteVisitor} />
                     )}
-                    {(hasPermission('view_employee_report') || hasPermission('host_reports') || hasPermission('admin_reports') || role === 'admin') && (
+                    {(hasPermission('view_employee_report') || hasPermission('host_reports') || hasPermission('admin_reports') || hasPermission('security_reports') || role === 'admin') && (
                         <Stack.Screen name="Reports" component={VisitorReports} />
                     )}
 
-                    {(hasPermission('view_employee_report') || hasPermission('admin_reports') || role === 'admin') && (
+                    {(hasPermission('view_employee_report') || hasPermission('admin_reports') || hasPermission('security_reports') || role === 'admin') && (
                         <Stack.Screen name="EmployeeReport" component={EmployeeReport} />
                     )}
 

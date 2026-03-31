@@ -24,6 +24,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
+import VisitDetailModal from '../components/VisitDetailModal';
 
 
 const { width, height } = Dimensions.get('window');
@@ -82,6 +83,10 @@ export default function AdminDashboard({ navigation }) {
     const [modalSearchTerm, setModalSearchTerm] = useState('');
     const [selectedVisit, setSelectedVisit] = useState(null);
     const [detailsVisible, setDetailsVisible] = useState(false);
+
+    // SweetAlert Modal State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error'
 
     // Filter State
     const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -752,20 +757,8 @@ export default function AdminDashboard({ navigation }) {
                             <TouchableOpacity
                                 style={[styles.actionButton, { backgroundColor: '#10b981', flex: 1, marginBottom: 0 }]}
                                 onPress={() => {
-                                    Alert.alert(
-                                        'Approve Visit',
-                                        `Approve visit for ${v.visitor_name}?`,
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            {
-                                                text: 'Approve',
-                                                onPress: () => {
-                                                    handleAction(v.id, 'approve');
-                                                    setDetailsVisible(false);
-                                                }
-                                            }
-                                        ]
-                                    );
+                                    handleAction(v.id, 'approve');
+                                    setDetailsVisible(false);
                                 }}
                             >
                                 <Icon name="check" size={20} color="#fff" />
@@ -774,21 +767,8 @@ export default function AdminDashboard({ navigation }) {
                             <TouchableOpacity
                                 style={[styles.actionButton, { backgroundColor: '#ef4444', flex: 1, marginBottom: 0 }]}
                                 onPress={() => {
-                                    Alert.alert(
-                                        'Reject Visit',
-                                        `Reject visit for ${v.visitor_name}?`,
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            {
-                                                text: 'Reject',
-                                                style: 'destructive',
-                                                onPress: () => {
-                                                    handleAction(v.id, 'reject');
-                                                    setDetailsVisible(false);
-                                                }
-                                            }
-                                        ]
-                                    );
+                                    handleAction(v.id, 'reject');
+                                    setDetailsVisible(false);
                                 }}
                             >
                                 <Icon name="close" size={20} color="#fff" />
@@ -801,8 +781,7 @@ export default function AdminDashboard({ navigation }) {
                         <TouchableOpacity
                             style={[styles.actionButton, { backgroundColor: '#3b82f6', marginBottom: 12 }]}
                             onPress={() => {
-                                const url = `${CONFIG.API_BASE_URL}security/pass.php?id=${v.id}`;
-                                Linking.openURL(url).catch(err => Alert.alert('Error', 'Could not open pass'));
+                                setDetailsVisible(true);
                             }}
                         >
                             <Icon name="ticket-account" size={20} color="#fff" />
@@ -814,10 +793,8 @@ export default function AdminDashboard({ navigation }) {
                         <TouchableOpacity
                             style={[styles.actionButton, { backgroundColor: '#10b981' }]}
                             onPress={() => {
-                                Alert.alert('Confirm Check-In', `Check in ${v.visitor_name}?`, [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Check In', onPress: () => { handleAction(v.id, 'checkin'); setDetailsVisible(false); } }
-                                ]);
+                                handleAction(v.id, 'checkin');
+                                setDetailsVisible(false);
                             }}
                         >
                             <Icon name="login" size={20} color="#fff" />
@@ -829,10 +806,8 @@ export default function AdminDashboard({ navigation }) {
                         <TouchableOpacity
                             style={[styles.actionButton, { backgroundColor: '#64748b' }]}
                             onPress={() => {
-                                Alert.alert('Confirm Check-Out', `Check out ${v.visitor_name}?`, [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    { text: 'Check Out', onPress: () => { handleAction(v.id, 'checkout'); setDetailsVisible(false); } }
-                                ]);
+                                handleAction(v.id, 'checkout');
+                                setDetailsVisible(false);
                             }}
                         >
                             <Icon name="logout" size={20} color="#fff" />
@@ -955,6 +930,43 @@ export default function AdminDashboard({ navigation }) {
         );
     };
 
+    const showAlert = (title, message, type = 'success') => {
+        setAlertConfig({ title, message, type });
+        setAlertVisible(true);
+    };
+
+    const renderSweetAlert = () => (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={alertVisible}
+            onRequestClose={() => setAlertVisible(false)}
+        >
+            <View style={styles.alertOverlay}>
+                <View style={styles.alertContent}>
+                    <View style={[styles.alertHeader, { backgroundColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>
+                        <Icon
+                            name={alertConfig.type === 'success' ? 'check-circle' : 'alert-circle'}
+                            size={32}
+                            color="#fff"
+                            style={{ marginRight: 10 }}
+                        />
+                        <Text style={styles.alertHeaderTitle}>{alertConfig.title || (alertConfig.type === 'success' ? 'Success!' : 'Error')}</Text>
+                    </View>
+                    <View style={styles.alertBody}>
+                        <Text style={styles.alertMessage}>{alertConfig.message}</Text>
+                        <TouchableOpacity
+                            style={[styles.alertButton, { borderColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}
+                            onPress={() => setAlertVisible(false)}
+                        >
+                            <Text style={[styles.alertButtonText, { color: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>OK</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+
     const handleAction = async (visitId, action) => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
@@ -963,13 +975,13 @@ export default function AdminDashboard({ navigation }) {
             });
 
             if (response.data.status === 'success') {
-                Alert.alert('Success', response.data.message);
+                showAlert('Success', response.data.message, 'success');
                 fetchData(); // Refresh data
             } else {
-                Alert.alert('Error', response.data.message || 'Action failed');
+                showAlert('Error', response.data.message || 'Action failed', 'error');
             }
         } catch (error) {
-            Alert.alert('Error', 'Action failed');
+            showAlert('Error', 'Action failed', 'error');
         }
     };
 
@@ -1612,48 +1624,53 @@ export default function AdminDashboard({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
 
-            {/* Modal */}
+            {/* Stats Data Modal (Full Screen Fade like HostDashboard) */}
             <Modal
-                animationType="slide"
-                transparent={true}
+                animationType="fade"
+                transparent={false}
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalView}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{modalTitle}</Text>
-                            <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <Text style={styles.closeBtn}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+                    <View style={[styles.fullModalHeader, { 
+                        backgroundColor: modalType === 'employees' ? '#ef4444' : (modalFilter === 'today' ? '#3b82f6' : '#8b5cf6') 
+                    }]}>
+                        <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.fullModalBack}>
+                            <Icon name="arrow-left" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <Text style={styles.fullModalTitleText}>{modalTitle}</Text>
+                    </View>
 
+                    {/* Modal Search Bar */}
+                    {renderModalSearch()}
+
+                    <View style={{ flex: 1 }}>
                         {modalType === 'employees' && renderEmployeeRecords()}
                         {modalType === 'visits' && renderVisitRecords(modalFilter)}
                         {modalType === 'overstays' && renderOverstayList()}
                         {modalType === 'efficiency' && (
-                            <Text style={styles.modalBody}>
+                            <ScrollView style={styles.modalScroll}>
+                                <Text style={styles.modalBody}>
                                 Overall efficiency is calculated based on {efficiency.satisfaction} visitor satisfaction and {stats.time_saved} saved across the organization.
-                            </Text>
+                                </Text>
+                            </ScrollView>
                         )}
                     </View>
-                </View>
+                </SafeAreaView>
             </Modal>
 
             {/* Visit Details Modal */}
-            <Modal
-                animationType="slide"
-                transparent={true}
+            <VisitDetailModal
                 visible={detailsVisible}
-                onRequestClose={() => setDetailsVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.detailsModalView}>
-                        {renderVisitDetails()}
-                    </View>
-                </View>
-            </Modal>
+                onClose={() => setDetailsVisible(false)}
+                visit={selectedVisit}
+                onAction={(id, action) => {
+                    handleAction(id, action);
+                    setDetailsVisible(false);
+                }}
+            />
 
+            {renderSweetAlert()}
             {renderMastersModal()}
             {renderReportsModal()}
             {renderSettingsModal()}
@@ -1742,7 +1759,7 @@ export default function AdminDashboard({ navigation }) {
                                         style={styles.applyBtn}
                                         onPress={() => {
                                             if (!tempStartDate) {
-                                                Alert.alert('Error', 'Please select a start date');
+                                                showAlert('Error', 'Please select a start date', 'error');
                                                 return;
                                             }
 
@@ -2041,6 +2058,26 @@ export default function AdminDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    fullModalHeader: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        paddingHorizontal: 20, 
+        paddingVertical: 18,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+    },
+    fullModalBack: {
+        padding: 5,
+        marginRight: 10,
+    },
+    fullModalTitleText: {
+        color: '#fff',
+        fontSize: 20,
+        fontWeight: 'bold',
+    },
     modalSearchContainer: {
         flexDirection: 'row',
         alignItems: 'center',

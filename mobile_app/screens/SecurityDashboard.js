@@ -24,6 +24,7 @@ import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { usePermissions } from '../context/PermissionContext';
+import VisitDetailModal from '../components/VisitDetailModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -83,6 +84,10 @@ export default function SecurityDashboard({ navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [records, setRecords] = useState({ visits: [], overstays: [] });
 
+    // SweetAlert Modal State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error'
+
     // Date Filter State
     const [filterType, setFilterType] = useState('all');
     const [filterStartDate, setFilterStartDate] = useState('');
@@ -129,11 +134,11 @@ export default function SecurityDashboard({ navigation }) {
                 setSelectedVisit(response.data.data);
                 setDetailsVisible(true);
             } else {
-                Alert.alert('Error', response.data.message || 'Could not load visit details');
+                showAlert('Error', response.data.message || 'Could not load visit details', 'error');
             }
         } catch (err) {
             console.error('Visit Details Error:', err);
-            Alert.alert('Error', 'Connection error while loading details');
+            showAlert('Error', 'Connection error while loading details', 'error');
         } finally {
             setLoading(false);
         }
@@ -184,10 +189,10 @@ export default function SecurityDashboard({ navigation }) {
             const oldVisit = prevVisits.find(v => v.id === newVisit.id);
             if (oldVisit) {
                 if (oldVisit.approval_status === 'pending' && newVisit.approval_status !== 'pending') {
-                    Alert.alert(
+                    showAlert(
                         'Visit Status Update',
                         `Visit for ${newVisit.visitor_name} has been ${newVisit.approval_status.toUpperCase()}.`,
-                        [{ text: 'OK' }]
+                        'success'
                     );
                 }
             }
@@ -295,7 +300,7 @@ export default function SecurityDashboard({ navigation }) {
     );
 
     const renderAiMonitor = () => {
-        if (!hasPermission('admin_reports')) return null;
+        if (!hasPermission('admin_reports') && !hasPermission('security_reports')) return null;
 
         const density = aiMetrics.crowd_density || aiMetrics.density || 0;
         const densityColor = density > 80 ? '#ef4444' : (density > 50 ? '#f59e0b' : '#10b981');
@@ -378,7 +383,7 @@ export default function SecurityDashboard({ navigation }) {
     };
 
     const renderTrafficChart = () => {
-        if (!hasPermission('admin_reports')) return null;
+        if (!hasPermission('admin_reports') && !hasPermission('security_reports')) return null;
 
         const trafficData = aiMetrics.traffic || aiMetrics.hourly_traffic || [];
         if (trafficData.length === 0) {
@@ -419,7 +424,7 @@ export default function SecurityDashboard({ navigation }) {
     };
 
     const renderZoneDensity = () => {
-        if (!hasPermission('admin_reports')) return null;
+        if (!hasPermission('admin_reports') && !hasPermission('security_reports')) return null;
 
         const zones = densityView === 'department' ? aiMetrics.zones.department : aiMetrics.zones.access_area;
 
@@ -499,7 +504,7 @@ export default function SecurityDashboard({ navigation }) {
         <View style={styles.scrollPadding}>
             {renderMetricCards()}
 
-            {hasPermission('admin_reports') && (
+            {(hasPermission('admin_reports') || hasPermission('security_reports')) && (
                 <View style={styles.statsSummary}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <View style={[styles.summaryItem, { flex: 1 }]}>
@@ -736,7 +741,7 @@ export default function SecurityDashboard({ navigation }) {
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                    <TouchableOpacity style={styles.applyBtn} onPress={() => { if (!tempStartDate) { Alert.alert('Error', 'Please select a start date'); return; } setFilterStartDate(tempStartDate); setFilterEndDate(tempEndDate || tempStartDate); setFilterType('custom'); setFilterModalVisible(false); }}>
+                                    <TouchableOpacity style={styles.applyBtn} onPress={() => { if (!tempStartDate) { showAlert('Error', 'Please select a start date', 'error'); return; } setFilterStartDate(tempStartDate); setFilterEndDate(tempEndDate || tempStartDate); setFilterType('custom'); setFilterModalVisible(false); }}>
                                         <Text style={styles.applyBtnText}>Apply Filter</Text>
                                     </TouchableOpacity>
                                 </View>
@@ -813,45 +818,23 @@ export default function SecurityDashboard({ navigation }) {
             console.log("API Response:", response.data);
 
             if (response.data.status === 'success') {
-                Alert.alert(
-                    'Success',
-                    response.data.message,
-                    [
-                        {
-                            text: 'OK',
-                            onPress: () => {
-                                setScanModalVisible(false);
-                                setScanned(false);
-                                fetchData();
-                            }
-                        }
-                    ]
-                );
+                showAlert('Success', response.data.message, 'success');
+                setScanModalVisible(false);
+                setScanned(false);
+                fetchData();
             } else if (response.data.status === 'invitation') {
                 const code = response.data.data?.code;
                 setScanModalVisible(false);
                 setScanned(false);
                 navigation.navigate('RegisterVisitor', { code: code });
             } else {
-                Alert.alert(
-                    'QR Scan Result',
-                    response.data.message || 'The scanned QR code is currently inactive or has an invalid status.',
-                    [
-                        { text: 'Try Another', onPress: () => setScanned(false) },
-                        { text: 'Close', onPress: () => setScanModalVisible(false), style: 'cancel' }
-                    ]
-                );
+                showAlert('QR Scan Result', response.data.message || 'The scanned QR code is currently inactive or has an invalid status.', 'error');
+                setScanned(false);
             }
         } catch (error) {
             console.error("Scan Error:", error);
-            Alert.alert(
-                'Network Error',
-                'Failed to process QR code. Please check your internet connection.',
-                [
-                    { text: 'Retry', onPress: () => setScanned(false) },
-                    { text: 'Cancel', onPress: () => setScanModalVisible(false) }
-                ]
-            );
+            showAlert('Network Error', 'Failed to process QR code. Please check your internet connection.', 'error');
+            setScanned(false);
         }
     };
 
@@ -1029,292 +1012,74 @@ export default function SecurityDashboard({ navigation }) {
         </View>
     );
 
-    const renderVisitDetailsModal = () => {
-        if (!selectedVisit) return null;
-        const v = selectedVisit;
+    const showAlert = (title, message, type = 'success') => {
+        setAlertConfig({ title, message, type });
+        setAlertVisible(true);
+    };
 
-        return (
-            <View style={{ flex: 1 }}>
-                <View style={styles.detailsHeader}>
-                    <View style={styles.detailsHeaderTop}>
-                        <Text style={styles.detailsHeaderTitle}>Visit Details</Text>
-                        <TouchableOpacity onPress={() => setDetailsVisible(false)}>
-                            <Icon name="close" size={24} color="#fff" />
-                        </TouchableOpacity>
+    const handleAction = async (visitId, action) => {
+        try {
+            const response = await apiClient.post('api/visit/status_action.php', {
+                action: action,
+                visit_id: visitId,
+            });
+
+            if (response.data.status === 'success') {
+                showAlert('Success', response.data.message, 'success');
+                fetchData(); // Refresh data
+            } else {
+                showAlert('Error', response.data.message || 'Action failed', 'error');
+            }
+        } catch (error) {
+            showAlert('Error', 'Action failed', 'error');
+        }
+    };
+
+    const renderSweetAlert = () => (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={alertVisible}
+            onRequestClose={() => setAlertVisible(false)}
+        >
+            <View style={styles.alertOverlay}>
+                <View style={styles.alertContent}>
+                    <View style={[styles.alertHeader, { backgroundColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>
+                        <Icon
+                            name={alertConfig.type === 'success' ? 'check-circle' : 'alert-circle'}
+                            size={32}
+                            color="#fff"
+                            style={{ marginRight: 10 }}
+                        />
+                        <Text style={styles.alertHeaderTitle}>{alertConfig.title || (alertConfig.type === 'success' ? 'Success!' : 'Error')}</Text>
                     </View>
-
-                    <View style={styles.visitorMainInfo}>
-                        <View style={styles.photoContainer}>
-                            {v.photo_url || v.visit_photo ? (
-                                <Image
-                                    source={{ uri: getPhotoUrl(v.photo_url || v.visit_photo) }}
-                                    style={styles.visitorPhoto}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <View style={[styles.visitorPhoto, { backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }]}>
-                                    <Icon name="account" size={40} color="#fff" />
-                                </View>
-                            )}
-                        </View>
-                        <View style={styles.detailsBasic}>
-                            <Text style={styles.detailsName}>{v.visitor_name}</Text>
-                            <Text style={styles.detailsMobile}>{v.mobile}</Text>
-                            <View style={[styles.statusBadgeModal, { backgroundColor: getStatusColor(v.status) }]}>
-                                <Text style={styles.statusBadgeTextModal}>{v.status?.toUpperCase()?.replace('_', ' ')}</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-
-                <ScrollView style={styles.detailsContent} showsVerticalScrollIndicator={false}>
-                    <View style={styles.detailsCard}>
-                        <Text style={styles.detailsSectionTitle}>Visit Information</Text>
-                        <View style={styles.detailsGrid}>
-                            <View style={styles.detailsItem}>
-                                <Text style={styles.detailsLabel}>Visit Code</Text>
-                                <Text style={styles.detailsValue}>#{v.visit_code}</Text>
-                            </View>
-                            <View style={styles.detailsItem}>
-                                <Text style={styles.detailsLabel}>Purpose</Text>
-                                <Text style={styles.detailsValue}>{v.purpose || 'N/A'}</Text>
-                            </View>
-                            <View style={styles.detailsItem}>
-                                <Text style={styles.detailsLabel}>Host Name</Text>
-                                <Text style={styles.detailsValue}>{v.host_name}</Text>
-                            </View>
-                            <View style={styles.detailsItem}>
-                                <Text style={styles.detailsLabel}>Department</Text>
-                                <Text style={styles.detailsValue}>{v.department || 'N/A'}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={styles.detailsCard}>
-                        <Text style={styles.detailsSectionTitle}>Identity Verification</Text>
-                        <View style={styles.detailsGrid}>
-                            <View style={styles.detailsItem}>
-                                <Text style={styles.detailsLabel}>ID Type</Text>
-                                <Text style={styles.detailsValue}>{v.id_proof_type || 'N/A'}</Text>
-                            </View>
-                            <View style={styles.detailsItem}>
-                                <Text style={styles.detailsLabel}>ID Number</Text>
-                                <Text style={styles.detailsValue}>{v.id_proof_number || 'N/A'}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    {v.visit_code && (
-                        <View style={[styles.detailsCard, { alignItems: 'center', paddingVertical: 20 }]}>
-                            <Text style={[styles.detailsSectionTitle, { width: '100%', textAlign: 'left' }]}>Visitor Pass QR</Text>
-                            <Image
-                                source={{ uri: v.qr_url }}
-                                style={{ width: 140, height: 140, marginTop: 10 }}
-                                resizeMode="contain"
-                            />
-                            <Text style={{ fontWeight: '800', fontSize: 18, color: '#0d6efd', marginTop: 10, letterSpacing: 1 }}>{v.visit_code}</Text>
-                            <Text style={{ color: '#adb5bd', fontSize: 10, textTransform: 'uppercase', marginTop: 2 }}>Official Visit Code</Text>
-                        </View>
-                    )}
-
-                    <View style={styles.detailsCard}>
-                        <Text style={styles.detailsSectionTitle}>Timing & Schedule</Text>
-                        <View style={styles.timelineItem}>
-                            <View style={[styles.timelineDot, { backgroundColor: '#3b82f6' }]} />
-                            <View>
-                                <Text style={styles.timelineTitle}>Registered</Text>
-                                <Text style={styles.timelineDate}>{formatDate(v.created_at)} {new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                            </View>
-                        </View>
-                        {v.check_in_time && (
-                            <View style={styles.timelineItem}>
-                                <View style={[styles.timelineDot, { backgroundColor: '#10b981' }]} />
-                                <View>
-                                    <Text style={styles.timelineTitle}>Checked In</Text>
-                                    <Text style={styles.timelineDate}>{formatDate(v.check_in_time)} {new Date(v.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                                </View>
-                            </View>
-                        )}
-                        {v.check_out_time && (
-                            <View style={styles.timelineItem}>
-                                <View style={[styles.timelineDot, { backgroundColor: '#64748b' }]} />
-                                <View>
-                                    <Text style={styles.timelineTitle}>Checked Out</Text>
-                                    <Text style={styles.timelineDate}>{formatDate(v.check_out_time)} {new Date(v.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                                </View>
-                            </View>
-                        )}
-                    </View>
-                </ScrollView>
-
-                {/* Action Footer */}
-                <View style={styles.detailsFooter}>
-                    {v.approval_status === 'pending' && hasPermission('host_pending') && (
-                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
-                            <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: '#10b981', flex: 1, marginBottom: 0 }]}
-                                onPress={() => {
-                                    Alert.alert(
-                                        'Approve Visit',
-                                        `Approve visit for ${v.visitor_name}?`,
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            {
-                                                text: 'Approve',
-                                                onPress: async () => {
-                                                    try {
-                                                        const res = await apiClient.post('api/visit/status_action.php', {
-                                                            action: 'approve',
-                                                            visit_id: v.id
-                                                        });
-                                                        if (res.data.status === 'success') {
-                                                            Alert.alert('Success', 'Visit approved');
-                                                            setDetailsVisible(false);
-                                                            fetchData();
-                                                        } else {
-                                                            Alert.alert('Error', res.data.message);
-                                                        }
-                                                    } catch (e) {
-                                                        Alert.alert('Error', 'Network request failed');
-                                                    }
-                                                }
-                                            }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <Icon name="check" size={20} color="#fff" />
-                                <Text style={styles.actionButtonText}>Approve</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.actionButton, { backgroundColor: '#ef4444', flex: 1, marginBottom: 0 }]}
-                                onPress={() => {
-                                    Alert.alert(
-                                        'Reject Visit',
-                                        `Reject visit for ${v.visitor_name}?`,
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            {
-                                                text: 'Reject',
-                                                style: 'destructive',
-                                                onPress: async () => {
-                                                    try {
-                                                        const res = await apiClient.post('api/visit/status_action.php', {
-                                                            action: 'reject',
-                                                            visit_id: v.id
-                                                        });
-                                                        if (res.data.status === 'success') {
-                                                            Alert.alert('Success', 'Visit rejected');
-                                                            setDetailsVisible(false);
-                                                            fetchData();
-                                                        } else {
-                                                            Alert.alert('Error', res.data.message);
-                                                        }
-                                                    } catch (e) {
-                                                        Alert.alert('Error', 'Network request failed');
-                                                    }
-                                                }
-                                            }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <Icon name="close" size={20} color="#fff" />
-                                <Text style={styles.actionButtonText}>Reject</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
-
-                    {(v.status === 'approved' || v.status === 'checked_in' || v.status === 'checked_out') && (
+                    <View style={styles.alertBody}>
+                        <Text style={styles.alertMessage}>{alertConfig.message}</Text>
                         <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: '#3b82f6', marginBottom: 12 }]}
-                            onPress={() => {
-                                const url = `${CONFIG.API_BASE_URL}security/pass.php?id=${v.id}`;
-                                Linking.openURL(url).catch(err => Alert.alert('Error', 'Could not open pass'));
-                            }}
+                            style={[styles.alertButton, { borderColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}
+                            onPress={() => setAlertVisible(false)}
                         >
-                            <Icon name="ticket-account" size={20} color="#fff" />
-                            <Text style={styles.actionButtonText}>View Pass</Text>
+                            <Text style={[styles.alertButtonText, { color: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>OK</Text>
                         </TouchableOpacity>
-                    )}
-
-                    {v.status === 'approved' && v.approval_status === 'approved' && (
-                        <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: '#10b981' }]}
-                            onPress={() => {
-                                Alert.alert(
-                                    'Confirm Check-In',
-                                    `Check in ${v.visitor_name}?`,
-                                    [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        {
-                                            text: 'Check In',
-                                            onPress: async () => {
-                                                try {
-                                                    const res = await apiClient.post('api/visit/status_action.php', {
-                                                        action: 'checkin',
-                                                        visit_id: v.id
-                                                    });
-                                                    if (res.data.status === 'success') {
-                                                        Alert.alert('Success', 'Visitor checked in');
-                                                        setDetailsVisible(false);
-                                                        fetchData();
-                                                    } else {
-                                                        Alert.alert('Error', res.data.message);
-                                                    }
-                                                } catch (e) {
-                                                    Alert.alert('Error', 'Network request failed');
-                                                }
-                                            }
-                                        }
-                                    ]
-                                );
-                            }}
-                        >
-                            <Icon name="login" size={20} color="#fff" />
-                            <Text style={styles.actionButtonText}>Check In Visitor</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    {v.status === 'checked_in' && (
-                        <TouchableOpacity
-                            style={[styles.actionButton, { backgroundColor: '#64748b' }]}
-                            onPress={() => {
-                                Alert.alert(
-                                    'Confirm Check-Out',
-                                    `Check out ${v.visitor_name}?`,
-                                    [
-                                        { text: 'Cancel', style: 'cancel' },
-                                        {
-                                            text: 'Check Out',
-                                            onPress: async () => {
-                                                try {
-                                                    const res = await apiClient.post('api/visit/status_action.php', {
-                                                        action: 'checkout',
-                                                        visit_id: v.id
-                                                    });
-                                                    if (res.data.status === 'success') {
-                                                        Alert.alert('Success', 'Visitor checked out');
-                                                        setDetailsVisible(false);
-                                                        fetchData();
-                                                    } else {
-                                                        Alert.alert('Error', res.data.message);
-                                                    }
-                                                } catch (e) {
-                                                    Alert.alert('Error', 'Network request failed');
-                                                }
-                                            }
-                                        }
-                                    ]
-                                );
-                            }}
-                        >
-                            <Icon name="logout" size={20} color="#fff" />
-                            <Text style={styles.actionButtonText}>Check Out Visitor</Text>
-                        </TouchableOpacity>
-                    )}
+                    </View>
                 </View>
             </View>
+        </Modal>
+    );
+
+    const renderVisitDetailsModal = () => {
+        if (!selectedVisit) return null;
+        
+        return (
+            <VisitDetailModal
+                visible={detailsVisible}
+                onClose={() => setDetailsVisible(false)}
+                visit={selectedVisit}
+                onAction={(id, action) => {
+                    handleAction(id, action);
+                    setDetailsVisible(false);
+                }}
+            />
         );
     };
 
@@ -1401,7 +1166,7 @@ export default function SecurityDashboard({ navigation }) {
                             </TouchableOpacity>
                         )}
 
-                        {(hasPermission('admin_reports')) && (
+                        {(hasPermission('admin_reports') || hasPermission('security_reports')) && (
                             <TouchableOpacity
                                 style={styles.mgmtGridItem}
                                 onPress={() => {
@@ -1416,7 +1181,7 @@ export default function SecurityDashboard({ navigation }) {
                             </TouchableOpacity>
                         )}
 
-                        {(hasPermission('view_employee_report') || hasPermission('admin_reports')) && (
+                        {(hasPermission('view_employee_report') || hasPermission('admin_reports') || hasPermission('security_reports')) && (
                             <TouchableOpacity
                                 style={styles.mgmtGridItem}
                                 onPress={() => {
@@ -2395,4 +2160,14 @@ const styles = StyleSheet.create({
     calCellTextToday: { color: '#3b82f6', fontWeight: '600' },
     calCancelBtn: { marginTop: 15, paddingVertical: 10, alignItems: 'center' },
     calCancelText: { color: '#64748b', fontSize: 14, fontWeight: '600' },
+
+    // SweetAlert Styles
+    alertOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    alertContent: { backgroundColor: '#fff', width: '100%', maxWidth: 340, borderRadius: 15, overflow: 'hidden', elevation: 10 },
+    alertHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, paddingHorizontal: 20 },
+    alertHeaderTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+    alertBody: { padding: 25, alignItems: 'center' },
+    alertMessage: { fontSize: 16, color: '#334155', textAlign: 'center', marginBottom: 25, lineHeight: 22 },
+    alertButton: { paddingVertical: 10, paddingHorizontal: 35, borderRadius: 25, borderWidth: 1.5 },
+    alertButtonText: { fontSize: 16, fontWeight: 'bold' }
 });

@@ -2,7 +2,7 @@
   "expo": {
     "name": "VisitPilot",
     "slug": "visitpilot",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -14,6 +14,7 @@
     },
     "android": {
       "package": "com.codepilot.vms",
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
         "backgroundColor": "#FFFFFF"
