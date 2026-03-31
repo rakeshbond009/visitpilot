@@ -160,6 +160,7 @@ echo json_encode([
     'recent' => $recent,
     'ai_metrics' => [
         'crowd_density' => $crowd_density,
+        'active_count' => $active_visitors,
         'avg_checkin_time' => $avg_display,
         'overstays_count' => $overstays_count,
         'overstays_list' => $overstays_list,

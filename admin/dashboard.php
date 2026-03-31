@@ -486,16 +486,17 @@ if ($time_saved_minutes > 60) {
     $avg_time_str = "{$mins}m {$secs}s";
 
     // 2. Visitor Satisfaction (inferred from Wait Time < 10 mins)
-    $total_processed = $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out')")->fetchColumn();
+    $total_processed = $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(created_at) = DATE(check_in_time)")->fetchColumn();
 
     if ($total_processed > 0) {
         $happy_visitors = $pdo->query("SELECT COUNT(*) FROM visits 
                                       WHERE status IN ('checked_in', 'checked_out') 
                                       AND check_in_time IS NOT NULL
+                                      AND DATE(created_at) = DATE(check_in_time)
                                       AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 10")->fetchColumn();
         $satisfaction = round(($happy_visitors / $total_processed) * 100);
     } else {
-        $satisfaction = 100; // Default if no data
+        $satisfaction = 100; // Default if no data for today
     }
 
     // Dynamic Bar Colors
@@ -721,7 +722,8 @@ if ($time_saved_minutes > 60) {
                     if (selectedZones.length > 0) {
                         let zHtml = '';
                         selectedZones.forEach(z => {
-                            const pct = Math.min(100, (z.count / 10) * 100);
+                            const capacityLimit = aim.max_capacity || 50;
+                            const pct = Math.min(100, (z.count / capacityLimit) * 100);
                             const color = (pct > 80) ? 'danger' : ((pct > 40) ? 'warning' : 'success');
                             const status = (pct > 80) ? 'High Congestion' : ((pct > 40) ? 'Moderate Traffic' : 'Low Activity');
 
