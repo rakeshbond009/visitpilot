@@ -129,27 +129,37 @@ try {
         $recent_activity = safeFetchAll($pdo, $recent_sql);
 
         // Zone Density
-        $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as name, COUNT(v.id) as count 
+        $dept_zones_raw = safeFetchAll($pdo, "SELECT 
+                                    COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as zone_name, 
+                                    COUNT(*) as visitor_count 
                                    FROM visits v 
                                    LEFT JOIN employees e ON v.employee_id = e.id 
                                    WHERE v.status = 'checked_in' 
-                                   GROUP BY name 
-                                   ORDER BY count DESC");
+                                   GROUP BY 1 
+                                   ORDER BY visitor_count DESC");
 
         $dept_zones = array_map(function ($z) use ($max_capacity) {
-            $z['density'] = $max_capacity > 0 ? round(($z['count'] / $max_capacity) * 100) : 0;
-            return $z;
+            return [
+                'name' => $z['zone_name'],
+                'count' => (int) $z['visitor_count'],
+                'density' => $max_capacity > 0 ? round(($z['visitor_count'] / $max_capacity) * 100) : 0
+            ];
         }, $dept_zones_raw);
 
-        $area_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as name, COUNT(id) as count 
+        $area_zones_raw = safeFetchAll($pdo, "SELECT 
+                                    COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as zone_name, 
+                                    COUNT(*) as visitor_count 
                                    FROM visits 
                                    WHERE status = 'checked_in' 
-                                   GROUP BY name 
-                                   ORDER BY count DESC");
+                                   GROUP BY 1 
+                                   ORDER BY visitor_count DESC");
 
         $area_zones = array_map(function ($z) use ($max_capacity) {
-            $z['density'] = $max_capacity > 0 ? round(($z['count'] / $max_capacity) * 100) : 0;
-            return $z;
+            return [
+                'name' => $z['zone_name'],
+                'count' => (int) $z['visitor_count'],
+                'density' => $max_capacity > 0 ? round(($z['visitor_count'] / $max_capacity) * 100) : 0
+            ];
         }, $area_zones_raw);
 
         // Records lists — include check_in_time and check_out_time for In/Out display on cards
