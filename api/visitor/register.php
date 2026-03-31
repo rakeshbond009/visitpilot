@@ -94,10 +94,10 @@ try {
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
-        // so host can "Acknowledge" it. This matches the flow in security/register.php
-        // We set visit_date=CURDATE() to ensure it shows up in today's pending list.
-        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=? WHERE id=?");
+        // Update existing Invitation - Set both status and approval_status to 'approved'
+        // Since it's an invitation, the host has already pre-approved it.
+        // We set visit_date=CURDATE() so it appears in today's pending check-in list.
+        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='approved', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=? WHERE id=?");
         $stmt->execute([
             $assets,
             $data['id_proof_type'] ?? '',
