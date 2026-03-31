@@ -129,47 +129,28 @@ try {
         $recent_activity = safeFetchAll($pdo, $recent_sql);
 
         // Zone Density
-        $dept_zones_raw = safeFetchAll($pdo, "SELECT 
-                                    COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as zone_label, 
-                                    COUNT(*) as visitor_qty 
+        $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(e.department, 'Other') as name, COUNT(v.id) as count 
                                    FROM visits v 
                                    LEFT JOIN employees e ON v.employee_id = e.id 
                                    WHERE v.status = 'checked_in' 
-                                   GROUP BY 1 
-                                   ORDER BY visitor_qty DESC");
+                                   GROUP BY name 
+                                   ORDER BY count DESC");
 
         $dept_zones = array_map(function ($z) use ($max_capacity) {
-            return [
-                'name' => $z['zone_label'],
-                'count' => (int) $z['visitor_qty'],
-                'density' => $max_capacity > 0 ? round(($z['visitor_qty'] / $max_capacity) * 100) : 0
-            ];
+            $z['density'] = $max_capacity > 0 ? round(($z['count'] / $max_capacity) * 100) : 0;
+            return $z;
         }, $dept_zones_raw);
 
-        $area_zones_raw = safeFetchAll($pdo, "SELECT 
-                                    COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as zone_label, 
-                                    COUNT(*) as visitor_qty 
+        $area_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(access_area, 'Unassigned') as name, COUNT(id) as count 
                                    FROM visits 
                                    WHERE status = 'checked_in' 
-                                   GROUP BY 1 
-                                   ORDER BY visitor_qty DESC");
+                                   GROUP BY name 
+                                   ORDER BY count DESC");
 
         $area_zones = array_map(function ($z) use ($max_capacity) {
-            return [
-                'name' => $z['zone_label'],
-                'count' => (int) $z['visitor_qty'],
-                'density' => $max_capacity > 0 ? round(($z['visitor_qty'] / $max_capacity) * 100) : 0
-            ];
+            $z['density'] = $max_capacity > 0 ? round(($z['count'] / $max_capacity) * 100) : 0;
+            return $z;
         }, $area_zones_raw);
-
-        // LOGGING FOR DEBUGGING
-        $log_data = [
-            'time' => date('Y-m-d H:i:s'),
-            'role' => $role,
-            'dept_zones' => $dept_zones,
-            'area_zones' => $area_zones
-        ];
-        file_put_contents(__DIR__ . '/../../tmp/api_stats_log.txt', print_r($log_data, true), FILE_APPEND);
 
         // Records lists — include check_in_time and check_out_time for In/Out display on cards
         $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.approval_status, v.created_at, v.check_in_time, v.check_out_time, e.name as host_name, e.department, v.visit_code, v.purpose, v.is_invited, v.visit_photo 

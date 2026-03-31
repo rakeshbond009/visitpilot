@@ -988,7 +988,10 @@ export default function AdminDashboard({ navigation }) {
         return (
             <View style={styles.zoneCard}>
                 <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardTitle}>Zone Density</Text>
+                    <View>
+                        <Text style={styles.cardTitle}>Zone Density</Text>
+                        <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Currently Checked-In Only</Text>
+                    </View>
                     <View style={styles.toggleContainer}>
                         <TouchableOpacity
                             style={[styles.toggleBtn, zoneViewMode === 'department' && styles.toggleBtnActive]}

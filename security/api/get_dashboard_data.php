@@ -155,38 +155,28 @@ try {
     $best_time = ($best_hour > 12 ? $best_hour - 12 : $best_hour) . ":00 " . ($best_hour >= 12 ? "PM" : "AM");
 
     // Zone Density (Department-wise) - UNIQUE DEPARTMENTS
-    $dept_sql = "SELECT 
-                    COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as zone_label, 
-                    COUNT(*) as visitor_qty 
+    $dept_sql = "SELECT COALESCE(e.department, 'Other') as name, COUNT(v.id) as count 
                  FROM visits v 
                  LEFT JOIN employees e ON v.employee_id = e.id 
                  WHERE v.status = 'checked_in' 
-                 GROUP BY 1 
-                 ORDER BY visitor_qty DESC";
+                 GROUP BY name 
+                 ORDER BY count DESC";
     $dept_zones_raw = $pdo->query($dept_sql)->fetchAll(PDO::FETCH_ASSOC);
     $dept_zones = array_map(function ($z) use ($max_capacity) {
-        return [
-            'name' => $z['zone_label'],
-            'count' => (int) $z['visitor_qty'],
-            'density' => $max_capacity > 0 ? round(($z['visitor_qty'] / $max_capacity) * 100) : 0
-        ];
+        $z['density'] = $max_capacity > 0 ? round(($z['count'] / $max_capacity) * 100) : 0;
+        return $z;
     }, $dept_zones_raw);
 
     // Zone Density (Access Area-wise) - UNIQUE AREAS
-    $area_sql = "SELECT 
-                    COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as zone_label, 
-                    COUNT(*) as visitor_qty 
+    $area_sql = "SELECT COALESCE(access_area, 'Unassigned') as name, COUNT(id) as count 
                  FROM visits 
                  WHERE status = 'checked_in' 
-                 GROUP BY 1 
-                 ORDER BY visitor_qty DESC";
+                 GROUP BY name 
+                 ORDER BY count DESC";
     $area_zones_raw = $pdo->query($area_sql)->fetchAll(PDO::FETCH_ASSOC);
     $area_zones = array_map(function ($z) use ($max_capacity) {
-        return [
-            'name' => $z['zone_label'],
-            'count' => (int) $z['visitor_qty'],
-            'density' => $max_capacity > 0 ? round(($z['visitor_qty'] / $max_capacity) * 100) : 0
-        ];
+        $z['density'] = $max_capacity > 0 ? round(($z['count'] / $max_capacity) * 100) : 0;
+        return $z;
     }, $area_zones_raw);
 
     // Hourly Traffic (Last 12 Hours)

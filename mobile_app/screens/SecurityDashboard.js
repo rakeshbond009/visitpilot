@@ -433,7 +433,10 @@ export default function SecurityDashboard({ navigation }) {
         return (
             <View style={styles.section}>
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Zone Density</Text>
+                    <View>
+                        <Text style={styles.sectionTitle}>Zone Density</Text>
+                        <Text style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>Active Inside Now</Text>
+                    </View>
                     <View style={styles.viewToggle}>
                         <TouchableOpacity
                             style={[styles.toggleBtn, densityView === 'department' && { backgroundColor: '#3b82f6' }]}
