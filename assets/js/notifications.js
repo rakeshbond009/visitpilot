@@ -407,6 +407,14 @@
         if (action === 'reject') {
             const visitorName = currentVisitorData ? currentVisitorData.visitor_name : 'Visitor';
 
+            // Hide the Bootstrap modal FIRST before showing Swal to prevent focus trapping
+            const modalEl = document.getElementById('newVisitorModal');
+            let bootstrapModal = null;
+            if (modalEl) {
+                bootstrapModal = bootstrap.Modal.getInstance(modalEl);
+                if (bootstrapModal) bootstrapModal.hide();
+            }
+
             // Ask for rejection reason
             const { value: reason } = await Swal.fire({
                 title: 'Reject Visit?',
@@ -425,7 +433,11 @@
                 }
             });
 
-            if (!reason) return; // User cancelled
+            if (!reason) {
+                // If cancelled, show the visitor modal again
+                if (bootstrapModal) bootstrapModal.show();
+                return;
+            }
 
             const btn = document.getElementById('btn-reject');
             if (btn) {
@@ -546,7 +558,7 @@
                 Swal.fire('Registration Failed', data.message, 'error');
             }
         }).catch(e => {
-                Swal.fire('Network Error', 'Notification sync failed', 'error');
+            Swal.fire('Network Error', 'Notification sync failed', 'error');
         });
     };
 

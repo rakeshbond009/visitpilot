@@ -122,7 +122,13 @@
             }
         });
 
-        const modal = new bootstrap.Modal(document.getElementById('visitDetailsModal'));
+        const modalEl = document.getElementById('visitDetailsModal');
+        if (!modalEl) {
+            console.error("Visit Details Modal element not found!");
+            return;
+        }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         const content = document.getElementById('visit-details-content');
 
         content.innerHTML = `
@@ -135,8 +141,9 @@
         modal.show();
 
         try {
-            // Assume API is at ../api/visit/details.php suitable for 1-level deep directories (admin, host, security)
-            const response = await fetch(`../api/visit/details.php?id=${visitId}`);
+            // Use BASE_URL if available for absolute mapping, otherwise fallback to relative
+            const apiBase = (typeof BASE_URL !== 'undefined') ? BASE_URL : '../';
+            const response = await fetch(`${apiBase}api/visit/details.php?id=${visitId}`);
             const data = await response.json();
 
             if (data.status === 'success') {

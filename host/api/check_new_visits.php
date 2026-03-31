@@ -130,7 +130,7 @@ echo json_encode([
     'pending_count' => (int)$pending_count,
     'today_count' => (int)$today_count,
     'new_visits' => $new_visits,
-    'has_new' => count($new_visits) > 0 && $last_check !== null,
+    'has_new' => count($new_visits) > 0,
     'recent_visitors' => $recent_visitors,
     'timestamp' => date('Y-m-d H:i:s')
 ]);

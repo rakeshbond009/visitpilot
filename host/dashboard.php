@@ -20,8 +20,7 @@ if ($is_admin) {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE is_invited = 1 AND (status = 'pending' OR status = 'approved') AND visit_date >= CURDATE()");
     $stmt->execute();
     $invite_count = $stmt->fetchColumn();
-}
-else {
+} else {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND approval_status = 'pending'");
     $stmt->execute([$host_employee_id]);
     $pending_count = $stmt->fetchColumn();
@@ -44,8 +43,7 @@ $sql_today = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, 
 $stmt = $pdo->prepare($sql_today);
 if ($is_admin) {
     $stmt->execute();
-}
-else {
+} else {
     $stmt->execute([$host_employee_id]);
 }
 $today_visitors = $stmt->fetchAll();
@@ -60,8 +58,7 @@ $sql_pending = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path
 $stmt = $pdo->prepare($sql_pending);
 if ($is_admin) {
     $stmt->execute();
-}
-else {
+} else {
     $stmt->execute([$host_employee_id]);
 }
 $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -76,8 +73,7 @@ $sql_invites = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path
 $stmt = $pdo->prepare($sql_invites);
 if ($is_admin) {
     $stmt->execute();
-}
-else {
+} else {
     $stmt->execute([$host_employee_id]);
 }
 $active_invites = $stmt->fetchAll();
@@ -130,12 +126,12 @@ $best_slot_formatted = ($best_slot > 12) ? ($best_slot - 12) . " PM" : $best_slo
                 class="btn btn-outline-success btn-sm rounded-pill me-2">
                 <i class="bi bi-table me-1"></i> Employee Report
             </a>
-        <?php
-endif; ?>
+            <?php
+        endif; ?>
         <div class="bg-white p-2 px-3 rounded-pill shadow-sm border d-inline-block">
             <div class="form-check form-switch mb-0">
                 <input class="form-check-input" type="checkbox" id="backgroundToggle"
-                    onchange="toggleBackgroundMode(this)" <?php echo($_SESSION['bg_mode'] ?? 0) ? 'checked' : ''; ?>>
+                    onchange="toggleBackgroundMode(this)" <?php echo ($_SESSION['bg_mode'] ?? 0) ? 'checked' : ''; ?>>
                 <label class="form-check-label fw-bold small text-muted" for="backgroundToggle">
                     <i class="bi bi-cpu me-1"></i> BG Mode
                 </label>
@@ -253,7 +249,7 @@ $meetings_sql = "SELECT COUNT(*) FROM visits
                  AND status = 'checked_out'";
 $stmt = $pdo->prepare($meetings_sql);
 $stmt->execute([$host_employee_id]);
-$meetings_completed = (int)$stmt->fetchColumn();
+$meetings_completed = (int) $stmt->fetchColumn();
 
 // 2. Avg Meeting Time (All Time)
 $duration_sql = "SELECT AVG(TIMESTAMPDIFF(MINUTE, check_in_time, check_out_time)) 
@@ -263,13 +259,13 @@ $duration_sql = "SELECT AVG(TIMESTAMPDIFF(MINUTE, check_in_time, check_out_time)
                  AND check_in_time IS NOT NULL AND check_out_time IS NOT NULL";
 $stmt = $pdo->prepare($duration_sql);
 $stmt->execute([$host_employee_id]);
-$avg_minutes = (int)$stmt->fetchColumn();
+$avg_minutes = (int) $stmt->fetchColumn();
 $avg_duration = $avg_minutes > 0 ? $avg_minutes . "m" : "0m";
 
 // 3. Scheduled for Today (Invited)
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND is_invited = 1 AND visit_date = CURDATE() AND status IN ('pending', 'approved')");
 $stmt->execute([$host_employee_id]);
-$scheduled_today = (int)$stmt->fetchColumn();
+$scheduled_today = (int) $stmt->fetchColumn();
 ?>
 
 <div class="row mb-4">
@@ -284,8 +280,8 @@ $scheduled_today = (int)$stmt->fetchColumn();
                 <ul class="list-group list-group-flush">
                     <?php if (empty($frequent_visitors)): ?>
                         <li class="list-group-item text-center text-muted py-4 border-0">No frequent visitors yet.</li>
-                    <?php
-else: ?>
+                        <?php
+                    else: ?>
                         <?php foreach ($frequent_visitors as $fv): ?>
                             <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3 border-0">
                                 <div>
@@ -298,10 +294,10 @@ else: ?>
                                     <?php echo $fv['visit_count']; ?>
                                     Visits</span>
                             </li>
+                            <?php
+                        endforeach; ?>
                         <?php
-    endforeach; ?>
-                    <?php
-endif; ?>
+                    endif; ?>
                 </ul>
             </div>
         </div>
@@ -402,8 +398,8 @@ endif; ?>
                             <i class="bi bi-envelope-x display-6 text-light"></i>
                             <p class="text-muted mt-2">No active invitations found.</p>
                         </div>
-                    <?php
-else: ?>
+                        <?php
+                    else: ?>
                         <?php foreach ($active_invites as $inv): ?>
                             <div class="col-md-4 col-sm-6">
                                 <div class="card border-0 rounded-4 p-3 shadow-none h-100 hover-shadow transition"
@@ -453,10 +449,10 @@ else: ?>
                                     </div>
                                 </div>
                             </div>
+                            <?php
+                        endforeach; ?>
                         <?php
-    endforeach; ?>
-                    <?php
-endif; ?>
+                    endif; ?>
                 </div>
             </div>
             <div class="card-footer bg-white border-0 py-3 text-center">
@@ -637,7 +633,7 @@ endif; ?>
         const tbody = document.getElementById('modalTableBody');
         const thead = document.querySelector('#detailsListModal thead tr');
         tbody.innerHTML = '';
-        
+
         const searchInput = document.getElementById('detailsListSearch');
         if (searchInput) searchInput.value = '';
 
@@ -712,8 +708,8 @@ endif; ?>
                         `<div class="btn-group">
                                      <button onclick="approveDirectly(${v.id})" class="btn btn-sm btn-success rounded-start-pill px-3">Approve</button>
                                      <button onclick="rejectDirectly(${v.id})" class="btn btn-sm btn-danger rounded-end-pill px-3">Reject</button>
-                                  </div>` : type === 'invites' ? 
-                          `<div class="dropdown">
+                                  </div>` : type === 'invites' ?
+                            `<div class="dropdown">
                             <button class="btn btn-sm btn-light border rounded-pill px-3 fw-bold dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-display="static">
                                 <i class="bi bi-three-dots-vertical me-1 text-primary"></i> Action
                             </button>
@@ -750,7 +746,7 @@ endif; ?>
                                 </li>
                             </ul>
                         </div>` :
-                        `<span class="badge bg-light text-dark border fw-bold" style="font-size:0.65rem">${v.visit_code || 'N/A'}</span>`
+                            `<span class="badge bg-light text-dark border fw-bold" style="font-size:0.65rem">${v.visit_code || 'N/A'}</span>`
                     }
                         </td>
                     </tr>
@@ -842,17 +838,22 @@ endif; ?>
 <div class="modal fade" id="detailsListModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center shadow-sm" style="z-index: 10;">
+            <div class="modal-header bg-white border-bottom border-light py-3 d-flex justify-content-between align-items-center shadow-sm"
+                style="z-index: 10;">
                 <div class="d-flex align-items-center">
-                    <div class="bg-success bg-opacity-10 p-2 rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <div class="bg-success bg-opacity-10 p-2 rounded-circle me-2 d-flex align-items-center justify-content-center"
+                        style="width: 40px; height: 40px;">
                         <i class="bi bi-list-stars text-success fs-5"></i>
                     </div>
                     <h5 class="modal-title fw-bold text-dark mb-0" id="modalTitle">Details</h5>
                 </div>
                 <div class="d-flex align-items-center flex-grow-1 mx-4">
                     <div class="input-group shadow-sm rounded-pill overflow-hidden border">
-                        <span class="input-group-text bg-white border-0 ps-3"><i class="bi bi-search text-muted small"></i></span>
-                        <input type="text" id="detailsListSearch" class="form-control border-0 py-2 small" style="box-shadow: none;" placeholder="Quick Filter Records..." onkeyup="filterDetailsListModalTable()">
+                        <span class="input-group-text bg-white border-0 ps-3"><i
+                                class="bi bi-search text-muted small"></i></span>
+                        <input type="text" id="detailsListSearch" class="form-control border-0 py-2 small"
+                            style="box-shadow: none;" placeholder="Quick Filter Records..."
+                            onkeyup="filterDetailsListModalTable()">
                     </div>
                 </div>
                 <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -867,7 +868,7 @@ endif; ?>
                                 <th>In</th>
                                 <th>Out</th>
                                 <th>Status</th>
-                                 <th class="text-end pe-4">Action</th>
+                                <th class="text-end pe-4">Action</th>
                             </tr>
                         </thead>
                         <tbody id="modalTableBody"></tbody>
@@ -961,9 +962,19 @@ endif; ?>
         font-weight: 600;
     }
 
-    #detailsListModal .modal-content { border-radius: 1.25rem; overflow: visible !important; }
-    #detailsListModal .modal-body { overflow: visible !important; }
-    #detailsListModal .table-responsive { overflow: visible !important; }
+    #detailsListModal .modal-content {
+        border-radius: 1.25rem;
+        overflow: visible !important;
+    }
+
+    #detailsListModal .modal-body {
+        overflow: visible !important;
+    }
+
+    #detailsListModal .table-responsive {
+        overflow: visible !important;
+    }
+
     #detailsListModal .table thead th {
         background: #f8f9fa;
         font-weight: 700;
@@ -974,9 +985,18 @@ endif; ?>
         border-top: 0;
         padding: 12px 15px;
     }
-    #detailsListModal .table tbody tr:nth-child(even) { background-color: rgba(0,0,0,.02); }
-    #detailsListModal .table tbody tr:hover { background-color: rgba(13, 110, 253, 0.05) !important; }
-    .dropdown-menu { z-index: 2050 !important; }
+
+    #detailsListModal .table tbody tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, .02);
+    }
+
+    #detailsListModal .table tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.05) !important;
+    }
+
+    .dropdown-menu {
+        z-index: 2050 !important;
+    }
 
     .timeline-title {
         font-weight: 700;
