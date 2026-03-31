@@ -24,12 +24,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
+import { usePermissions } from '../context/PermissionContext';
 import VisitDetailModal from '../components/VisitDetailModal';
 
 
 const { width, height } = Dimensions.get('window');
 
 export default function AdminDashboard({ navigation }) {
+    const { refreshPermissions } = usePermissions();
     const [userData, setUserData] = useState(null);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'visitors'
     const [visitorView, setVisitorView] = useState('log'); // 'log', 'invites', 'pending'
