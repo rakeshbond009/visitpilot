@@ -242,11 +242,11 @@ export default function HostDashboard({ navigation }) {
                 setSelectedVisit(response.data.data);
                 setDetailModalVisible(true);
             } else {
-                Alert.alert('Error', response.data.message || 'Could not load details');
+                showAlert('Error', response.data.message || 'Could not load details', 'error');
             }
         } catch (err) {
             console.error('Visit Details Error:', err);
-            Alert.alert('Error', 'Could not load visit details');
+            showAlert('Error', 'Could not load visit details', 'error');
         } finally {
             setDetailsLoading(false);
         }

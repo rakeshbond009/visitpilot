@@ -186,7 +186,7 @@ export default function AdminDashboard({ navigation }) {
             }
         } catch (err) {
             console.error('Visit Details Error:', err);
-            Alert.alert('Error', 'Could not load visit details');
+            showAlert('Error', 'Could not load visit details', 'error');
         }
     };
 
@@ -605,11 +605,11 @@ export default function AdminDashboard({ navigation }) {
                             </View>
 
                             <View style={styles.employeeContactRow}>
-                                <TouchableOpacity style={styles.contactItem} onPress={() => Alert.alert('Call', `Calling ${emp.mobile}`)}>
+                                <TouchableOpacity style={styles.contactItem} onPress={() => showAlert('Call', `Calling ${emp.mobile}`, 'success')}>
                                     <Icon name="phone" size={18} color="#3b82f6" />
                                     <Text style={styles.contactText}>{emp.mobile}</Text>
                                 </TouchableOpacity>
-                                <TouchableOpacity style={styles.contactItem} onPress={() => Alert.alert('Email', `Emailing ${emp.email}`)}>
+                                <TouchableOpacity style={styles.contactItem} onPress={() => showAlert('Email', `Emailing ${emp.email}`, 'success')}>
                                     <Icon name="email" size={18} color="#3b82f6" />
                                     <Text style={styles.contactText} numberOfLines={1}>{emp.email}</Text>
                                 </TouchableOpacity>
