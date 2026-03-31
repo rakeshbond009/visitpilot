@@ -69,6 +69,16 @@ $mins = floor($avg_seconds / 60);
 $secs = round($avg_seconds % 60);
 $avg_display = "{$mins}m {$secs}s";
 
+// Fast Service Rate (Wait time < 30 mins) - Same day visitors
+$total_processed = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(created_at) = DATE(check_in_time)");
+$happy_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits 
+                              WHERE status IN ('checked_in', 'checked_out') 
+                              AND check_in_time IS NOT NULL
+                              AND DATE(created_at) = DATE(check_in_time)
+                              AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 30");
+
+$satisfaction_rate = ($total_processed > 0) ? round(($happy_visitors / $total_processed) * 100) : 100;
+
 $overstays_sql = "SELECT v.*, vis.name as visitor_name, emp.name as host_name, emp.department
                   FROM visits v 
                   JOIN visitors vis ON v.visitor_id = vis.id 
@@ -162,6 +172,7 @@ echo json_encode([
         'crowd_density' => $crowd_density,
         'active_count' => $active_visitors,
         'avg_checkin_time' => $avg_display,
+        'fast_service_rate' => $satisfaction_rate,
         'overstays_count' => $overstays_count,
         'overstays_list' => $overstays_list,
         'zones' => $zones,

@@ -493,7 +493,7 @@ if ($time_saved_minutes > 60) {
                                       WHERE status IN ('checked_in', 'checked_out') 
                                       AND check_in_time IS NOT NULL
                                       AND DATE(created_at) = DATE(check_in_time)
-                                      AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 10")->fetchColumn();
+                                      AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 30")->fetchColumn();
         $satisfaction = round(($happy_visitors / $total_processed) * 100);
     } else {
         $satisfaction = 100; // Default if no data for today
@@ -523,10 +523,10 @@ if ($time_saved_minutes > 60) {
                     </div>
                     <div class="col-sm-6">
                         <div class="p-4 rounded-4 bg-light text-center h-100">
-                            <h2 class="fw-bold <?php echo $sat_text; ?> mb-0"><?php echo $satisfaction; ?>%</h2>
+                            <h2 id="total-satisfaction-rate" class="fw-bold <?php echo $sat_text; ?> mb-0"><?php echo $satisfaction; ?>%</h2>
                             <small class="text-muted text-uppercase fw-bold">Fast Service Rate</small>
                             <div class="progress mt-3" style="height: 6px;">
-                                <div class="progress-bar <?php echo $sat_color; ?>" role="progressbar"
+                                <div id="satisfaction-bar" class="progress-bar <?php echo $sat_color; ?>" role="progressbar"
                                     style="width: <?php echo $satisfaction; ?>%"></div>
                             </div>
                         </div>
@@ -692,7 +692,23 @@ if ($time_saved_minutes > 60) {
                     const overBadge = document.getElementById('overstay-badge');
                     const overList = document.getElementById('overstay-list');
 
-                    if (aim.overstays_count > 0) {
+                        // Update Efficiency Metrics
+                        if (aim.fast_service_rate !== undefined) {
+                            const satRate = document.getElementById('total-satisfaction-rate');
+                            const satBar = document.getElementById('satisfaction-bar');
+                            if (satRate) satRate.innerText = aim.fast_service_rate + '%';
+                            if (satBar) {
+                                satBar.style.width = aim.fast_service_rate + '%';
+                                let barCol = 'bg-info', textCol = 'text-info';
+                                if (aim.fast_service_rate < 50) { barCol = 'bg-danger'; textCol = 'text-danger'; }
+                                else if (aim.fast_service_rate < 80) { barCol = 'bg-warning'; textCol = 'text-warning'; }
+                                
+                                satBar.className = 'progress-bar ' + barCol;
+                                if (satRate) satRate.className = 'fw-bold mb-0 ' + textCol;
+                            }
+                        }
+
+                        if (aim.overstays_count > 0) {
                         secStatus.innerText = 'Anomaly Alert';
                         secMsg.innerText = aim.overstays_count + ' visitor(s) overstaying.';
                         if (overBadge) {
