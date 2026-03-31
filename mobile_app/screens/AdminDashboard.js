@@ -221,6 +221,7 @@ export default function AdminDashboard({ navigation }) {
                         total_visits: data.total_visits || 0,
                         today_visits: data.today_visitors || 0,
                         time_saved: data.time_saved || '0 mins',
+                        max_capacity: data.max_capacity || 50,
                     });
 
                     // Update trends if available
@@ -264,11 +265,8 @@ export default function AdminDashboard({ navigation }) {
                             // 1. Pending
                             setPendingVisits(allVisits.filter(v => v.status === 'pending'));
 
-                            // 2. Today (Approximate check using string match for simplicity)
-                            const todayStr = new Date().toISOString().split('T')[0];
-                            // Note: created_at might be "2023-10-27 10:00:00". 
-                            // A better check handles timezones, but specific date check:
-                            setTodayVisits(allVisits.filter(v => v.created_at && v.created_at.includes(todayStr)));
+                            // 2. Today (Use server-side record)
+                            setTodayVisits(data.records.today_visits || []);
 
                             // 3. Invites - Admin API might not return future invites in 'visits' list
                             // We will assume they might be there with is_invited=1 or status='invited'
@@ -1694,9 +1692,6 @@ export default function AdminDashboard({ navigation }) {
                         </TouchableOpacity>
                         <Text style={styles.fullModalTitleText}>{modalTitle}</Text>
                     </View>
-
-                    {/* Modal Search Bar */}
-                    {renderModalSearch()}
 
                     <View style={{ flex: 1 }}>
                         {modalType === 'employees' && renderEmployeeRecords()}

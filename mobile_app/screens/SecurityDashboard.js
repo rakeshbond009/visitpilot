@@ -427,7 +427,8 @@ export default function SecurityDashboard({ navigation }) {
     const renderZoneDensity = () => {
         if (!hasPermission('admin_reports') && !hasPermission('security_reports')) return null;
 
-        const zones = densityView === 'department' ? aiMetrics.zones.department : aiMetrics.zones.access_area;
+        if (!aiMetrics || !aiMetrics.zones) return null;
+        const zones = (densityView === 'department' ? aiMetrics.zones.department : aiMetrics.zones.access_area) || [];
 
         return (
             <View style={styles.section}>
@@ -461,7 +462,7 @@ export default function SecurityDashboard({ navigation }) {
                                 return (
                                     <View key={index} style={styles.zoneRow}>
                                         <View style={{ flex: 1 }}>
-                                            <Text style={styles.zoneNameText}>{item.zone}</Text>
+                                            <Text style={styles.zoneNameText}>{item.name}</Text>
                                             <Text style={[styles.zoneStatusText, { color }]}>{status}</Text>
                                         </View>
                                         <View style={styles.zoneProgressContainer}>

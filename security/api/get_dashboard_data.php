@@ -203,6 +203,8 @@ try {
         'stats' => $stats,
         'ai_metrics' => [
             'crowd_density' => $crowd_density,
+            'active_count' => $active_visitors,
+            'max_capacity' => $max_capacity,
             'avg_checkin_time' => $avg_display,
             'overstays_count' => $overstays_count,
             'overstays_list' => $overstay_list,

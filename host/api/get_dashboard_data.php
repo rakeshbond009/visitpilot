@@ -87,8 +87,8 @@ $stmt = $pdo->prepare($duration_sql);
 $stmt->execute([$host_employee_id]);
 $avg_minutes = (int)$stmt->fetchColumn();
 
-// 3. Scheduled for Today (Invited)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND is_invited = 1 AND visit_date = CURDATE() AND status IN ('pending', 'approved')");
+// 3. Check-in Pending for Today (Approved but not yet checked in)
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'approved' AND (DATE(created_at) = CURDATE() OR (is_invited = 1 AND visit_date = CURDATE()))");
 $stmt->execute([$host_employee_id]);
 $scheduled_today = (int)$stmt->fetchColumn();
 
