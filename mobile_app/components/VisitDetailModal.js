@@ -33,6 +33,8 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
 
     const photoUri = getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path);
 
+    const [passY, setPassY] = React.useState(0);
+
     return (
         <Modal
             animationType="slide"
@@ -151,7 +153,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                         {visit.visit_code && (
                             <View 
                                 style={styles.passCard}
-                                onLayout={(event) => { /* Layout hook */ }}
+                                onLayout={(event) => { setPassY(event.nativeEvent.layout.y); }}
                             >
                                 <Text style={styles.detailsSectionTitle}>Digital Entry Pass</Text>
                                 <View style={styles.qrContainer}>
@@ -174,7 +176,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                                         style={[styles.modalActionBtn, { backgroundColor: '#3b82f6', marginBottom: 12, flex: 0, width: '100%' }]} 
                                         onPress={() => {
                                             if (scrollRef.current) {
-                                                scrollRef.current.scrollToEnd({ animated: true });
+                                                scrollRef.current.scrollTo({ y: passY, animated: true });
                                             }
                                         }}
                                     >

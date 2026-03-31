@@ -120,7 +120,7 @@ try {
         $overstay_count = count($overstay_list);
 
         // Recent Activity
-        $recent_sql = "SELECT v.id, vr.name as visitor_name, v.status, v.created_at, e.name as host_name, e.department, v.visit_photo as photo_url, v.check_in_time, v.check_out_time
+        $recent_sql = "SELECT v.id, vr.name as visitor_name, v.status, v.created_at, e.name as host_name, e.department, v.visit_photo as photo_url, v.check_in_time, v.check_out_time, v.visit_code
                        FROM visits v 
                        JOIN visitors vr ON v.visitor_id = vr.id 
                        LEFT JOIN employees e ON v.employee_id = e.id 
@@ -153,13 +153,13 @@ try {
         }, $area_zones_raw);
 
         // Records lists
-        $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name 
+        $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name, v.visit_code 
                                        FROM visits v 
                                        JOIN visitors vr ON v.visitor_id = vr.id
                                        LEFT JOIN employees e ON v.employee_id = e.id 
                                        ORDER BY v.created_at DESC LIMIT 50");
         
-        $today_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name 
+        $today_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name, v.visit_code 
                                        FROM visits v 
                                        JOIN visitors vr ON v.visitor_id = vr.id
                                        LEFT JOIN employees e ON v.employee_id = e.id 
