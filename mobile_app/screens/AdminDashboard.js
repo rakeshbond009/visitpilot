@@ -519,9 +519,9 @@ export default function AdminDashboard({ navigation }) {
                             </View>
                             <View style={styles.activityBottomRow}>
                                 <Text style={styles.hostName} numberOfLines={1}>Host: {item.host_name}</Text>
-                                <View style={[styles.miniStatusBadge, { backgroundColor: item.status === 'checked_in' ? '#dcfce7' : '#e0e7ff' }]}>
-                                    <Text style={[styles.miniStatusText, { color: item.status === 'checked_in' ? '#166534' : '#3730a3' }]}>
-                                        {item.status === 'checked_in' ? 'IN' : 'OUT'}
+                                <View style={[styles.miniStatusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                                    <Text style={[styles.miniStatusText, { color: '#ffffff' }]}>
+                                        {(item.status || 'UNKNOWN').replace('_', ' ').toUpperCase()}
                                     </Text>
                                 </View>
                             </View>
@@ -1732,6 +1732,7 @@ export default function AdminDashboard({ navigation }) {
                 visible={detailsVisible}
                 onClose={() => setDetailsVisible(false)}
                 visit={selectedVisit}
+                userRole="admin"
                 onAction={(id, action) => {
                     handleAction(id, action);
                     setDetailsVisible(false);

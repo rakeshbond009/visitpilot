@@ -1127,6 +1127,7 @@ export default function SecurityDashboard({ navigation }) {
                 visible={detailsVisible}
                 onClose={() => setDetailsVisible(false)}
                 visit={selectedVisit}
+                userRole="security"
                 onAction={(id, action) => {
                     handleAction(id, action);
                     setDetailsVisible(false);

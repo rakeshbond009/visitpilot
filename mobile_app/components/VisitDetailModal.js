@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
 import { CONFIG } from '../utils/config';
 
-const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
+const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
     if (!visit) return null;
 
     const getPhotoUrl = (url) => {
@@ -167,7 +167,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                                     )}
 
                                     <View style={styles.actionsContainer}>
-                                        {visit.status === 'pending' && (
+                                        {visit.status === 'pending' && userRole === 'host' && (
                                             <>
                                                 <TouchableOpacity
                                                     style={[styles.modalActionBtn, styles.rejectBtn]}

@@ -1146,6 +1146,7 @@ export default function HostDashboard({ navigation }) {
             visible={detailModalVisible}
             onClose={() => setDetailModalVisible(false)}
             visit={selectedVisit}
+            userRole="host"
             onAction={(id, action) => {
                 handleAction(id, action);
                 setDetailModalVisible(false);
