@@ -152,14 +152,14 @@ try {
             return $z;
         }, $area_zones_raw);
 
-        // Records lists
-        $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name, v.visit_code 
+        // Records lists — include check_in_time and check_out_time for In/Out display on cards
+        $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.approval_status, v.created_at, v.check_in_time, v.check_out_time, e.name as host_name, e.department, v.visit_code, v.purpose, v.is_invited, v.visit_photo 
                                        FROM visits v 
                                        JOIN visitors vr ON v.visitor_id = vr.id
                                        LEFT JOIN employees e ON v.employee_id = e.id 
-                                       ORDER BY v.created_at DESC LIMIT 50");
-        
-        $today_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name, v.visit_code 
+                                       ORDER BY v.created_at DESC LIMIT 100");
+
+        $today_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.approval_status, v.created_at, v.check_in_time, v.check_out_time, e.name as host_name, e.department, v.visit_code, v.purpose, v.is_invited, v.visit_photo 
                                        FROM visits v 
                                        JOIN visitors vr ON v.visitor_id = vr.id
                                        LEFT JOIN employees e ON v.employee_id = e.id 

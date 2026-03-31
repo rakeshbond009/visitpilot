@@ -158,14 +158,14 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                             {onAction && (
                                 <View style={{ padding: 15 }}>
                                     {visit.visit_code && isPassAllowed(visit.status) && (
-                                        <TouchableOpacity 
-                                            style={[styles.modalActionBtn, { backgroundColor: '#1161ee', marginBottom: 12, borderRadius: 30, height: 55, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 5 }]} 
+                                        <TouchableOpacity
+                                            style={[styles.modalActionBtn, { backgroundColor: '#1161ee', marginBottom: 12, borderRadius: 30, height: 55, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 5 }]}
                                             onPress={() => setPassModalVisible(true)}
                                         >
                                             <Text style={[styles.modalActionText, { fontSize: 16, letterSpacing: 1 }]}>VIEW DIGITAL PASS</Text>
                                         </TouchableOpacity>
                                     )}
-                                    
+
                                     <View style={styles.actionsContainer}>
                                         {visit.status === 'pending' && (
                                             <>
@@ -285,8 +285,8 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                     </View>
 
                     {/* Close Trigger Only */}
-                    <TouchableOpacity 
-                        style={styles.idCloseBtn} 
+                    <TouchableOpacity
+                        style={styles.idCloseBtn}
                         onPress={() => setPassModalVisible(false)}
                     >
                         <Text style={styles.idCloseBtnText}>✕ CLOSE PASS</Text>
@@ -340,26 +340,26 @@ const styles = StyleSheet.create({
     idHeader: { backgroundColor: '#1161ee', paddingVertical: 30, alignItems: 'center' },
     idHeaderCompany: { fontSize: 10, color: '#fff', opacity: 0.9, letterSpacing: 2, fontWeight: '800' },
     idHeaderTitle: { fontSize: 28, color: '#fff', fontWeight: '900', letterSpacing: 1 },
-    
+
     idBody: { paddingBottom: 25, alignItems: 'center', paddingHorizontal: 25 },
     idPhotoWrapper: { marginTop: -40, marginBottom: 15 },
     idPhotoContainer: { padding: 6, backgroundColor: '#fff', borderRadius: 30, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8 },
     idVisitorImg: { width: 160, height: 160, borderRadius: 24 },
-    
+
     idVisitorName: { fontSize: 24, fontWeight: '900', color: '#111', textAlign: 'center', marginBottom: 5 },
     idVisitorCode: { fontSize: 18, color: '#0d6efd', fontWeight: '800', letterSpacing: 1, marginBottom: 20 },
-    
+
     idGrid: { width: '100%', backgroundColor: '#f8f9fa', borderRadius: 20, padding: 15, flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
     idGridItem: { width: '50%', marginBottom: 12 },
     idGridLabel: { fontSize: 0.65 * 14, color: '#adb5bd', fontWeight: '800', textTransform: 'uppercase', marginBottom: 2 },
     idGridValue: { fontSize: 0.85 * 14, color: '#333', fontWeight: '800' },
-    
+
     idQrContainer: { alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: '#fff', borderRadius: 15, borderWidth: 1, borderColor: '#eee' },
     idQrImg: { width: 100, height: 100 },
-    
+
     idFooter: { backgroundColor: '#fbfbfc', borderTopWidth: 1, borderTopColor: '#eee', paddingVertical: 15, alignItems: 'center' },
     idFooterText: { fontSize: 10, fontWeight: '900', color: '#ccc', letterSpacing: 2 },
-    
+
     idCloseBtn: { marginTop: 30, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
     idCloseBtnText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 1 }
 });

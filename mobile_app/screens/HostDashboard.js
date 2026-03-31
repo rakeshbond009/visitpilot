@@ -333,13 +333,27 @@ export default function HostDashboard({ navigation }) {
                                 <Text style={styles.statusBadgeText}>{status.replace('_', ' ').toUpperCase()}</Text>
                             </View>
                         </View>
+                        {/* In/Out time row — matches Security & Admin */}
+                        <View style={{ flexDirection: 'row', marginTop: 6, gap: 8 }}>
+                            {type === 'invites' ? (
+                                <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '600' }}>
+                                    📅 {item.visit_date ? new Date(item.visit_date).toLocaleDateString([], { day: '2-digit', month: 'short' }) : '-'}
+                                </Text>
+                            ) : (
+                                <>
+                                    <Text style={{ fontSize: 11, color: '#3b82f6', fontWeight: '700', backgroundColor: '#eff6ff', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                        In: {item.check_in_time ? new Date(item.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: '#64748b', fontWeight: '700', backgroundColor: '#f8fafc', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                        Out: {item.check_out_time ? new Date(item.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                    </Text>
+                                </>
+                            )}
+                        </View>
                     </View>
                     <View style={styles.timeContainer}>
                         <Text style={styles.timeText}>
-                            {type === 'invites'
-                                ? new Date(item.visit_date).toLocaleDateString([], { day: '2-digit', month: 'short' })
-                                : new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                            }
+                            {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                     </View>
                 </View>
@@ -365,6 +379,7 @@ export default function HostDashboard({ navigation }) {
             </TouchableOpacity>
         );
     };
+
 
     const getStatusColor = (status) => {
         switch (status) {
