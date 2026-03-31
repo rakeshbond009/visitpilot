@@ -25,6 +25,7 @@ import { CONFIG } from '../utils/config';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { usePermissions } from '../context/PermissionContext';
 import VisitDetailModal from '../components/VisitDetailModal';
+import VisitListModal from '../components/VisitListModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -1574,7 +1575,7 @@ export default function SecurityDashboard({ navigation }) {
             <Modal
                 animationType="slide"
                 transparent={true}
-                visible={modalVisible}
+                visible={modalVisible && modalType !== 'visits' && modalType !== 'overstays'}
                 onRequestClose={() => setModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
@@ -1586,13 +1587,50 @@ export default function SecurityDashboard({ navigation }) {
                             </TouchableOpacity>
                         </View>
                         <View style={styles.modalBody}>
-                            {modalType === 'visits' && renderVisitRecords()}
-                            {modalType === 'overstays' && renderOverstayList()}
                             {modalType === 'efficiency' && renderEfficiencyModal()}
                         </View>
                     </View>
                 </View>
             </Modal>
+
+            <VisitListModal
+                visible={modalVisible && (modalType === 'visits' || modalType === 'overstays')}
+                onClose={() => setModalVisible(false)}
+                title={modalTitle}
+                color={modalType === 'overstays' ? '#ef4444' : '#3b82f6'}
+                visits={(() => {
+                    if (modalType === 'overstays') return records.overstays || [];
+                    
+                    const isToday = (dateStr) => {
+                        if (!dateStr) return false;
+                        const d = new Date(dateStr.indexOf('T') === -1 && dateStr.indexOf(' ') > -1 ? dateStr.replace(' ', 'T') : dateStr);
+                        const now = new Date();
+                        return d.getDate() === now.getDate() &&
+                            d.getMonth() === now.getMonth() &&
+                            d.getFullYear() === now.getFullYear();
+                    };
+
+                    return (records.visits || []).filter(v => {
+                        if (modalTitle === 'Total Today') {
+                            return isToday(v.created_at) || (v.is_invited == 1 && isToday(v.visit_date));
+                        }
+                        if (modalFilter === 'pending') {
+                            return (v.approval_status?.toLowerCase() === 'pending' || v.status?.toLowerCase() === 'pending');
+                        }
+                        if (modalTitle === 'Check-in Pending') {
+                            return v.status?.toLowerCase() === 'approved' && (isToday(v.created_at) || (v.is_invited == 1 && isToday(v.visit_date)));
+                        }
+                        if (modalFilter) {
+                            return v.status === modalFilter;
+                        }
+                        return true;
+                    });
+                })()}
+                onVisitPress={(visit) => {
+                    setModalVisible(false);
+                    fetchVisitDetails(visit.id);
+                }}
+            />
 
             {renderSweetAlert()}
             {renderVisitDetailsModal()}
