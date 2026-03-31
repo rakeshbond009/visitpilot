@@ -623,16 +623,16 @@ if ($time_saved_min > 60) {
             backdrop: `rgba(0,0,0,0.5)`
         }).then((result) => {
             if (result.isConfirmed) {
-                viewVisitDetails(visit.id);
+                // Short timeout to allow Swal to finish closing, avoiding Bootstrap modal backdrop overlaps
+                setTimeout(() => {
+                    if (typeof viewVisitDetails === 'function') {
+                        viewVisitDetails(visit.id);
+                    }
+                }, 350);
             }
         });
 
-        // Play sound if BG Mode is ON
-        const bgToggle = document.getElementById('backgroundToggle');
-        if (bgToggle && bgToggle.checked) {
-            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            sound.play().catch(e => console.log("Sound blocked"));
-        }
+        // The poller (security_notifications.js) now handles the sound centrally
     }
 
     // --- REAL-TIME ENGINE ---

@@ -821,12 +821,8 @@ if ($time_saved_minutes > 60) {
         const title = isApproved ? 'Approved' : 'Rejected';
         const color = isApproved ? '#198754' : '#dc3545';
 
-        // Play sound if BG Mode is ON
-        const bgToggle = document.getElementById('backgroundToggle');
-        if (bgToggle && bgToggle.checked) {
-            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            sound.play().catch(e => console.log("Sound blocked"));
-        }
+        // Sound is handled centrally by security_notifications.js poller
+
 
         Swal.fire({
             title: `<span class="fw-bold text-dark mt-2" style="font-size: 1.1rem; letter-spacing: -0.5px;">Arrival Status Update</span>`,
@@ -853,12 +849,13 @@ if ($time_saved_minutes > 60) {
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                // Short timeout to allow Swal to finish closing, avoiding Bootstrap modal backdrop overlaps
+                // IMPORTANT: 350ms delay ensures SweetAlert cleans up its backdrop 
+                // BEFORE Bootstrap attempts to launch the visitDetailsModal.
                 setTimeout(() => {
-                    if (typeof window.viewVisitDetails === 'function') {
-                        window.viewVisitDetails(visit.id);
+                    if (typeof viewVisitDetails === 'function') {
+                        viewVisitDetails(visit.id);
                     }
-                }, 150);
+                }, 350);
             }
         });
     }

@@ -46,8 +46,9 @@
                             notifiedVisits.add(visit.id);
 
                             // 1. Play Sound
-                            const isBG = localStorage.getItem('vms_security_bg_mode') === 'true';
-                            if (isBG) {
+                            // Notification sound should always trigger for status updates 
+                            // to ensure immediate feedback to security/admin.
+                            if (notificationSound) {
                                 notificationSound.play().catch(e => console.warn("Audio blocked"));
                             }
 
