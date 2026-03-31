@@ -14,223 +14,223 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
     };
 
     const getStatusColor = (status) => {
-        if (!status) return '#6c757d';
-        switch (status.toLowerCase()) {
-            case 'approved': return '#0d6efd';
-            case 'checked_in': return '#198754';
-            case 'rejected': return '#dc3545';
-            case 'checked_out': return '#212529';
+        switch (status) {
             case 'pending': return '#f59e0b';
-            case 'completed': return '#212529'; // same as checked_out
-            default: return '#6c757d';
+            case 'approved': return '#10b981';
+            case 'checked_in': return '#3b82f6';
+            case 'checked_out': return '#64748b';
+            case 'rejected': return '#ef4444';
+            default: return '#94a3b8';
         }
     };
 
-    const formatDate = (dateString) => {
-        if (!dateString) return '-';
-        return new Date(dateString).toLocaleString();
+    const formatDate = (dateStr) => {
+        if (!dateStr) return 'N/A';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch (e) {
+            return dateStr;
+        }
     };
 
     const photoUri = getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path);
-
-    const [passY, setPassY] = React.useState(0);
+    const [passModalVisible, setPassModalVisible] = React.useState(false);
 
     return (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={visible}
-            onRequestClose={onClose}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={styles.detailsModalView}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Visit Details</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text style={styles.closeBtn}>✕</Text>
+        <>
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={visible}
+                onRequestClose={onClose}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.detailsModalView}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Visit Details</Text>
+                            <TouchableOpacity onPress={onClose}>
+                                <Text style={styles.closeBtn}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView ref={scrollRef} style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
+                            <View style={styles.detailsHeader}>
+                                <View style={styles.photoContainer}>
+                                    <Image
+                                        source={photoUri ? { uri: photoUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(visit.visitor_name || 'V')}&background=random` }}
+                                        style={styles.visitorPhoto}
+                                        resizeMode="cover"
+                                    />
+                                </View>
+                                <View style={styles.detailsBasic}>
+                                    <Text style={styles.detailsName}>{visit.visitor_name}</Text>
+                                    <Text style={styles.detailsMobile}>{visit.mobile}</Text>
+                                    <View style={[styles.statusBadgeModal, { backgroundColor: getStatusColor(visit.status) }]}>
+                                        <Text style={styles.statusBadgeTextModal}>{(visit.status || '').toUpperCase().replace('_', ' ')}</Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.detailsCard}>
+                                <Text style={styles.detailsSectionTitle}>Visit Information</Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                    {[
+                                        { label: 'Host Name', value: visit.host_name },
+                                        { label: 'Department', value: visit.department },
+                                        { label: 'Purpose', value: visit.purpose },
+                                        { label: 'Visit Code', value: visit.visit_code ? `#${visit.visit_code}` : null },
+                                        { label: 'Company', value: visit.company },
+                                        { label: 'Email', value: visit.email },
+                                        { label: 'ID Type', value: visit.id_proof_type },
+                                        { label: 'ID Number', value: visit.id_proof_number },
+                                    ].map((item, index) => (
+                                        <View key={index} style={styles.detailsItem}>
+                                            <Text style={styles.detailsLabel}>{item.label}</Text>
+                                            <Text style={styles.detailsValue}>{item.value || '-'}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View style={styles.detailsCard}>
+                                <Text style={styles.detailsSectionTitle}>Timeline</Text>
+                                <View style={styles.timelineItem}>
+                                    <View style={[styles.timelineDot, { backgroundColor: '#3b82f6' }]} />
+                                    <View>
+                                        <Text style={styles.timelineTitle}>Registered</Text>
+                                        <Text style={styles.timelineDate}>{formatDate(visit.created_at)}</Text>
+                                    </View>
+                                </View>
+                                {visit.check_in_time && (
+                                    <View style={styles.timelineItem}>
+                                        <View style={[styles.timelineDot, { backgroundColor: '#10b981' }]} />
+                                        <View>
+                                            <Text style={styles.timelineTitle}>Checked In</Text>
+                                            <Text style={styles.timelineDate}>{formatDate(visit.check_in_time)}</Text>
+                                        </View>
+                                    </View>
+                                )}
+                                {visit.check_out_time && (
+                                    <View style={styles.timelineItem}>
+                                        <View style={[styles.timelineDot, { backgroundColor: '#64748b' }]} />
+                                        <View>
+                                            <Text style={styles.timelineTitle}>Checked Out</Text>
+                                            <Text style={styles.timelineDate}>{formatDate(visit.check_out_time)}</Text>
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+
+                            {onAction && (
+                                <View style={styles.actionsContainer}>
+                                    {visit.visit_code && (
+                                        <TouchableOpacity 
+                                            style={[styles.modalActionBtn, { backgroundColor: '#1e293b', marginBottom: 12, flex: 0, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]} 
+                                            onPress={() => setPassModalVisible(true)}
+                                        >
+                                            <Text style={styles.modalActionText}>View Digital Pass</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    
+                                    <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                                        {visit.status === 'pending' && (
+                                            <>
+                                                <TouchableOpacity 
+                                                    style={[styles.modalActionBtn, styles.rejectBtn, { flex: 1 }]} 
+                                                    onPress={() => onAction(visit.id, 'reject')}
+                                                >
+                                                    <Text style={styles.modalActionText}>Reject</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity 
+                                                    style={[styles.modalActionBtn, styles.approveBtn, { flex: 1 }]} 
+                                                    onPress={() => onAction(visit.id, 'approve')}
+                                                >
+                                                    <Text style={styles.modalActionText}>Approve</Text>
+                                                </TouchableOpacity>
+                                            </>
+                                        )}
+                                        {visit.status === 'approved' && (
+                                            <TouchableOpacity 
+                                                style={[styles.modalActionBtn, styles.checkInBtn, { flex: 1 }]} 
+                                                onPress={() => onAction(visit.id, 'checkin')}
+                                            >
+                                                <Text style={styles.modalActionText}>Check-In Visitor</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        {visit.status === 'checked_in' && (
+                                            <TouchableOpacity 
+                                                style={[styles.modalActionBtn, styles.checkOutBtn, { flex: 1 }]} 
+                                                onPress={() => onAction(visit.id, 'checkout')}
+                                            >
+                                                <Text style={styles.modalActionText}>Check-Out Visitor</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
+
+                            {visit.rejection_reason && (
+                                <View style={[styles.detailsCard, { backgroundColor: '#fef2f2' }]}>
+                                    <Text style={[styles.detailsSectionTitle, { color: '#ef4444' }]}>Rejection Reason</Text>
+                                    <Text style={[styles.detailsValue, { color: '#dc2626' }]}>{visit.rejection_reason}</Text>
+                                </View>
+                            )}
+
+                            <View style={{ height: 40 }} />
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={passModalVisible}
+                onRequestClose={() => setPassModalVisible(false)}
+            >
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center' }]}>
+                    <View style={[styles.detailsCard, { margin: 25, padding: 30, alignItems: 'center', width: '85%', alignSelf: 'center' }]}>
+                        <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                            <Text style={[styles.modalTitle, { color: '#3b82f6' }]}>Entry Pass</Text>
+                            <TouchableOpacity onPress={() => setPassModalVisible(false)}>
+                                <Text style={{ fontSize: 24, color: '#64748b' }}>✕</Text>
+                            </TouchableOpacity>
+                        </View>
+                        
+                        <View style={{ alignItems: 'center', backgroundColor: '#f8fafc', padding: 25, borderRadius: 20, width: '100%' }}>
+                            {visit.visit_code && (
+                                <Image
+                                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(visit.visit_code)}` }}
+                                    style={{ width: 220, height: 220, marginBottom: 20 }}
+                                />
+                            )}
+                            <Text style={{ fontSize: 26, fontWeight: '900', color: '#1e293b', letterSpacing: 2 }}>{visit.visit_code || '---'}</Text>
+                            <Text style={{ fontSize: 12, color: '#64748b', marginTop: 10, fontWeight: '700' }}>SCAN TO CHECK-IN / CHECK-OUT</Text>
+                        </View>
+
+                        <View style={{ marginTop: 25, width: '100%' }}>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e293b', textAlign: 'center' }}>{visit.visitor_name}</Text>
+                            <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginTop: 5 }}>Host: {visit.host_name || '-'}</Text>
+                        </View>
+
+                        <TouchableOpacity 
+                            style={[styles.modalActionBtn, { backgroundColor: '#3b82f6', marginTop: 30, width: '100%', flex: 0 }]}
+                            onPress={() => setPassModalVisible(false)}
+                        >
+                            <Text style={styles.modalActionText}>Done</Text>
                         </TouchableOpacity>
                     </View>
-
-                    <ScrollView ref={scrollRef} style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
-                        <View style={styles.detailsHeader}>
-                            <View style={styles.photoContainer}>
-                                <Image
-                                    source={photoUri ? { uri: photoUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(visit.visitor_name || 'V')}&background=random` }}
-                                    style={styles.visitorPhoto}
-                                    resizeMode="cover"
-                                />
-                            </View>
-                            <View style={styles.detailsBasic}>
-                                <Text style={styles.detailsName}>{visit.visitor_name}</Text>
-                                <Text style={styles.detailsMobile}>{visit.mobile}</Text>
-                                <View style={[styles.statusBadgeModal, { backgroundColor: getStatusColor(visit.status) }]}>
-                                    <Text style={styles.statusBadgeTextModal}>{(visit.status || '').toUpperCase().replace('_', ' ')}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.detailsCard}>
-                            <Text style={styles.detailsSectionTitle}>Visit Information</Text>
-                            <View style={styles.detailsGrid}>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Host Name</Text>
-                                    <Text style={styles.detailsValue}>{visit.host_name || '-'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Department</Text>
-                                    <Text style={styles.detailsValue}>{visit.department || '-'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Purpose</Text>
-                                    <Text style={styles.detailsValue}>{visit.purpose || '-'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Visit Code</Text>
-                                    <Text style={styles.detailsValue}>#{visit.visit_code || '-'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Company</Text>
-                                    <Text style={styles.detailsValue}>{visit.company || '-'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Email</Text>
-                                    <Text style={styles.detailsValue}>{visit.email || '-'}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.detailsCard}>
-                            <Text style={styles.detailsSectionTitle}>Identity Verification</Text>
-                            <View style={styles.detailsGrid}>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>ID Type</Text>
-                                    <Text style={styles.detailsValue}>{visit.id_proof_type || 'N/A'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>ID Number</Text>
-                                    <Text style={styles.detailsValue}>{visit.id_proof_number || 'N/A'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Assets</Text>
-                                    <Text style={styles.detailsValue}>{visit.assets_carried || 'None'}</Text>
-                                </View>
-                                <View style={styles.detailsItem}>
-                                    <Text style={styles.detailsLabel}>Access Area</Text>
-                                    <Text style={styles.detailsValue}>{visit.access_area || 'Not Assigned'}</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        <View style={styles.detailsCard}>
-                            <Text style={styles.detailsSectionTitle}>Timeline</Text>
-                            <View style={styles.timelineItem}>
-                                <View style={[styles.timelineDot, { backgroundColor: '#3b82f6' }]} />
-                                <View>
-                                    <Text style={styles.timelineTitle}>Registered</Text>
-                                    <Text style={styles.timelineDate}>{formatDate(visit.created_at)}</Text>
-                                </View>
-                            </View>
-                            {visit.check_in_time && (
-                                <View style={styles.timelineItem}>
-                                    <View style={[styles.timelineDot, { backgroundColor: '#10b981' }]} />
-                                    <View>
-                                        <Text style={styles.timelineTitle}>Checked In</Text>
-                                        <Text style={styles.timelineDate}>{formatDate(visit.check_in_time)}</Text>
-                                    </View>
-                                </View>
-                            )}
-                            {visit.check_out_time && (
-                                <View style={styles.timelineItem}>
-                                    <View style={[styles.timelineDot, { backgroundColor: '#64748b' }]} />
-                                    <View>
-                                        <Text style={styles.timelineTitle}>Checked Out</Text>
-                                        <Text style={styles.timelineDate}>{formatDate(visit.check_out_time)}</Text>
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-
-                        {visit.visit_code && (
-                            <View 
-                                style={styles.passCard}
-                                onLayout={(event) => { setPassY(event.nativeEvent.layout.y); }}
-                            >
-                                <Text style={styles.detailsSectionTitle}>Digital Entry Pass</Text>
-                                <View style={styles.qrContainer}>
-                                    <Image
-                                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(visit.visit_code)}` }}
-                                        style={styles.qrCode}
-                                    />
-                                    <View style={styles.passInfo}>
-                                        <Text style={styles.passLabel}>SCAN AT GATE</Text>
-                                        <Text style={styles.passCode}>{visit.visit_code}</Text>
-                                    </View>
-                                </View>
-                            </View>
-                        )}
-
-                        {onAction && (
-                            <View style={styles.actionsContainer}>
-                                {visit.visit_code && (
-                                    <TouchableOpacity 
-                                        style={[styles.modalActionBtn, { backgroundColor: '#3b82f6', marginBottom: 12, flex: 0, width: '100%' }]} 
-                                        onPress={() => {
-                                            if (scrollRef.current) {
-                                                scrollRef.current.scrollTo({ y: passY, animated: true });
-                                            }
-                                        }}
-                                    >
-                                        <Text style={styles.modalActionText}>View Digital Pass</Text>
-                                    </TouchableOpacity>
-                                )}
-                                
-                                <View style={{ flexDirection: 'row', gap: 10, flex: 1 }}>
-                                    {visit.status === 'pending' && (
-                                        <>
-                                            <TouchableOpacity 
-                                                style={[styles.modalActionBtn, styles.rejectBtn]} 
-                                                onPress={() => onAction(visit.id, 'reject')}
-                                            >
-                                                <Text style={styles.modalActionText}>Reject Visit</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity 
-                                                style={[styles.modalActionBtn, styles.approveBtn]} 
-                                                onPress={() => onAction(visit.id, 'approve')}
-                                            >
-                                                <Text style={styles.modalActionText}>Approve Visit</Text>
-                                            </TouchableOpacity>
-                                        </>
-                                    )}
-                                    {visit.status === 'approved' && (
-                                        <TouchableOpacity 
-                                            style={[styles.modalActionBtn, styles.checkInBtn]} 
-                                            onPress={() => onAction(visit.id, 'checkin')}
-                                        >
-                                            <Text style={styles.modalActionText}>Check-In Visitor</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                    {visit.status === 'checked_in' && (
-                                        <TouchableOpacity 
-                                            style={[styles.modalActionBtn, styles.checkOutBtn]} 
-                                            onPress={() => onAction(visit.id, 'checkout')}
-                                        >
-                                            <Text style={styles.modalActionText}>Check-Out Visitor</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            </View>
-                        )}
-
-                        {visit.rejection_reason && (
-                            <View style={[styles.detailsCard, { backgroundColor: '#fef2f2' }]}>
-                                <Text style={[styles.detailsSectionTitle, { color: '#ef4444' }]}>Rejection Reason</Text>
-                                <Text style={[styles.detailsValue, { color: '#dc2626' }]}>{visit.rejection_reason}</Text>
-                            </View>
-                        )}
-
-                        <View style={{ height: 40 }} />
-                    </ScrollView>
                 </View>
+            </Modal>
+        </>
+    );
             </View>
         </Modal>
     );
