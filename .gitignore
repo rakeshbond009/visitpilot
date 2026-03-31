@@ -13,8 +13,13 @@ includes/sessions/
 .DS_Store
 .vscode/
 includes/*.json
+tmp/
+temp/
+api_stats_log.txt
 
 # Backup files
 *.bak
 *.tmp
 *.log
+*.txt
+includes/sessions/*.json
