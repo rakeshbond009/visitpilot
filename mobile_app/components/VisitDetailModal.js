@@ -33,6 +33,12 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
     const photoUri = getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path);
     const [passModalVisible, setPassModalVisible] = React.useState(false);
 
+    const isPassAllowed = (status) => {
+        if (!status) return false;
+        const s = status.toLowerCase();
+        return s === 'approved' || s === 'checked_in';
+    };
+
     return (
         <>
             <Modal
@@ -151,12 +157,12 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
 
                             {onAction && (
                                 <View style={{ padding: 15 }}>
-                                    {visit.visit_code && (
+                                    {visit.visit_code && isPassAllowed(visit.status) && (
                                         <TouchableOpacity 
-                                            style={[styles.modalActionBtn, { backgroundColor: '#1e293b', marginBottom: 12, flex: 0, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]} 
+                                            style={[styles.modalActionBtn, { backgroundColor: '#1161ee', marginBottom: 12, borderRadius: 30, height: 55, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 5 }]} 
                                             onPress={() => setPassModalVisible(true)}
                                         >
-                                            <Text style={styles.modalActionText}>View Digital Pass</Text>
+                                            <Text style={[styles.modalActionText, { fontSize: 16, letterSpacing: 1 }]}>VIEW DIGITAL PASS</Text>
                                         </TouchableOpacity>
                                     )}
                                     
@@ -210,45 +216,81 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                 </View>
             </Modal>
 
-            {/* Dedicated Pass Modal */}
+            {/* Premium Web-App Style ID Pass Modal */}
             <Modal
                 animationType="fade"
                 transparent={true}
                 visible={passModalVisible}
                 onRequestClose={() => setPassModalVisible(false)}
             >
-                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center' }]}>
-                    <View style={[styles.detailsCard, { margin: 25, padding: 30, alignItems: 'center', width: '85%', alignSelf: 'center' }]}>
-                        <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-                            <Text style={[styles.modalTitle, { color: '#3b82f6' }]}>Entry Pass</Text>
-                            <TouchableOpacity onPress={() => setPassModalVisible(false)}>
-                                <Text style={{ fontSize: 24, color: '#64748b' }}>✕</Text>
-                            </TouchableOpacity>
-                        </View>
-                        
-                        <View style={{ alignItems: 'center', backgroundColor: '#f8fafc', padding: 25, borderRadius: 20, width: '100%' }}>
-                            {visit.visit_code && (
-                                <Image
-                                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(visit.visit_code)}` }}
-                                    style={{ width: 220, height: 220, marginBottom: 20 }}
-                                />
-                            )}
-                            <Text style={{ fontSize: 26, fontWeight: '900', color: '#1e293b', letterSpacing: 2 }}>{visit.visit_code || '---'}</Text>
-                            <Text style={{ fontSize: 12, color: '#64748b', marginTop: 10, fontWeight: '700' }}>SCAN TO CHECK-IN / CHECK-OUT</Text>
+                <View style={[styles.passOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
+                    <View style={styles.idCardContainer}>
+                        {/* ID Card Header (Web-Style) */}
+                        <View style={styles.idHeader}>
+                            <Text style={styles.idHeaderCompany}>VISITPILOT VMS</Text>
+                            <Text style={styles.idHeaderTitle}>VISITOR PASS</Text>
                         </View>
 
-                        <View style={{ marginTop: 25, width: '100%' }}>
-                            <Text style={{ fontSize: 18, fontWeight: '800', color: '#1e293b', textAlign: 'center' }}>{visit.visitor_name}</Text>
-                            <Text style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginTop: 5 }}>Host: {visit.host_name || '-'}</Text>
+                        {/* ID Card Body */}
+                        <View style={styles.idBody}>
+                            {/* Visitor Photo (Web-Style Centered/Large) */}
+                            <View style={styles.idPhotoWrapper}>
+                                <View style={styles.idPhotoContainer}>
+                                    <Image
+                                        source={photoUri ? { uri: photoUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(visit.visitor_name || 'V')}&background=random` }}
+                                        style={styles.idVisitorImg}
+                                        resizeMode="cover"
+                                    />
+                                </View>
+                            </View>
+
+                            <Text style={styles.idVisitorName}>{visit.visitor_name?.toUpperCase()}</Text>
+                            <Text style={styles.idVisitorCode}>{visit.visit_code}</Text>
+
+                            {/* Details Grid (Web-Style) */}
+                            <View style={styles.idGrid}>
+                                <View style={styles.idGridItem}>
+                                    <Text style={styles.idGridLabel}>VISITING:</Text>
+                                    <Text style={styles.idGridValue} numberOfLines={1}>{visit.host_name}</Text>
+                                </View>
+                                <View style={styles.idGridItem}>
+                                    <Text style={styles.idGridLabel}>PURPOSE:</Text>
+                                    <Text style={styles.idGridValue}>{visit.purpose}</Text>
+                                </View>
+                                <View style={styles.idGridItem}>
+                                    <Text style={styles.idGridLabel}>ACCESS AREA:</Text>
+                                    <Text style={styles.idGridValue}>{visit.access_area || 'General'}</Text>
+                                </View>
+                                <View style={styles.idGridItem}>
+                                    <Text style={styles.idGridLabel}>DATE:</Text>
+                                    <Text style={[styles.idGridValue, { color: '#0d6efd' }]}>{new Date(visit.created_at).toLocaleDateString()}</Text>
+                                </View>
+                            </View>
+
+                            {/* QR Code (Web-Style) */}
+                            <View style={styles.idQrContainer}>
+                                {visit.visit_code && (
+                                    <Image
+                                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(visit.visit_code)}` }}
+                                        style={styles.idQrImg}
+                                    />
+                                )}
+                            </View>
                         </View>
 
-                        <TouchableOpacity 
-                            style={[styles.modalActionBtn, { backgroundColor: '#3b82f6', marginTop: 30, width: '100%', flex: 0 }]}
-                            onPress={() => setPassModalVisible(false)}
-                        >
-                            <Text style={styles.modalActionText}>Done</Text>
-                        </TouchableOpacity>
+                        {/* ID Footer */}
+                        <View style={styles.idFooter}>
+                            <Text style={styles.idFooterText}>VISITPILOT VMS</Text>
+                        </View>
                     </View>
+
+                    {/* Close Trigger Only */}
+                    <TouchableOpacity 
+                        style={styles.idCloseBtn} 
+                        onPress={() => setPassModalVisible(false)}
+                    >
+                        <Text style={styles.idCloseBtnText}>✕ CLOSE PASS</Text>
+                    </TouchableOpacity>
                 </View>
             </Modal>
         </>
@@ -284,20 +326,42 @@ const styles = StyleSheet.create({
     timelineTitle: { fontSize: 15, fontWeight: '800', color: '#1e293b' },
     timelineDate: { fontSize: 13, color: '#64748b' },
 
-    passCard: { backgroundColor: '#fff', margin: 15, borderRadius: 20, padding: 20, alignItems: 'center', borderStyle: 'dashed', borderWidth: 2, borderColor: '#e2e8f0' },
-    qrContainer: { padding: 10, alignItems: 'center' },
-    qrCode: { width: 180, height: 180, marginBottom: 15 },
-    passInfo: { alignItems: 'center' },
-    passLabel: { fontSize: 12, color: '#94a3b8', fontWeight: '800', letterSpacing: 1.5 },
-    passCode: { fontSize: 24, fontWeight: '900', color: '#1e293b', marginTop: 5 },
-
     actionsContainer: { flexDirection: 'row', padding: 15, gap: 10, justifyContent: 'space-between' },
     modalActionBtn: { flex: 1, paddingVertical: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 },
     approveBtn: { backgroundColor: '#10b981' },
     rejectBtn: { backgroundColor: '#ef4444' },
-    checkInBtn: { backgroundColor: '#3b82f6' },
-    checkOutBtn: { backgroundColor: '#1e293b' },
+    checkInBtn: { backgroundColor: '#0d6efd' },
+    checkOutBtn: { backgroundColor: '#212529' },
     modalActionText: { color: '#fff', fontWeight: '800', fontSize: 14, textTransform: 'uppercase' },
+
+    // WEB-APP STYLE ID CARD STYLES
+    passOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+    idCardContainer: { width: 340, backgroundColor: '#fff', borderRadius: 35, overflow: 'hidden', elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 15 },
+    idHeader: { backgroundColor: '#1161ee', paddingVertical: 30, alignItems: 'center' },
+    idHeaderCompany: { fontSize: 10, color: '#fff', opacity: 0.9, letterSpacing: 2, fontWeight: '800' },
+    idHeaderTitle: { fontSize: 28, color: '#fff', fontWeight: '900', letterSpacing: 1 },
+    
+    idBody: { paddingBottom: 25, alignItems: 'center', paddingHorizontal: 25 },
+    idPhotoWrapper: { marginTop: -40, marginBottom: 15 },
+    idPhotoContainer: { padding: 6, backgroundColor: '#fff', borderRadius: 30, elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8 },
+    idVisitorImg: { width: 160, height: 160, borderRadius: 24 },
+    
+    idVisitorName: { fontSize: 24, fontWeight: '900', color: '#111', textAlign: 'center', marginBottom: 5 },
+    idVisitorCode: { fontSize: 18, color: '#0d6efd', fontWeight: '800', letterSpacing: 1, marginBottom: 20 },
+    
+    idGrid: { width: '100%', backgroundColor: '#f8f9fa', borderRadius: 20, padding: 15, flexDirection: 'row', flexWrap: 'wrap', marginBottom: 20 },
+    idGridItem: { width: '50%', marginBottom: 12 },
+    idGridLabel: { fontSize: 0.65 * 14, color: '#adb5bd', fontWeight: '800', textTransform: 'uppercase', marginBottom: 2 },
+    idGridValue: { fontSize: 0.85 * 14, color: '#333', fontWeight: '800' },
+    
+    idQrContainer: { alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: '#fff', borderRadius: 15, borderWidth: 1, borderColor: '#eee' },
+    idQrImg: { width: 100, height: 100 },
+    
+    idFooter: { backgroundColor: '#fbfbfc', borderTopWidth: 1, borderTopColor: '#eee', paddingVertical: 15, alignItems: 'center' },
+    idFooterText: { fontSize: 10, fontWeight: '900', color: '#ccc', letterSpacing: 2 },
+    
+    idCloseBtn: { marginTop: 30, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 30, paddingVertical: 12, borderRadius: 25, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+    idCloseBtnText: { color: '#fff', fontWeight: '800', fontSize: 13, letterSpacing: 1 }
 });
 
 export default VisitDetailModal;

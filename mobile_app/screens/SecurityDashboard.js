@@ -1018,6 +1018,25 @@ export default function SecurityDashboard({ navigation }) {
     };
 
     const handleAction = async (visitId, action) => {
+        if (action === 'checkin' || action === 'checkout') {
+            const label = action === 'checkin' ? 'Check-In' : 'Check-Out';
+            Alert.alert(
+                'Confirm Action',
+                `Are you sure you want to ${label} this visitor?`,
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { 
+                        text: 'Yes, Proceed', 
+                        onPress: () => executeAction(visitId, action) 
+                    }
+                ]
+            );
+        } else {
+            executeAction(visitId, action);
+        }
+    };
+
+    const executeAction = async (visitId, action) => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
                 action: action,
