@@ -819,12 +819,8 @@ if ($time_saved_minutes > 60) {
         const title = isApproved ? 'Approved' : 'Rejected';
         const color = isApproved ? '#198754' : '#dc3545';
 
-        // Play sound if BG Mode is ON
-        const bgToggle = document.getElementById('backgroundToggle');
-        if (bgToggle && bgToggle.checked) {
-            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            sound.play().catch(e => console.log("Sound blocked"));
-        }
+        // Sound and poller logic are handled centrally by security_notifications.js.
+        // This function focuses strictly on the UI presentation in the dashboard.
 
         Swal.fire({
             title: `<span class="fw-bold text-dark mt-2" style="font-size: 1.1rem; letter-spacing: -0.5px;">Arrival Status Update</span>`,
@@ -832,7 +828,7 @@ if ($time_saved_minutes > 60) {
                 <div class="text-center">
                     <div class="mx-auto mb-3 rounded-pill py-1 px-3 d-inline-block animate__animated animate__fadeInDown" 
                          style="background: ${isApproved ? 'rgba(25, 135, 84, 0.1)' : 'rgba(220, 53, 69, 0.1)'}; 
-                                border: 1px solid ${isApproved ? 'rgba(25, 135, 84, 0.2)' : 'rgba(220, 53, 69, 0.2)'};">
+                                 border: 1px solid ${isApproved ? 'rgba(25, 135, 84, 0.2)' : 'rgba(220, 53, 69, 0.2)'};">
                         <span class="fw-bold small" style="color: ${color};"><i class="bi ${isApproved ? 'bi-patch-check-fill' : 'bi-patch-exclamation-fill'} me-1"></i> ${title.toUpperCase()}</span>
                     </div>
                     <h5 class="fw-bold text-dark mb-1">${visit.visitor_name}</h5>
@@ -840,7 +836,7 @@ if ($time_saved_minutes > 60) {
                 </div>
             `,
             showCancelButton: true,
-            confirmButtonText: 'View Details',
+            confirmButtonText: '<i class="bi bi-gear-fill me-2"></i>Manage Visit',
             cancelButtonText: 'Dismiss',
             confirmButtonColor: color,
             reverseButtons: true,
@@ -851,7 +847,12 @@ if ($time_saved_minutes > 60) {
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                viewVisitDetails(visit.id);
+                // Short timeout to allow Swal to finish closing, avoiding Bootstrap modal backdrop overlaps
+                setTimeout(() => {
+                    if (typeof window.viewVisitDetails === 'function') {
+                        window.viewVisitDetails(visit.id);
+                    }
+                }, 150);
             }
         });
     }
