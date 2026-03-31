@@ -1,0 +1,73 @@
+﻿Array
+(
+    [0] => Array
+        (
+            [id] => 35
+            [dept] => HR
+            [access_area] => Server Room
+        )
+
+    [1] => Array
+        (
+            [id] => 67
+            [dept] => Engineering
+            [access_area] => Lobby
+        )
+
+    [2] => Array
+        (
+            [id] => 86
+            [dept] => HR
+            [access_area] => Server Room
+        )
+
+    [3] => Array
+        (
+            [id] => 203
+            [dept] => Admin
+            [access_area] => 1st Floor
+        )
+
+    [4] => Array
+        (
+            [id] => 286
+            [dept] => HR
+            [access_area] => Not Assigned
+        )
+
+    [5] => Array
+        (
+            [id] => 331
+            [dept] => HR
+            [access_area] => Not Assigned
+        )
+
+    [6] => Array
+        (
+            [id] => 335
+            [dept] => HR
+            [access_area] => Not Assigned
+        )
+
+    [7] => Array
+        (
+            [id] => 336
+            [dept] => HR
+            [access_area] => Not Assigned
+        )
+
+    [8] => Array
+        (
+            [id] => 338
+            [dept] => HR
+            [access_area] => Not Assigned
+        )
+
+    [9] => Array
+        (
+            [id] => 340
+            [dept] => HR
+            [access_area] => Not Assigned
+        )
+
+)

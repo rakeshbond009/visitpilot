@@ -590,8 +590,8 @@ export default function AdminDashboard({ navigation }) {
                 {renderModalSearch()}
                 <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                     {filteredEmployees.map((emp, idx) => (
-                        <TouchableOpacity 
-                            key={idx} 
+                        <TouchableOpacity
+                            key={idx}
                             style={styles.employeeCard}
                             onPress={() => handleRecordClick(emp, 'employees')}
                         >
@@ -641,7 +641,7 @@ export default function AdminDashboard({ navigation }) {
     const renderEmployeeDetailsModal = () => {
         if (!selectedEmployee) return null;
         const emp = selectedEmployee;
-        
+
         // Find visits hosted by this employee
         const hostVisits = (records.visits || []).filter(v => v.host_name === emp.name).slice(0, 5);
 
@@ -988,10 +988,7 @@ export default function AdminDashboard({ navigation }) {
         return (
             <View style={styles.zoneCard}>
                 <View style={styles.cardHeaderRow}>
-                    <View>
-                        <Text style={styles.cardTitle}>Zone Density</Text>
-                        <Text style={styles.cardSubTitle}>({aiInsights.active_visitors || 0} active now)</Text>
-                    </View>
+                    <Text style={styles.cardTitle}>Zone Density</Text>
                     <View style={styles.toggleContainer}>
                         <TouchableOpacity
                             style={[styles.toggleBtn, zoneViewMode === 'department' && styles.toggleBtnActive]}
@@ -1060,7 +1057,7 @@ export default function AdminDashboard({ navigation }) {
                     </View>
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
-                        
+
                         {alertConfig.showCancel ? (
                             <View style={styles.alertActionRow}>
                                 <TouchableOpacity
@@ -1107,8 +1104,8 @@ export default function AdminDashboard({ navigation }) {
                 }
             );
         } else if (action === 'approve' || action === 'reject') {
-             const label = action === 'approve' ? 'Approve' : 'Reject';
-             showAlert(
+            const label = action === 'approve' ? 'Approve' : 'Reject';
+            showAlert(
                 'Confirm ' + label,
                 `Are you sure you want to ${label} this visit request?`,
                 'warning',
@@ -1788,7 +1785,7 @@ export default function AdminDashboard({ navigation }) {
                 onRequestClose={() => setModalVisible(false)}
             >
                 <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-                    <View style={[styles.fullModalHeader, { 
+                    <View style={[styles.fullModalHeader, {
                         backgroundColor: modalType === 'employees' ? '#ef4444' : '#8b5cf6'
                     }]}>
                         <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.fullModalBack}>
@@ -1802,7 +1799,7 @@ export default function AdminDashboard({ navigation }) {
                         {modalType === 'efficiency' && (
                             <ScrollView style={styles.modalScroll}>
                                 <Text style={styles.modalBody}>
-                                Overall efficiency is calculated based on {efficiency.satisfaction} visitor satisfaction and {stats.time_saved} saved across the organization.
+                                    Overall efficiency is calculated based on {efficiency.satisfaction} visitor satisfaction and {stats.time_saved} saved across the organization.
                                 </Text>
                             </ScrollView>
                         )}
@@ -2226,10 +2223,10 @@ export default function AdminDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    fullModalHeader: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        paddingHorizontal: 20, 
+    fullModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
         paddingVertical: 18,
         elevation: 4,
         shadowColor: '#000',

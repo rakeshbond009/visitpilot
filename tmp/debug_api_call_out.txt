@@ -1,0 +1,8 @@
+﻿
+Warning: require_once(../includes/api_header.php): Failed to open stream: No such file or directory in C:\xampp\htdocs\visitpilot\api\dashboard\stats.php on line 2
+
+Fatal error: Uncaught Error: Failed opening required '../includes/api_header.php' (include_path='C:\xampp\php\PEAR') in C:\xampp\htdocs\visitpilot\api\dashboard\stats.php:2
+Stack trace:
+#0 C:\xampp\htdocs\visitpilot\tmp\debug_api_call.php(7): require_once()
+#1 {main}
+  thrown in C:\xampp\htdocs\visitpilot\api\dashboard\stats.php on line 2

@@ -1,0 +1,9 @@
+﻿--- UNIQUE STATUSES IN VMS_SIDDHI.VISITS TABLE ---
+Array
+(
+)
+
+--- DEPT COUNTS FOR CHECKED_IN ---
+Array
+(
+)

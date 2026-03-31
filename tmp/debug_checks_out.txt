@@ -1,0 +1,74 @@
+﻿--- ACTUALLY CHECKED_IN VISITORS DATE/TIME ---
+Array
+(
+    [0] => Array
+        (
+            [id] => 35
+            [created_at] => 2026-01-10 14:41:00
+            [check_in_time] => 2026-01-10 14:54:16
+        )
+
+    [1] => Array
+        (
+            [id] => 67
+            [created_at] => 2026-01-19 13:44:00
+            [check_in_time] => 2026-01-19 13:47:53
+        )
+
+    [2] => Array
+        (
+            [id] => 86
+            [created_at] => 2026-01-19 14:52:00
+            [check_in_time] => 2026-01-19 14:54:12
+        )
+
+    [3] => Array
+        (
+            [id] => 203
+            [created_at] => 2026-02-12 14:01:10
+            [check_in_time] => 2026-02-12 17:18:52
+        )
+
+    [4] => Array
+        (
+            [id] => 286
+            [created_at] => 2026-03-15 14:36:19
+            [check_in_time] => 2026-03-15 16:48:47
+        )
+
+    [5] => Array
+        (
+            [id] => 331
+            [created_at] => 2026-03-17 01:04:57
+            [check_in_time] => 2026-03-17 11:54:46
+        )
+
+    [6] => Array
+        (
+            [id] => 335
+            [created_at] => 2026-03-17 01:10:50
+            [check_in_time] => 2026-03-17 11:35:45
+        )
+
+    [7] => Array
+        (
+            [id] => 336
+            [created_at] => 2026-03-17 01:12:37
+            [check_in_time] => 2026-03-17 11:19:07
+        )
+
+    [8] => Array
+        (
+            [id] => 338
+            [created_at] => 2026-03-17 11:37:09
+            [check_in_time] => 2026-03-17 11:56:16
+        )
+
+    [9] => Array
+        (
+            [id] => 340
+            [created_at] => 2026-03-17 12:05:22
+            [check_in_time] => 2026-03-17 12:30:40
+        )
+
+)

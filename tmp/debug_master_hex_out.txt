@@ -1,0 +1,86 @@
+﻿--- UNIQUE DEPARTMENT STRINGS IN EMPLOYEES TABLE ---
+Array
+(
+    [0] => Array
+        (
+            [department] => Admin
+            [hex_val] => 41646D696E
+            [c] => 2
+        )
+
+    [1] => Array
+        (
+            [department] => Engineering
+            [hex_val] => 456E67696E656572696E67
+            [c] => 1
+        )
+
+    [2] => Array
+        (
+            [department] => Finance
+            [hex_val] => 46696E616E6365
+            [c] => 1
+        )
+
+    [3] => Array
+        (
+            [department] => HR
+            [hex_val] => 4852
+            [c] => 1
+        )
+
+    [4] => Array
+        (
+            [department] => IT
+            [hex_val] => 4954
+            [c] => 1
+        )
+
+    [5] => Array
+        (
+            [department] => Marketing
+            [hex_val] => 4D61726B6574696E67
+            [c] => 1
+        )
+
+    [6] => Array
+        (
+            [department] => Sales
+            [hex_val] => 53616C6573
+            [c] => 2
+        )
+
+)
+
+--- UNIQUE ACCESS AREA STRINGS IN VISITS TABLE (Checked-in) ---
+Array
+(
+    [0] => Array
+        (
+            [access_area] => 1st Floor
+            [hex_val] => 31737420466C6F6F72
+            [c] => 1
+        )
+
+    [1] => Array
+        (
+            [access_area] => Lobby
+            [hex_val] => 4C6F626279
+            [c] => 1
+        )
+
+    [2] => Array
+        (
+            [access_area] => Not Assigned
+            [hex_val] => 4E6F742041737369676E6564
+            [c] => 6
+        )
+
+    [3] => Array
+        (
+            [access_area] => Server Room
+            [hex_val] => 53657276657220526F6F6D
+            [c] => 2
+        )
+
+)

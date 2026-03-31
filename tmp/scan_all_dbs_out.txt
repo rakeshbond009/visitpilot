@@ -1,0 +1,44 @@
+﻿DATABASE: old HAS 10 CHECKED-IN VISITORS!
+Array
+(
+    [0] => Array
+        (
+            [name] => HR
+            [c] => 8
+        )
+
+    [1] => Array
+        (
+            [name] => Engineering
+            [c] => 1
+        )
+
+    [2] => Array
+        (
+            [name] => Admin
+            [c] => 1
+        )
+
+)
+DATABASE: vms_master HAS 10 CHECKED-IN VISITORS!
+Array
+(
+    [0] => Array
+        (
+            [name] => HR
+            [c] => 8
+        )
+
+    [1] => Array
+        (
+            [name] => Engineering
+            [c] => 1
+        )
+
+    [2] => Array
+        (
+            [name] => Admin
+            [c] => 1
+        )
+
+)

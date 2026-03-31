@@ -1,0 +1,155 @@
+﻿--- UNIQUE STATUSES IN VISITS TABLE ---
+Array
+(
+    [0] => Array
+        (
+            [status] => 
+            [c] => 22
+        )
+
+    [1] => Array
+        (
+            [status] => pending
+            [c] => 43
+        )
+
+    [2] => Array
+        (
+            [status] => approved
+            [c] => 89
+        )
+
+    [3] => Array
+        (
+            [status] => rejected
+            [c] => 47
+        )
+
+    [4] => Array
+        (
+            [status] => checked_in
+            [c] => 10
+        )
+
+    [5] => Array
+        (
+            [status] => checked_out
+            [c] => 22
+        )
+
+)
+
+--- RECENT VISITS (Last 10) ---
+Array
+(
+    [0] => Array
+        (
+            [id] => 395
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => 1st Floor
+            [status] => approved
+            [created_at] => 2026-03-30 23:30:34
+        )
+
+    [1] => Array
+        (
+            [id] => 394
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Server Room
+            [status] => approved
+            [created_at] => 2026-03-30 23:21:59
+        )
+
+    [2] => Array
+        (
+            [id] => 393
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Chairman Office
+            [status] => approved
+            [created_at] => 2026-03-30 23:21:03
+        )
+
+    [3] => Array
+        (
+            [id] => 392
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Chairman Office
+            [status] => rejected
+            [created_at] => 2026-03-30 23:16:17
+        )
+
+    [4] => Array
+        (
+            [id] => 391
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Server Room
+            [status] => approved
+            [created_at] => 2026-03-30 23:15:25
+        )
+
+    [5] => Array
+        (
+            [id] => 390
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Chairman Office
+            [status] => rejected
+            [created_at] => 2026-03-30 23:14:46
+        )
+
+    [6] => Array
+        (
+            [id] => 389
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Directors Area
+            [status] => approved
+            [created_at] => 2026-03-30 23:14:07
+        )
+
+    [7] => Array
+        (
+            [id] => 388
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Chairman Office
+            [status] => approved
+            [created_at] => 2026-03-30 23:11:12
+        )
+
+    [8] => Array
+        (
+            [id] => 387
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => Chairman Office
+            [status] => rejected
+            [created_at] => 2026-03-30 23:10:34
+        )
+
+    [9] => Array
+        (
+            [id] => 386
+            [visitor_name] => Rakesh Verma
+            [host_name] => John Doe
+            [department] => HR
+            [access_area] => 1st Floor
+            [status] => approved
+            [created_at] => 2026-03-30 23:09:40
+        )
+
+)

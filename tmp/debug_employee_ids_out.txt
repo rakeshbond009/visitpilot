@@ -1,0 +1,73 @@
+﻿Array
+(
+    [0] => Array
+        (
+            [id] => 35
+            [employee_id] => 1
+            [access_area] => Server Room
+        )
+
+    [1] => Array
+        (
+            [id] => 67
+            [employee_id] => 2
+            [access_area] => Lobby
+        )
+
+    [2] => Array
+        (
+            [id] => 86
+            [employee_id] => 1
+            [access_area] => Server Room
+        )
+
+    [3] => Array
+        (
+            [id] => 203
+            [employee_id] => 100
+            [access_area] => 1st Floor
+        )
+
+    [4] => Array
+        (
+            [id] => 286
+            [employee_id] => 1
+            [access_area] => Not Assigned
+        )
+
+    [5] => Array
+        (
+            [id] => 331
+            [employee_id] => 1
+            [access_area] => Not Assigned
+        )
+
+    [6] => Array
+        (
+            [id] => 335
+            [employee_id] => 1
+            [access_area] => Not Assigned
+        )
+
+    [7] => Array
+        (
+            [id] => 336
+            [employee_id] => 1
+            [access_area] => Not Assigned
+        )
+
+    [8] => Array
+        (
+            [id] => 338
+            [employee_id] => 1
+            [access_area] => Not Assigned
+        )
+
+    [9] => Array
+        (
+            [id] => 340
+            [employee_id] => 1
+            [access_area] => Not Assigned
+        )
+
+)

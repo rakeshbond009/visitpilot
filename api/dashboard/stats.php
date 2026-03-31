@@ -130,35 +130,35 @@ try {
 
         // Zone Density
         $dept_zones_raw = safeFetchAll($pdo, "SELECT 
-                                    COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as zone_name, 
-                                    COUNT(*) as visitor_count 
+                                    COALESCE(NULLIF(TRIM(e.department), ''), 'Other') as zone_label, 
+                                    COUNT(*) as visitor_qty 
                                    FROM visits v 
                                    LEFT JOIN employees e ON v.employee_id = e.id 
                                    WHERE v.status = 'checked_in' 
                                    GROUP BY 1 
-                                   ORDER BY visitor_count DESC");
+                                   ORDER BY visitor_qty DESC");
 
         $dept_zones = array_map(function ($z) use ($max_capacity) {
             return [
-                'name' => $z['zone_name'],
-                'count' => (int) $z['visitor_count'],
-                'density' => $max_capacity > 0 ? round(($z['visitor_count'] / $max_capacity) * 100) : 0
+                'name' => $z['zone_label'],
+                'count' => (int) $z['visitor_qty'],
+                'density' => $max_capacity > 0 ? round(($z['visitor_qty'] / $max_capacity) * 100) : 0
             ];
         }, $dept_zones_raw);
 
         $area_zones_raw = safeFetchAll($pdo, "SELECT 
-                                    COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as zone_name, 
-                                    COUNT(*) as visitor_count 
+                                    COALESCE(NULLIF(TRIM(access_area), ''), 'Unassigned') as zone_label, 
+                                    COUNT(*) as visitor_qty 
                                    FROM visits 
                                    WHERE status = 'checked_in' 
                                    GROUP BY 1 
-                                   ORDER BY visitor_count DESC");
+                                   ORDER BY visitor_qty DESC");
 
         $area_zones = array_map(function ($z) use ($max_capacity) {
             return [
-                'name' => $z['zone_name'],
-                'count' => (int) $z['visitor_count'],
-                'density' => $max_capacity > 0 ? round(($z['visitor_count'] / $max_capacity) * 100) : 0
+                'name' => $z['zone_label'],
+                'count' => (int) $z['visitor_qty'],
+                'density' => $max_capacity > 0 ? round(($z['visitor_qty'] / $max_capacity) * 100) : 0
             ];
         }, $area_zones_raw);
 

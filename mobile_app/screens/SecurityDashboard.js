@@ -455,7 +455,8 @@ export default function SecurityDashboard({ navigation }) {
                             <Text style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', marginVertical: 10 }}>No active visitors in any zone</Text>
                         ) : (
                             zones.map((item, index) => {
-                                const pct = Math.min(100, (item.count / 10) * 100);
+                                const densityMax = aiMetrics.max_capacity || 50;
+                                const pct = Math.min(100, (item.count / densityMax) * 100);
                                 const color = pct > 80 ? '#ef4444' : (pct > 40 ? '#f59e0b' : '#10b981');
                                 const status = pct > 80 ? 'High Congestion' : (pct > 40 ? 'Moderate Traffic' : 'Low Activity');
 

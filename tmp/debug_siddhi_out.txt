@@ -1,0 +1,76 @@
+﻿--- TABLES ---
+Array
+(
+    [0] => access_areas
+    [1] => audit_logs
+    [2] => departments
+    [3] => employees
+    [4] => role_permissions
+    [5] => sessions
+    [6] => support_requests
+    [7] => system_settings
+    [8] => user_devices
+    [9] => user_permissions
+    [10] => user_sessions
+    [11] => users
+    [12] => visit_members
+    [13] => visit_otps
+    [14] => visit_purposes
+    [15] => visitors
+    [16] => visits
+)
+
+--- ACTIVE VISITORS (status=checked_in) ---
+Array
+(
+)
+
+--- ALL EMPLOYEES AND THEIR DEPTS ---
+Array
+(
+    [0] => Array
+        (
+            [id] => 1
+            [name] => John Doe
+            [department] => HR
+        )
+
+    [1] => Array
+        (
+            [id] => 2
+            [name] => Sarah Smith
+            [department] => Engineering
+        )
+
+    [2] => Array
+        (
+            [id] => 3
+            [name] => Michael Brown
+            [department] => Sales
+        )
+
+    [3] => Array
+        (
+            [id] => 4
+            [name] => Ajay Kumar
+            [department] => Sales
+        )
+
+    [4] => Array
+        (
+            [id] => 8
+            [name] => Nilesh
+            [department] => Admin
+        )
+
+)
+
+--- SQL GROUPING TEST (DEPT) ---
+Array
+(
+)
+
+--- SQL GROUPING TEST (AREA) ---
+Array
+(
+)

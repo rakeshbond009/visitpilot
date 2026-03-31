@@ -1,0 +1,58 @@
+﻿--- DEPT ZONES OUTPUT ---
+Array
+(
+    [0] => Array
+        (
+            [name] => HR
+            [count] => 8
+            [density] => 16
+        )
+
+    [1] => Array
+        (
+            [name] => Engineering
+            [count] => 1
+            [density] => 2
+        )
+
+    [2] => Array
+        (
+            [name] => Admin
+            [count] => 1
+            [density] => 2
+        )
+
+)
+
+--- AREA ZONES OUTPUT ---
+Array
+(
+    [0] => Array
+        (
+            [name] => Not Assigned
+            [count] => 6
+            [density] => 12
+        )
+
+    [1] => Array
+        (
+            [name] => Server Room
+            [count] => 2
+            [density] => 4
+        )
+
+    [2] => Array
+        (
+            [name] => 1st Floor
+            [count] => 1
+            [density] => 2
+        )
+
+    [3] => Array
+        (
+            [name] => Lobby
+            [count] => 1
+            [density] => 2
+        )
+
+)

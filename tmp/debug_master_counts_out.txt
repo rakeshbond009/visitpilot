@@ -1,0 +1,51 @@
+﻿--- ACCESS AREA COUNTS FOR CHECKED_IN ---
+Array
+(
+    [0] => Array
+        (
+            [access_area] => 1st Floor
+            [c] => 1
+        )
+
+    [1] => Array
+        (
+            [access_area] => Lobby
+            [c] => 1
+        )
+
+    [2] => Array
+        (
+            [access_area] => Not Assigned
+            [c] => 6
+        )
+
+    [3] => Array
+        (
+            [access_area] => Server Room
+            [c] => 2
+        )
+
+)
+
+--- DEPARTMENT COUNTS FOR CHECKED_IN ---
+Array
+(
+    [0] => Array
+        (
+            [department] => Admin
+            [c] => 1
+        )
+
+    [1] => Array
+        (
+            [department] => Engineering
+            [c] => 1
+        )
+
+    [2] => Array
+        (
+            [department] => HR
+            [c] => 8
+        )
+
+)
