@@ -162,6 +162,15 @@ try {
             ];
         }, $area_zones_raw);
 
+        // LOGGING FOR DEBUGGING
+        $log_data = [
+            'time' => date('Y-m-d H:i:s'),
+            'role' => $role,
+            'dept_zones' => $dept_zones,
+            'area_zones' => $area_zones
+        ];
+        file_put_contents(__DIR__ . '/../../tmp/api_stats_log.txt', print_r($log_data, true), FILE_APPEND);
+
         // Records lists — include check_in_time and check_out_time for In/Out display on cards
         $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.approval_status, v.created_at, v.check_in_time, v.check_out_time, e.name as host_name, e.department, v.visit_code, v.purpose, v.is_invited, v.visit_photo 
                                        FROM visits v 
