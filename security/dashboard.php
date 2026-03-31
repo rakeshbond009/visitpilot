@@ -340,7 +340,8 @@ if ($time_saved_min > 60) {
     <div class="col-md-6">
         <div class="card shadow-sm border-0 rounded-4 h-100">
             <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill me-2 text-primary"></i>Current Zone Density</h5>
+                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill me-2 text-primary"></i>Current Zone
+                    Density</h5>
                 <div class="btn-group btn-group-sm rounded-pill border p-1" role="group">
                     <input type="radio" class="btn-check" name="densityView" id="viewDept" value="department" checked
                         onchange="refreshDashboardTable()">
@@ -622,16 +623,16 @@ if ($time_saved_min > 60) {
             backdrop: `rgba(0,0,0,0.5)`
         }).then((result) => {
             if (result.isConfirmed) {
-                // Short timeout to allow Swal to fully close and remove its backdrop/overlay
-                setTimeout(() => {
-                    if (typeof window.viewVisitDetails === 'function') {
-                        window.viewVisitDetails(visit.id);
-                    }
-                }, 150);
+                viewVisitDetails(visit.id);
             }
         });
 
-        // Sound logic is now handled centrally by security_notifications.js to avoid overlap and duplication.
+        // Play sound if BG Mode is ON
+        const bgToggle = document.getElementById('backgroundToggle');
+        if (bgToggle && bgToggle.checked) {
+            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            sound.play().catch(e => console.log("Sound blocked"));
+        }
     }
 
     // --- REAL-TIME ENGINE ---
@@ -643,7 +644,7 @@ if ($time_saved_min > 60) {
             if (data.success) {
                 // Status changes are now handled centrally by security_notifications.js to ensure 
                 // notifications are filtered by the creator of the entry.
-                
+
                 // Detect New Visitors
                 if (data.stats.pending > lastPending) {
                     const bgToggle = document.getElementById('backgroundToggle');

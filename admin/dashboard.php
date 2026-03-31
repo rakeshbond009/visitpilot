@@ -373,7 +373,8 @@ if ($time_saved_minutes > 60) {
     <div class="col-md-6">
         <div class="card shadow-sm border-0 rounded-4 h-100">
             <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill me-2 text-primary"></i>Current Zone Density</h5>
+                <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-geo-alt-fill me-2 text-primary"></i>Current Zone
+                    Density</h5>
                 <div class="btn-group btn-group-sm rounded-pill border p-1" role="group">
                     <input type="radio" class="btn-check" name="densityView" id="viewDept" value="department" checked
                         onchange="refreshDashboardTable()">
@@ -523,11 +524,12 @@ if ($time_saved_minutes > 60) {
                     </div>
                     <div class="col-sm-6">
                         <div class="p-4 rounded-4 bg-light text-center h-100">
-                            <h2 id="total-satisfaction-rate" class="fw-bold <?php echo $sat_text; ?> mb-0"><?php echo $satisfaction; ?>%</h2>
+                            <h2 id="total-satisfaction-rate" class="fw-bold <?php echo $sat_text; ?> mb-0">
+                                <?php echo $satisfaction; ?>%</h2>
                             <small class="text-muted text-uppercase fw-bold">Fast Service Rate</small>
                             <div class="progress mt-3" style="height: 6px;">
-                                <div id="satisfaction-bar" class="progress-bar <?php echo $sat_color; ?>" role="progressbar"
-                                    style="width: <?php echo $satisfaction; ?>%"></div>
+                                <div id="satisfaction-bar" class="progress-bar <?php echo $sat_color; ?>"
+                                    role="progressbar" style="width: <?php echo $satisfaction; ?>%"></div>
                             </div>
                         </div>
                     </div>
@@ -682,7 +684,7 @@ if ($time_saved_minutes > 60) {
                     const aim = data.ai_metrics;
                     const dBar = document.getElementById('ai-density-bar');
                     const dStatus = document.getElementById('ai-density-status');
-                    
+
                     const activeCount = aim.active_count !== undefined ? aim.active_count : 0;
                     const maxCap = aim.max_capacity !== undefined ? aim.max_capacity : 50;
 
@@ -702,23 +704,23 @@ if ($time_saved_minutes > 60) {
                     const overBadge = document.getElementById('overstay-badge');
                     const overList = document.getElementById('overstay-list');
 
-                        // Update Efficiency Metrics
-                        if (aim.fast_service_rate !== undefined) {
-                            const satRate = document.getElementById('total-satisfaction-rate');
-                            const satBar = document.getElementById('satisfaction-bar');
-                            if (satRate) satRate.innerText = aim.fast_service_rate + '%';
-                            if (satBar) {
-                                satBar.style.width = aim.fast_service_rate + '%';
-                                let barCol = 'bg-info', textCol = 'text-info';
-                                if (aim.fast_service_rate < 50) { barCol = 'bg-danger'; textCol = 'text-danger'; }
-                                else if (aim.fast_service_rate < 80) { barCol = 'bg-warning'; textCol = 'text-warning'; }
-                                
-                                satBar.className = 'progress-bar ' + barCol;
-                                if (satRate) satRate.className = 'fw-bold mb-0 ' + textCol;
-                            }
-                        }
+                    // Update Efficiency Metrics
+                    if (aim.fast_service_rate !== undefined) {
+                        const satRate = document.getElementById('total-satisfaction-rate');
+                        const satBar = document.getElementById('satisfaction-bar');
+                        if (satRate) satRate.innerText = aim.fast_service_rate + '%';
+                        if (satBar) {
+                            satBar.style.width = aim.fast_service_rate + '%';
+                            let barCol = 'bg-info', textCol = 'text-info';
+                            if (aim.fast_service_rate < 50) { barCol = 'bg-danger'; textCol = 'text-danger'; }
+                            else if (aim.fast_service_rate < 80) { barCol = 'bg-warning'; textCol = 'text-warning'; }
 
-                        if (aim.overstays_count > 0) {
+                            satBar.className = 'progress-bar ' + barCol;
+                            if (satRate) satRate.className = 'fw-bold mb-0 ' + textCol;
+                        }
+                    }
+
+                    if (aim.overstays_count > 0) {
                         secStatus.innerText = 'Anomaly Alert';
                         secMsg.innerText = aim.overstays_count + ' visitor(s) overstaying.';
                         if (overBadge) {
@@ -819,8 +821,12 @@ if ($time_saved_minutes > 60) {
         const title = isApproved ? 'Approved' : 'Rejected';
         const color = isApproved ? '#198754' : '#dc3545';
 
-        // Sound and poller logic are handled centrally by security_notifications.js.
-        // This function focuses strictly on the UI presentation in the dashboard.
+        // Play sound if BG Mode is ON
+        const bgToggle = document.getElementById('backgroundToggle');
+        if (bgToggle && bgToggle.checked) {
+            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            sound.play().catch(e => console.log("Sound blocked"));
+        }
 
         Swal.fire({
             title: `<span class="fw-bold text-dark mt-2" style="font-size: 1.1rem; letter-spacing: -0.5px;">Arrival Status Update</span>`,
@@ -828,7 +834,7 @@ if ($time_saved_minutes > 60) {
                 <div class="text-center">
                     <div class="mx-auto mb-3 rounded-pill py-1 px-3 d-inline-block animate__animated animate__fadeInDown" 
                          style="background: ${isApproved ? 'rgba(25, 135, 84, 0.1)' : 'rgba(220, 53, 69, 0.1)'}; 
-                                 border: 1px solid ${isApproved ? 'rgba(25, 135, 84, 0.2)' : 'rgba(220, 53, 69, 0.2)'};">
+                                border: 1px solid ${isApproved ? 'rgba(25, 135, 84, 0.2)' : 'rgba(220, 53, 69, 0.2)'};">
                         <span class="fw-bold small" style="color: ${color};"><i class="bi ${isApproved ? 'bi-patch-check-fill' : 'bi-patch-exclamation-fill'} me-1"></i> ${title.toUpperCase()}</span>
                     </div>
                     <h5 class="fw-bold text-dark mb-1">${visit.visitor_name}</h5>

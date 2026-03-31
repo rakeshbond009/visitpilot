@@ -8,12 +8,7 @@
 
     let lastCheckTime = null;
     let hbAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-    let notificationSound = new Audio('https://www.soundjay.com/buttons/beep-07.wav');
-    
-    // Fallback if SoundJay is down
-    notificationSound.addEventListener('error', () => {
-        notificationSound.src = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
-    });
+    let notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
     // Track notified visits to avoid duplicates across polls
     const notifiedVisits = new Set();
@@ -46,12 +41,15 @@
 
                 // Process new status changes
                 if (data.updates && data.updates.length > 0) {
-                    let playSound = false;
-
                     data.updates.forEach(visit => {
                         if (!notifiedVisits.has(visit.id)) {
                             notifiedVisits.add(visit.id);
-                            playSound = true;
+
+                            // 1. Play Sound
+                            const isBG = localStorage.getItem('vms_security_bg_mode') === 'true';
+                            if (isBG) {
+                                notificationSound.play().catch(e => console.warn("Audio blocked"));
+                            }
 
                             // 2. Show UI Notification
                             // If notifyStatusChange exists (on dashboards), use the rich UI popup.
@@ -76,10 +74,6 @@
                             }
                         }
                     });
-
-                    if (playSound && notificationSound) {
-                        notificationSound.play().catch(e => console.warn("Audio blocked"));
-                    }
                 }
             }
         } catch (e) {
