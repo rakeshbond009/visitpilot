@@ -930,8 +930,8 @@ export default function AdminDashboard({ navigation }) {
         );
     };
 
-    const showAlert = (title, message, type = 'success') => {
-        setAlertConfig({ title, message, type });
+    const showAlert = (title, message, type = 'success', options = {}) => {
+        setAlertConfig({ title, message, type, ...options });
         setAlertVisible(true);
     };
 
@@ -944,23 +944,44 @@ export default function AdminDashboard({ navigation }) {
         >
             <View style={styles.alertOverlay}>
                 <View style={styles.alertContent}>
-                    <View style={[styles.alertHeader, { backgroundColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>
+                    <View style={[styles.alertHeader, { backgroundColor: alertConfig.type === 'success' ? '#15803d' : (alertConfig.type === 'warning' ? '#f59e0b' : '#ef4444') }]}>
                         <Icon
-                            name={alertConfig.type === 'success' ? 'check-circle' : 'alert-circle'}
+                            name={alertConfig.type === 'success' ? 'check-circle' : (alertConfig.type === 'warning' ? 'help-circle' : 'alert-circle')}
                             size={32}
                             color="#fff"
                             style={{ marginRight: 10 }}
                         />
-                        <Text style={styles.alertHeaderTitle}>{alertConfig.title || (alertConfig.type === 'success' ? 'Success!' : 'Error')}</Text>
+                        <Text style={styles.alertHeaderTitle}>{alertConfig.title || (alertConfig.type === 'success' ? 'Success!' : (alertConfig.type === 'warning' ? 'Confirm' : 'Error'))}</Text>
                     </View>
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
-                        <TouchableOpacity
-                            style={[styles.alertButton, { borderColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}
-                            onPress={() => setAlertVisible(false)}
-                        >
-                            <Text style={[styles.alertButtonText, { color: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>OK</Text>
-                        </TouchableOpacity>
+                        
+                        {alertConfig.showCancel ? (
+                            <View style={styles.alertActionRow}>
+                                <TouchableOpacity
+                                    style={[styles.alertButton, styles.alertCancelButton]}
+                                    onPress={() => setAlertVisible(false)}
+                                >
+                                    <Text style={styles.alertCancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
+                                    onPress={() => {
+                                        setAlertVisible(false);
+                                        if (alertConfig.onConfirm) alertConfig.onConfirm();
+                                    }}
+                                >
+                                    <Text style={styles.alertConfirmButtonText}>{alertConfig.confirmText || 'Yes'}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.alertButton, { borderColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}
+                                onPress={() => setAlertVisible(false)}
+                            >
+                                <Text style={[styles.alertButtonText, { color: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>OK</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </View>
@@ -968,6 +989,36 @@ export default function AdminDashboard({ navigation }) {
     );
 
     const handleAction = async (visitId, action) => {
+        if (action === 'checkin' || action === 'checkout') {
+            const label = action === 'checkin' ? 'Check-In' : 'Check-Out';
+            showAlert(
+                'Confirm ' + label,
+                `Are you sure you want to proceed with ${label} for this visitor?`,
+                'warning',
+                {
+                    showCancel: true,
+                    confirmText: 'Yes, Proceed',
+                    onConfirm: () => executeAction(visitId, action)
+                }
+            );
+        } else if (action === 'approve' || action === 'reject') {
+             const label = action === 'approve' ? 'Approve' : 'Reject';
+             showAlert(
+                'Confirm ' + label,
+                `Are you sure you want to ${label} this visit request?`,
+                'warning',
+                {
+                    showCancel: true,
+                    confirmText: 'Yes, ' + label,
+                    onConfirm: () => executeAction(visitId, action)
+                }
+            );
+        } else {
+            executeAction(visitId, action);
+        }
+    };
+
+    const executeAction = async (visitId, action) => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
                 action: action,
@@ -3678,4 +3729,18 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
+    // SweetAlert Styles
+    alertOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    alertContent: { backgroundColor: '#fff', width: '100%', maxWidth: 340, borderRadius: 15, overflow: 'hidden', elevation: 10 },
+    alertHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, paddingHorizontal: 20 },
+    alertHeaderTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+    alertBody: { padding: 25, alignItems: 'center' },
+    alertMessage: { fontSize: 16, color: '#334155', textAlign: 'center', marginBottom: 25, lineHeight: 22 },
+    alertActionRow: { flexDirection: 'row', gap: 12, width: '100%', justifyContent: 'center' },
+    alertButton: { paddingVertical: 10, paddingHorizontal: 25, borderRadius: 25, borderWidth: 1.5, minWidth: 100, alignItems: 'center' },
+    alertButtonText: { fontSize: 16, fontWeight: 'bold' },
+    alertCancelButton: { borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
+    alertCancelButtonText: { color: '#64748b', fontSize: 15, fontWeight: 'bold' },
+    alertConfirmButton: { borderWidth: 0, elevation: 2 },
+    alertConfirmButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' }
 });

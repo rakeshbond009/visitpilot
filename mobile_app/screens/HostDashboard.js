@@ -72,6 +72,10 @@ export default function HostDashboard({ navigation }) {
     const [settingsModalVisible, setSettingsModalVisible] = useState(false);
     const [mastersModalVisible, setMastersModalVisible] = useState(false);
 
+    // SweetAlert Modal State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error', 'warning'
+
     // Date Filter State
     const [filterType, setFilterType] = useState('all');
     const [filterStartDate, setFilterStartDate] = useState('');
@@ -248,7 +252,27 @@ export default function HostDashboard({ navigation }) {
         }
     };
 
+    const showAlert = (title, message, type = 'success', options = {}) => {
+        setAlertConfig({ title, message, type, ...options });
+        setAlertVisible(true);
+    };
+
     const handleAction = async (visitId, action, mobile, name) => {
+        const label = action === 'approve' ? 'Approve' : (action === 'reject' ? 'Reject' : action);
+        
+        showAlert(
+            'Confirm ' + label,
+            `Are you sure you want to proceed with ${label} for this visit?`,
+            'warning',
+            {
+                showCancel: true,
+                confirmText: 'Yes, Proceed',
+                onConfirm: () => executeAction(visitId, action)
+            }
+        );
+    };
+
+    const executeAction = async (visitId, action) => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
                 action: action,
@@ -256,15 +280,13 @@ export default function HostDashboard({ navigation }) {
             });
 
             if (response.data.status === 'success') {
-                Alert.alert('Success', response.data.message);
-
-
+                showAlert('Success', response.data.message, 'success');
                 fetchData();
             } else {
-                Alert.alert('Error', response.data.message || 'Action failed');
+                showAlert('Error', response.data.message || 'Action failed', 'error');
             }
         } catch (error) {
-            Alert.alert('Error', 'Action failed');
+            showAlert('Error', 'Action failed', 'error');
         }
     };
 
@@ -740,6 +762,59 @@ export default function HostDashboard({ navigation }) {
         );
     };
 
+    const renderSweetAlert = () => (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={alertVisible}
+            onRequestClose={() => setAlertVisible(false)}
+        >
+            <View style={styles.alertOverlay}>
+                <View style={styles.alertContent}>
+                    <View style={[styles.alertHeader, { backgroundColor: alertConfig.type === 'success' ? '#15803d' : (alertConfig.type === 'warning' ? '#f59e0b' : '#ef4444') }]}>
+                        <Icon
+                            name={alertConfig.type === 'success' ? 'check-circle' : (alertConfig.type === 'warning' ? 'help-circle' : 'alert-circle')}
+                            size={32}
+                            color="#fff"
+                            style={{ marginRight: 10 }}
+                        />
+                        <Text style={styles.alertHeaderTitle}>{alertConfig.title || (alertConfig.type === 'success' ? 'Success!' : (alertConfig.type === 'warning' ? 'Confirm' : 'Error'))}</Text>
+                    </View>
+                    <View style={styles.alertBody}>
+                        <Text style={styles.alertMessage}>{alertConfig.message}</Text>
+                        
+                        {alertConfig.showCancel ? (
+                            <View style={styles.alertActionRow}>
+                                <TouchableOpacity
+                                    style={[styles.alertButton, styles.alertCancelButton]}
+                                    onPress={() => setAlertVisible(false)}
+                                >
+                                    <Text style={styles.alertCancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
+                                    onPress={() => {
+                                        setAlertVisible(false);
+                                        if (alertConfig.onConfirm) alertConfig.onConfirm();
+                                    }}
+                                >
+                                    <Text style={styles.alertConfirmButtonText}>{alertConfig.confirmText || 'Yes'}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.alertButton, { borderColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}
+                                onPress={() => setAlertVisible(false)}
+                            >
+                                <Text style={[styles.alertButtonText, { color: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>OK</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+
     const renderMastersModal = () => (
         <Modal
             animationType="slide"
@@ -1055,6 +1130,10 @@ export default function HostDashboard({ navigation }) {
             visible={detailModalVisible}
             onClose={() => setDetailModalVisible(false)}
             visit={selectedVisit}
+            onAction={(id, action) => {
+                handleAction(id, action);
+                setDetailModalVisible(false);
+            }}
         />
     );
 
@@ -1167,6 +1246,7 @@ export default function HostDashboard({ navigation }) {
             {renderVisitDetailsModal()}
             {renderMastersModal()}
             {renderSettingsModal()}
+            {renderSweetAlert()}
         </SafeAreaView >
     );
 }
@@ -1518,4 +1598,18 @@ const styles = StyleSheet.create({
     calCellTextToday: { color: '#3b82f6', fontWeight: '600' },
     calCancelBtn: { marginTop: 15, paddingVertical: 10, alignItems: 'center' },
     calCancelText: { color: '#64748b', fontSize: 14, fontWeight: '600' },
+    // SweetAlert Styles
+    alertOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    alertContent: { backgroundColor: '#fff', width: '100%', maxWidth: 340, borderRadius: 15, overflow: 'hidden', elevation: 10 },
+    alertHeader: { flexDirection: 'row', alignItems: 'center', padding: 15, paddingHorizontal: 20 },
+    alertHeaderTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+    alertBody: { padding: 25, alignItems: 'center' },
+    alertMessage: { fontSize: 16, color: '#334155', textAlign: 'center', marginBottom: 25, lineHeight: 22 },
+    alertActionRow: { flexDirection: 'row', gap: 12, width: '100%', justifyContent: 'center' },
+    alertButton: { paddingVertical: 10, paddingHorizontal: 25, borderRadius: 25, borderWidth: 1.5, minWidth: 100, alignItems: 'center' },
+    alertButtonText: { fontSize: 16, fontWeight: 'bold' },
+    alertCancelButton: { borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
+    alertCancelButtonText: { color: '#64748b', fontSize: 15, fontWeight: 'bold' },
+    alertConfirmButton: { borderWidth: 0, elevation: 2 },
+    alertConfirmButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' }
 });
