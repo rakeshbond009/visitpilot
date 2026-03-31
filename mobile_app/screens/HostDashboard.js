@@ -22,6 +22,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import VisitDetailModal from '../components/VisitDetailModal';
+import VisitListModal from '../components/VisitListModal';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
@@ -1184,77 +1185,24 @@ export default function HostDashboard({ navigation }) {
                 {activeTab === 'invites' && renderInvites()}
             </ScrollView>
 
-            <Modal
+            <VisitListModal
                 visible={dataModalVisible}
-                animationType="fade"
-                onRequestClose={() => setDataModalVisible(false)}
-            >
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-                    <View style={[styles.header, { backgroundColor: dataModalType === 'pending' ? '#f59e0b' : (dataModalType === 'invites' ? '#3b82f6' : '#10b981') }]}>
-                        <TouchableOpacity onPress={() => setDataModalVisible(false)}>
-                            <Icon name="arrow-left" size={24} color="#fff" />
-                        </TouchableOpacity>
-                        <Text style={[styles.userName, { color: '#fff', marginLeft: 15 }]}>{dataModalTitle}</Text>
-                    </View>
-
-                    {/* Modal Search Bar */}
-                    <View style={{ backgroundColor: '#fff', padding: 10, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
-                        <View style={{ flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 10, alignItems: 'center', paddingHorizontal: 10, height: 40 }}>
-                            <Icon name="magnify" size={20} color="#94a3b8" />
-                            <TextInput
-                                style={{ flex: 1, marginLeft: 10, fontSize: 14, color: '#1e293b' }}
-                                placeholder="Search visitor name or mobile..."
-                                placeholderTextColor="#94a3b8"
-                                value={modalSearchTerm}
-                                onChangeText={setModalSearchTerm}
-                            />
-                            {modalSearchTerm.length > 0 && (
-                                <TouchableOpacity onPress={() => setModalSearchTerm('')}>
-                                    <Icon name="close-circle" size={18} color="#94a3b8" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-
-                    <ScrollView contentContainerStyle={{ padding: 15 }}>
-                        {(() => {
-                            let rawList = [];
-                            if (dataModalType === 'pending') rawList = pendingVisits;
-                            else if (dataModalType === 'today') rawList = todayVisits;
-                            else if (dataModalType === 'invites') rawList = activeInvites;
-                            else if (dataModalType === 'scheduled') {
-                                // Filter active invites for today (Local Time)
-                                const d = new Date();
-                                const year = d.getFullYear();
-                                const month = String(d.getMonth() + 1).padStart(2, '0');
-                                const day = String(d.getDate()).padStart(2, '0');
-                                const todayStr = `${year}-${month}-${day}`;
-                                rawList = activeInvites.filter(item => item.visit_date === todayStr);
-                            }
-
-                            // Filter list based on search term
-                            const list = rawList.filter(item => {
-                                if (!modalSearchTerm) return true;
-                                const term = modalSearchTerm.toLowerCase();
-                                return (item.visitor_name?.toLowerCase() || '').includes(term) ||
-                                    (item.mobile?.toLowerCase() || '').includes(term) ||
-                                    (item.purpose?.toLowerCase() || '').includes(term);
-                            });
-
-                            if (list.length === 0) {
-                                return (
-                                    <View style={styles.emptyContainer}>
-                                        <Icon name={modalSearchTerm ? "filter-remove-outline" : "folder-outline"} size={60} color="#cbd5e1" />
-                                        <Text style={styles.emptyTitle}>No Records</Text>
-                                        <Text style={styles.emptyText}>{modalSearchTerm ? "No matches found for your search." : "No data found for this category."}</Text>
-                                    </View>
-                                );
-                            }
-                            return list.map(item => renderVisitCard(item, dataModalType));
-                        })()}
-                    </ScrollView>
-                </SafeAreaView>
-            </Modal>
+                onClose={() => setDataModalVisible(false)}
+                title={dataModalTitle}
+                color={dataModalType === 'pending' ? '#f59e0b' : (dataModalType === 'invites' ? '#3b82f6' : (dataModalType === 'scheduled' ? '#8b5cf6' : '#10b981'))}
+                visits={(() => {
+                    if (dataModalType === 'pending') return pendingVisits;
+                    if (dataModalType === 'today') return todayVisits;
+                    if (dataModalType === 'invites') return activeInvites;
+                    if (dataModalType === 'scheduled') {
+                        const d = new Date();
+                        const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                        return activeInvites.filter(item => item.visit_date === todayStr);
+                    }
+                    return [];
+                })()}
+                onVisitPress={(visit) => fetchVisitDetails(visit.id)}
+            />
 
             {renderBottomMenu()}
             {renderFloatingMenu()}
