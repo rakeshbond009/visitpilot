@@ -88,22 +88,24 @@ try {
     $total_visitors = 1 + count($members);
 
     if ($invitation_id) {
-        // Update existing Invitation
         $visit_id = $invitation_id;
         // Fetch visit code for QR generation if needed
         $vStmt = $pdo->prepare("SELECT visit_code FROM visits WHERE id = ?");
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=?, assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=? WHERE id=?");
+        // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
+        // so host can "Acknowledge" it. This matches the flow in security/register.php
+        // We set visit_date=CURDATE() to ensure it shows up in today's pending list.
+        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=? WHERE id=?");
         $stmt->execute([
-            $current_time,
             $assets,
             $data['id_proof_type'] ?? '',
             $data['id_proof_number'] ?? '',
             $access_area,
             $photo_path,
             $total_visitors,
+            $current_time,
             $visit_id
         ]);
     } else {

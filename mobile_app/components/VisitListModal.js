@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, Modal, TouchableOpacity, ScrollView, Image,
     StyleSheet, SafeAreaView, StatusBar, TextInput
@@ -20,6 +20,12 @@ import { CONFIG } from '../utils/config';
  */
 const VisitListModal = ({ visible, onClose, title = "Visits", color = '#10b981', visits = [], onVisitPress }) => {
     const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        if (visible) {
+            setSearch('');
+        }
+    }, [visible]);
 
     const getPhotoUrl = (url) => {
         if (!url) return null;

@@ -92,11 +92,15 @@ $sql_scheduled = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobil
                   FROM visits v 
                   JOIN visitors vis ON v.visitor_id = vis.id 
                   LEFT JOIN employees e ON v.employee_id = e.id
-                  WHERE v.employee_id = ? AND v.status = 'approved' 
+                  WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.status = 'approved' 
                   AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()))
                   ORDER BY v.created_at DESC";
 $stmt_scheduled = $pdo->prepare($sql_scheduled);
-$stmt_scheduled->execute([$host_employee_id]);
+if ($is_admin) {
+    $stmt_scheduled->execute();
+} else {
+    $stmt_scheduled->execute([$host_employee_id]);
+}
 $scheduled_list = $stmt_scheduled->fetchAll(PDO::FETCH_ASSOC);
 
 $scheduled_today = count($scheduled_list);

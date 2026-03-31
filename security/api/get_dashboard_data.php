@@ -106,12 +106,22 @@ try {
     $scheduled_list = $stmt_scheduled ? $stmt_scheduled->fetchAll(PDO::FETCH_ASSOC) : [];
     $scheduled_today_count = count($scheduled_list);
 
+    // 4. Fast Service Rate (Checked in within 30 mins)
+    $total_processed = (int) $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(check_in_time) = CURDATE()")->fetchColumn();
+    $fast_checkins = (int) $pdo->query("SELECT COUNT(*) FROM visits 
+                                  WHERE status IN ('checked_in', 'checked_out') 
+                                  AND check_in_time IS NOT NULL
+                                  AND DATE(check_in_time) = CURDATE()
+                                  AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 30")->fetchColumn();
+    $fast_service_rate = ($total_processed > 0) ? (int)round(($fast_checkins / $total_processed) * 100) : 100;
+
     $stats = [
         'total_today' => (int) $pdo->query($today_sql)->fetchColumn(),
         'active' => $active_visitors,
         'pending' => (int) $pdo->query($pending_sql)->fetchColumn(),
         'checkin_pending' => $scheduled_today_count,
-        'time_saved_fmt' => (string) $time_saved_fmt
+        'time_saved_fmt' => (string) $time_saved_fmt,
+        'fast_service_rate' => $fast_service_rate
     ];
 
     // AI Metrics Calculation (Same logic as initial load)
@@ -219,6 +229,7 @@ try {
             'crowd_density' => $crowd_density,
             'active_count' => $active_visitors,
             'max_capacity' => $max_capacity,
+            'fast_service_rate' => $fast_service_rate,
             'avg_checkin_time' => $avg_display,
             'overstays_count' => $overstays_count,
             'overstays_list' => $overstay_list,
