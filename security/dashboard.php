@@ -641,14 +641,9 @@ if ($time_saved_min > 60) {
             const data = await response.json();
 
             if (data.success) {
-                // 1. Detect Status Changes (Approval/Rejection)
-                data.visits.forEach(newV => {
-                    const oldV = todaysVisits.find(v => v.id === newV.id);
-                    if (oldV && oldV.approval_status === 'pending' && newV.approval_status !== 'pending') {
-                        notifyStatusChange(newV);
-                    }
-                });
-
+                // Status changes are now handled centrally by security_notifications.js to ensure 
+                // notifications are filtered by the creator of the entry.
+                
                 // Detect New Visitors
                 if (data.stats.pending > lastPending) {
                     const bgToggle = document.getElementById('backgroundToggle');

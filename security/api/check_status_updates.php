@@ -50,6 +50,10 @@ if ($last_check) {
     $params[] = $last_check;
 }
 
+// User-Specific Notification: Notify only the creator
+$where .= " AND v.created_by = ?";
+$params[] = $_SESSION['user_id'];
+
 $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.name as host_name, emp.department
 FROM visits v
 JOIN visitors vis ON v.visitor_id = vis.id

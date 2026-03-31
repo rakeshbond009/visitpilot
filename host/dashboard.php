@@ -801,6 +801,14 @@ $scheduled_today = (int) $stmt->fetchColumn();
     }
 
     async function rejectDirectly(id) {
+        // Hide the details list modal first to prevent focus trapping with SweetAlert
+        const detailsModalEl = document.getElementById('detailsListModal');
+        let bootstrapDetailsModal = null;
+        if (detailsModalEl) {
+            bootstrapDetailsModal = bootstrap.Modal.getInstance(detailsModalEl);
+            if (bootstrapDetailsModal) bootstrapDetailsModal.hide();
+        }
+
         const { value: reason } = await Swal.fire({
             title: 'Reject Visitor?',
             text: "Please provide a reason for rejection:",
@@ -817,6 +825,12 @@ $scheduled_today = (int) $stmt->fetchColumn();
                 }
             }
         });
+
+        if (!reason && bootstrapDetailsModal) {
+            // Re-show if cancelled
+            bootstrapDetailsModal.show();
+            return;
+        }
 
         if (reason) {
             try {

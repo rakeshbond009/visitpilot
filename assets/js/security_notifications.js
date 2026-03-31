@@ -52,14 +52,17 @@
                             }
 
                             // 2. Show UI Notification
-                            // Note: Dashboard has its own listener to refresh the table.
-                            // We only show the generic popup if we are on other pages.
-                            if (typeof window.VMS_REFRESH_DASHBOARD === 'undefined') {
-                                showSecurityPopup(visit);
+                            // If notifyStatusChange exists (on dashboards), use the rich UI popup.
+                            // otherwise (on other pages), use the generic showSecurityPopup.
+                            if (typeof window.notifyStatusChange === 'function') {
+                                window.notifyStatusChange(visit);
+                                // If on dashboard, also force a table refresh to show new status
+                                if (typeof window.VMS_REFRESH_DASHBOARD === 'function') {
+                                    window.VMS_REFRESH_DASHBOARD();
+                                }
                             } else {
-                                // If on dashboard, force a table refresh
-                                window.VMS_REFRESH_DASHBOARD();
-                                // The dashboard script itself will handle notifyStatusChange
+                                // On other pages, just show the generic popup
+                                showSecurityPopup(visit);
                             }
 
                             // 3. Browser Notification

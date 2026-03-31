@@ -658,6 +658,9 @@ if ($time_saved_minutes > 60) {
     var overstaysCache = <?php echo json_encode($overstays); ?>; // Initial overstays from PHP
     var todaysVisits = <?php echo json_encode($recent); ?>; // Store recent visits for table
 
+    // Register as a global refresh function for external scripts (security_notifications.js)
+    window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
+
     async function refreshDashboardTable() {
         try {
             // Add cache buster to prevent stale data
@@ -665,6 +668,9 @@ if ($time_saved_minutes > 60) {
             const data = await response.json();
 
             if (data.success) {
+                // Status changes are now handled centrally by security_notifications.js.
+                // This ensures only the creator of the entry receives the specific notification.
+
                 document.getElementById('stat-emps').innerText = data.stats.total_emps;
                 document.getElementById('stat-total').innerText = data.stats.total_visits;
                 document.getElementById('stat-today').innerText = data.stats.today_visits;
@@ -805,6 +811,49 @@ if ($time_saved_minutes > 60) {
                 tbody.innerHTML = html;
             }
         } catch (e) { }
+    }
+
+    // --- NOTIFICATION ENGINE ---
+    function notifyStatusChange(visit) {
+        const isApproved = visit.approval_status === 'approved';
+        const title = isApproved ? 'Approved' : 'Rejected';
+        const color = isApproved ? '#198754' : '#dc3545';
+
+        // Play sound if BG Mode is ON
+        const bgToggle = document.getElementById('backgroundToggle');
+        if (bgToggle && bgToggle.checked) {
+            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            sound.play().catch(e => console.log("Sound blocked"));
+        }
+
+        Swal.fire({
+            title: `<span class="fw-bold text-dark mt-2" style="font-size: 1.1rem; letter-spacing: -0.5px;">Arrival Status Update</span>`,
+            html: `
+                <div class="text-center">
+                    <div class="mx-auto mb-3 rounded-pill py-1 px-3 d-inline-block animate__animated animate__fadeInDown" 
+                         style="background: ${isApproved ? 'rgba(25, 135, 84, 0.1)' : 'rgba(220, 53, 69, 0.1)'}; 
+                                border: 1px solid ${isApproved ? 'rgba(25, 135, 84, 0.2)' : 'rgba(220, 53, 69, 0.2)'};">
+                        <span class="fw-bold small" style="color: ${color};"><i class="bi ${isApproved ? 'bi-patch-check-fill' : 'bi-patch-exclamation-fill'} me-1"></i> ${title.toUpperCase()}</span>
+                    </div>
+                    <h5 class="fw-bold text-dark mb-1">${visit.visitor_name}</h5>
+                    <p class="text-muted small mb-3">Host: ${visit.host_name}</p>
+                </div>
+            `,
+            showCancelButton: true,
+            confirmButtonText: 'View Details',
+            cancelButtonText: 'Dismiss',
+            confirmButtonColor: color,
+            reverseButtons: true,
+            customClass: {
+                popup: 'rounded-5 shadow-2xl border-0 overflow-hidden',
+                title: 'border-0 pb-0',
+                htmlContainer: 'pt-0 pb-3 px-3'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                viewVisitDetails(visit.id);
+            }
+        });
     }
 
     function showDetails(type) {

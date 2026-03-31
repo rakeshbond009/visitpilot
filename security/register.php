@@ -99,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // so host can "Acknowledge" it. PDF pass will be sent upon acknowledgement.
             $visit_id = $invited_visit_id;
             $current_time = current_datetime();
-            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, created_at=? WHERE id=?");
-            $stmt->execute([$assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $visit_id]);
+            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, created_at=?, created_by=? WHERE id=?");
+            $stmt->execute([$assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $_SESSION['user_id'], $visit_id]);
             logAction($pdo, $_SESSION['user_id'], "Invited visitor arrived, awaiting host acknowledgement. (Visit ID: $visit_id)");
         } else {
             // Create New Visit with pending status (requires host approval)
@@ -117,8 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $current_time = current_datetime();
             // Explicitly set created_at from PHP to ensure correct timezone (overriding DB default)
-            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area]);
+            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id']]);
             $visit_id = $pdo->lastInsertId();
             logAction($pdo, $_SESSION['user_id'], "Registered new visitor visit (Pending Approval) ID: $visitor_id (Visit ID: $visit_id)");
         }
