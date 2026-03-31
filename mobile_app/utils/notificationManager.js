@@ -135,6 +135,13 @@ export async function registerForPushNotificationsAsync() {
 export async function updateTokenOnServer(token) {
   if (!token) return;
   try {
+    // Check if user is logged in
+    const userData = await AsyncStorage.getItem('userData');
+    if (!userData) {
+      console.log("Skipping FCM token update: No user session active yet.");
+      return;
+    }
+
     const response = await apiClient.post('api/user/update_fcm.php', {
       fcm_token: token
     });
@@ -143,6 +150,7 @@ export async function updateTokenOnServer(token) {
       console.log("FCM Token updated on server");
     }
   } catch (error) {
-    console.error("Failed to update FCM token on server:", error);
+    // Downgraded to console.log to avoid the Red Error Screen on ephemeral network or session issues
+    console.log("Failed to update FCM token on server (likely non-critical session issue):", error.message);
   }
 }
