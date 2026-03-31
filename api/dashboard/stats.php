@@ -41,7 +41,7 @@ try {
         // --- ADMIN / SECURITY DASHBOARD DATA ---
         $total_emps = safeFetchColumn($pdo, "SELECT COUNT(*) FROM employees");
         $total_visits = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits");
-        $today_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE DATE(created_at) = CURDATE()");
+        $today_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE (DATE(created_at) = CURDATE() OR (is_invited=1 AND visit_date = CURDATE()))");
         $inside_now = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status = 'checked_in'");
 
         // Fetch System Settings for capacity
@@ -129,7 +129,7 @@ try {
         $recent_activity = safeFetchAll($pdo, $recent_sql);
 
         // Zone Density
-        $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(e.department, 'Other') as name, COUNT(v.id) as count 
+        $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(NULLIF(e.department, ''), 'Other') as name, COUNT(v.id) as count 
                                    FROM visits v 
                                    LEFT JOIN employees e ON v.employee_id = e.id 
                                    WHERE v.status = 'checked_in' 
@@ -141,7 +141,7 @@ try {
             return $z;
         }, $dept_zones_raw);
 
-        $area_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(access_area, 'Unassigned') as name, COUNT(id) as count 
+        $area_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(NULLIF(access_area, ''), 'Unassigned') as name, COUNT(id) as count 
                                    FROM visits 
                                    WHERE status = 'checked_in' 
                                    GROUP BY name 
