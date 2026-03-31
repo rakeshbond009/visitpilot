@@ -58,7 +58,7 @@ $stats = [
 
 // AI Metrics Calculation
 $max_capacity = (int) safeFetchColumn($pdo, "SELECT setting_value FROM system_settings WHERE setting_key = 'max_capacity'") ?: 50;
-$crowd_density = ($max_capacity > 0) ? min(100, round(($active_visitors / $max_capacity) * 100)) : 0;
+$crowd_density = ($max_capacity > 0) ? min(100, (int)round(($active_visitors / $max_capacity) * 100)) : 0;
 
 $avg_sql = "SELECT AVG(ABS(TIMESTAMPDIFF(SECOND, created_at, check_in_time))) 
             FROM visits 
@@ -69,15 +69,15 @@ $mins = floor($avg_seconds / 60);
 $secs = round($avg_seconds % 60);
 $avg_display = "{$mins}m {$secs}s";
 
-// Fast Service Rate (Wait time < 30 mins) - Same day visitors
-$total_processed = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(created_at) = DATE(check_in_time)");
+// Fix Fast Service Rate: Use a more reliable total (visitors who actually checked in today)
+$total_processed = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(check_in_time) = CURDATE()");
 $happy_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits 
                               WHERE status IN ('checked_in', 'checked_out') 
                               AND check_in_time IS NOT NULL
-                              AND DATE(created_at) = DATE(check_in_time)
+                              AND DATE(check_in_time) = CURDATE()
                               AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 30");
 
-$satisfaction_rate = ($total_processed > 0) ? round(($happy_visitors / $total_processed) * 100) : 100;
+$satisfaction_rate = ($total_processed > 0) ? (int)round(($happy_visitors / $total_processed) * 100) : 100;
 
 $overstays_sql = "SELECT v.*, vis.name as visitor_name, emp.name as host_name, emp.department
                   FROM visits v 

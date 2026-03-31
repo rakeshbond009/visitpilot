@@ -54,6 +54,7 @@ export default function SecurityDashboard({ navigation }) {
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [scheduledVisits, setScheduledVisits] = useState([]);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'log'
     const [logView, setLogView] = useState('log'); // 'log', 'invites'
@@ -217,6 +218,7 @@ export default function SecurityDashboard({ navigation }) {
                     setAiMetrics(data.ai_metrics || {});
                     const newVisits = data.visits || [];
                     setVisits(newVisits);
+                    setScheduledVisits(data.scheduled_list || []);
                     checkForUpdates(newVisits);
 
                     // Update records for modals
@@ -1604,7 +1606,7 @@ export default function SecurityDashboard({ navigation }) {
                 onClose={() => setModalVisible(false)}
                 title={modalTitle}
                 color={modalType === 'overstays' ? '#ef4444' : '#3b82f6'}
-                visits={(() => {
+                visits={modalTitle === 'Check-in Pending' ? scheduledVisits : (() => {
                     if (modalType === 'overstays') return records.overstays || [];
 
                     const isToday = (dateStr) => {
@@ -1624,7 +1626,7 @@ export default function SecurityDashboard({ navigation }) {
                             return (v.approval_status?.toLowerCase() === 'pending' || v.status?.toLowerCase() === 'pending');
                         }
                         if (modalTitle === 'Check-in Pending') {
-                            return v.status?.toLowerCase() === 'approved' && (isToday(v.created_at) || (v.is_invited == 1 && isToday(v.visit_date)));
+                            return false; // Handled by separate list
                         }
                         if (modalFilter) {
                             return v.status === modalFilter;

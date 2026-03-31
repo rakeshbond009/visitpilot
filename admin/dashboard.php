@@ -485,16 +485,16 @@ if ($time_saved_minutes > 60) {
     $secs = round($avg_seconds % 60);
     $avg_time_str = "{$mins}m {$secs}s";
 
-    // 2. Visitor Satisfaction (inferred from Wait Time < 10 mins)
-    $total_processed = $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(created_at) = DATE(check_in_time)")->fetchColumn();
+    // 2. Visitor Satisfaction (inferred from Wait Time < 30 mins)
+    $total_today_processed = $pdo->query("SELECT COUNT(*) FROM visits WHERE status IN ('checked_in', 'checked_out') AND DATE(check_in_time) = CURDATE()")->fetchColumn();
 
-    if ($total_processed > 0) {
+    if ($total_today_processed > 0) {
         $happy_visitors = $pdo->query("SELECT COUNT(*) FROM visits 
                                       WHERE status IN ('checked_in', 'checked_out') 
                                       AND check_in_time IS NOT NULL
-                                      AND DATE(created_at) = DATE(check_in_time)
+                                      AND DATE(check_in_time) = CURDATE()
                                       AND TIMESTAMPDIFF(MINUTE, created_at, check_in_time) < 30")->fetchColumn();
-        $satisfaction = round(($happy_visitors / $total_processed) * 100);
+        $satisfaction = round(($happy_visitors / $total_today_processed) * 100);
     } else {
         $satisfaction = 100; // Default if no data for today
     }

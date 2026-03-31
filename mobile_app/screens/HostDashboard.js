@@ -58,6 +58,7 @@ export default function HostDashboard({ navigation }) {
     const [visitorView, setVisitorView] = useState('log'); // 'log', 'invites', 'pending'
     const [pendingVisits, setPendingVisits] = useState([]);
     const [todayVisits, setTodayVisits] = useState([]);
+    const [scheduledVisits, setScheduledVisits] = useState([]);
     const [activeInvites, setActiveInvites] = useState([]);
     const [stats, setStats] = useState({ pending: 0, today: 0, invites: 0, completed: 0, avg_time: '0m', scheduled_today: 0 });
     const [aiSuggestion, setAiSuggestion] = useState(null);
@@ -188,6 +189,7 @@ export default function HostDashboard({ navigation }) {
                     });
                     setPendingVisits(result.pending_list || []);
                     setTodayVisits(result.today_visitors || []);
+                    setScheduledVisits(result.scheduled_list || []);
                     setActiveInvites(result.active_invites || []);
 
                     if (result.best_time) {
@@ -1195,11 +1197,7 @@ export default function HostDashboard({ navigation }) {
                     if (dataModalType === 'pending') return pendingVisits;
                     if (dataModalType === 'today') return todayVisits;
                     if (dataModalType === 'invites') return activeInvites;
-                    if (dataModalType === 'scheduled') {
-                        const d = new Date();
-                        const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                        return activeInvites.filter(item => item.visit_date === todayStr);
-                    }
+                    if (dataModalType === 'scheduled') return scheduledVisits;
                     return [];
                 })()}
                 onVisitPress={(visit) => fetchVisitDetails(visit.id)}

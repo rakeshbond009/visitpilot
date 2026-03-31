@@ -89,15 +89,28 @@ try {
     if ($limit_employee_id)
         $pending_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
 
-    $checkin_pending_sql = "SELECT count(*) FROM visits WHERE status = 'approved' AND (DATE(created_at) = CURDATE() OR (is_invited=1 AND visit_date = CURDATE()))";
-    if ($limit_employee_id)
-        $checkin_pending_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
+    // 3. Check-in Pending for Today (Approved but not yet checked in)
+    $sql_scheduled = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department, vis.photo_path as visitor_photo
+                      FROM visits v 
+                      JOIN visitors vis ON v.visitor_id = vis.id 
+                      LEFT JOIN employees e ON v.employee_id = e.id
+                      WHERE v.status = 'approved' 
+                      AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()))";
+    
+    if ($limit_employee_id) {
+        $sql_scheduled .= " AND v.employee_id = " . $pdo->quote($limit_employee_id);
+    }
+    
+    $sql_scheduled .= " ORDER BY v.created_at DESC";
+    $stmt_scheduled = $pdo->query($sql_scheduled);
+    $scheduled_list = $stmt_scheduled ? $stmt_scheduled->fetchAll(PDO::FETCH_ASSOC) : [];
+    $scheduled_today_count = count($scheduled_list);
 
     $stats = [
         'total_today' => (int) $pdo->query($today_sql)->fetchColumn(),
         'active' => $active_visitors,
         'pending' => (int) $pdo->query($pending_sql)->fetchColumn(),
-        'checkin_pending' => (int) $pdo->query($checkin_pending_sql)->fetchColumn(),
+        'checkin_pending' => $scheduled_today_count,
         'time_saved_fmt' => (string) $time_saved_fmt
     ];
 
@@ -200,6 +213,7 @@ try {
     echo json_encode([
         'success' => true,
         'visits' => $visits,
+        'scheduled_list' => $scheduled_list,
         'stats' => $stats,
         'ai_metrics' => [
             'crowd_density' => $crowd_density,

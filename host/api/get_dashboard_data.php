@@ -88,9 +88,18 @@ $stmt->execute([$host_employee_id]);
 $avg_minutes = (int)$stmt->fetchColumn();
 
 // 3. Check-in Pending for Today (Approved but not yet checked in)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'approved' AND (DATE(created_at) = CURDATE() OR (is_invited = 1 AND visit_date = CURDATE()))");
-$stmt->execute([$host_employee_id]);
-$scheduled_today = (int)$stmt->fetchColumn();
+$sql_scheduled = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department
+                  FROM visits v 
+                  JOIN visitors vis ON v.visitor_id = vis.id 
+                  LEFT JOIN employees e ON v.employee_id = e.id
+                  WHERE v.employee_id = ? AND v.status = 'approved' 
+                  AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()))
+                  ORDER BY v.created_at DESC";
+$stmt_scheduled = $pdo->prepare($sql_scheduled);
+$stmt_scheduled->execute([$host_employee_id]);
+$scheduled_list = $stmt_scheduled->fetchAll(PDO::FETCH_ASSOC);
+
+$scheduled_today = count($scheduled_list);
 
 // 4. AI Best Slot
 $traffic_sql = "SELECT HOUR(created_at) as hour, COUNT(*) as count 
@@ -139,6 +148,7 @@ echo json_encode([
     'invite_count' => count($active_invites),
     'pending_list' => $pending_list,
     'today_visitors' => $today_visitors,
+    'scheduled_list' => $scheduled_list,
     'active_invites' => $active_invites,
     'visitors' => $today_visitors,
     'latest_pending' => !empty($pending_list) ? $pending_list[0] : null,
