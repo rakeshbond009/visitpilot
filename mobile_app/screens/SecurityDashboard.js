@@ -1543,17 +1543,8 @@ export default function SecurityDashboard({ navigation }) {
                 </View>
             </Modal>
 
-            {/* Visit Details Modal */}
-            <Modal
-                animationType="slide"
-                transparent={false}
-                visible={detailsVisible}
-                onRequestClose={() => setDetailsVisible(false)}
-            >
-                <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-                    {renderVisitDetailsModal()}
-                </SafeAreaView>
-            </Modal>
+            {renderSweetAlert()}
+            {renderVisitDetailsModal()}
         </SafeAreaView>
     );
 }

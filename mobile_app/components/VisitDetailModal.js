@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, Modal, TouchableOpacity, ScrollView, Image, StyleSheet } from 'react-native';
 import { CONFIG } from '../utils/config';
 
 const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
+    const scrollRef = useRef(null);
     if (!visit) return null;
 
     const getPhotoUrl = (url) => {
@@ -48,7 +49,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
+                    <ScrollView ref={scrollRef} style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
                         <View style={styles.detailsHeader}>
                             <View style={styles.photoContainer}>
                                 <Image
@@ -148,7 +149,10 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
                         </View>
 
                         {visit.visit_code && (
-                            <View style={styles.passCard}>
+                            <View 
+                                style={styles.passCard}
+                                onLayout={(event) => { /* Layout hook */ }}
+                            >
                                 <Text style={styles.detailsSectionTitle}>Digital Entry Pass</Text>
                                 <View style={styles.qrContainer}>
                                     <Image
@@ -165,38 +169,53 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction }) => {
 
                         {onAction && (
                             <View style={styles.actionsContainer}>
-                                {visit.status === 'pending' && (
-                                    <>
-                                        <TouchableOpacity 
-                                            style={[styles.modalActionBtn, styles.rejectBtn]} 
-                                            onPress={() => onAction(visit.id, 'reject')}
-                                        >
-                                            <Text style={styles.modalActionText}>Reject Visit</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity 
-                                            style={[styles.modalActionBtn, styles.approveBtn]} 
-                                            onPress={() => onAction(visit.id, 'approve')}
-                                        >
-                                            <Text style={styles.modalActionText}>Approve Visit</Text>
-                                        </TouchableOpacity>
-                                    </>
-                                )}
-                                {visit.status === 'approved' && (
+                                {visit.visit_code && (
                                     <TouchableOpacity 
-                                        style={[styles.modalActionBtn, styles.checkInBtn]} 
-                                        onPress={() => onAction(visit.id, 'check_in')}
+                                        style={[styles.modalActionBtn, { backgroundColor: '#3b82f6', marginBottom: 12, flex: 0, width: '100%' }]} 
+                                        onPress={() => {
+                                            if (scrollRef.current) {
+                                                scrollRef.current.scrollToEnd({ animated: true });
+                                            }
+                                        }}
                                     >
-                                        <Text style={styles.modalActionText}>Check-In Visitor</Text>
+                                        <Text style={styles.modalActionText}>View Digital Pass</Text>
                                     </TouchableOpacity>
                                 )}
-                                {visit.status === 'checked_in' && (
-                                    <TouchableOpacity 
-                                        style={[styles.modalActionBtn, styles.checkOutBtn]} 
-                                        onPress={() => onAction(visit.id, 'check_out')}
-                                    >
-                                        <Text style={styles.modalActionText}>Check-Out Visitor</Text>
-                                    </TouchableOpacity>
-                                )}
+                                
+                                <View style={{ flexDirection: 'row', gap: 10, flex: 1 }}>
+                                    {visit.status === 'pending' && (
+                                        <>
+                                            <TouchableOpacity 
+                                                style={[styles.modalActionBtn, styles.rejectBtn]} 
+                                                onPress={() => onAction(visit.id, 'reject')}
+                                            >
+                                                <Text style={styles.modalActionText}>Reject Visit</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity 
+                                                style={[styles.modalActionBtn, styles.approveBtn]} 
+                                                onPress={() => onAction(visit.id, 'approve')}
+                                            >
+                                                <Text style={styles.modalActionText}>Approve Visit</Text>
+                                            </TouchableOpacity>
+                                        </>
+                                    )}
+                                    {visit.status === 'approved' && (
+                                        <TouchableOpacity 
+                                            style={[styles.modalActionBtn, styles.checkInBtn]} 
+                                            onPress={() => onAction(visit.id, 'checkin')}
+                                        >
+                                            <Text style={styles.modalActionText}>Check-In Visitor</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {visit.status === 'checked_in' && (
+                                        <TouchableOpacity 
+                                            style={[styles.modalActionBtn, styles.checkOutBtn]} 
+                                            onPress={() => onAction(visit.id, 'checkout')}
+                                        >
+                                            <Text style={styles.modalActionText}>Check-Out Visitor</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
                             </View>
                         )}
 
@@ -251,7 +270,7 @@ const styles = StyleSheet.create({
     passLabel: { fontSize: 12, color: '#94a3b8', fontWeight: '800', letterSpacing: 1.5 },
     passCode: { fontSize: 24, fontWeight: '900', color: '#1e293b', marginTop: 5 },
 
-    actionsContainer: { flexDirection: 'row', padding: 15, gap: 10, justifyContent: 'space-between' },
+    actionsContainer: { flexDirection: 'column', padding: 15, gap: 10 },
     modalActionBtn: { flex: 1, paddingVertical: 15, borderRadius: 15, alignItems: 'center', justifyContent: 'center', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3 },
     approveBtn: { backgroundColor: '#10b981' },
     rejectBtn: { backgroundColor: '#ef4444' },

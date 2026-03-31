@@ -37,8 +37,8 @@ try {
     $role = $_GET['role'] ?? null;
     $employee_id = $_GET['employee_id'] ?? null;
 
-    if ($role === 'admin') {
-        // --- ADMIN DASHBOARD DATA ---
+    if ($role === 'admin' || $role === 'security') {
+        // --- ADMIN / SECURITY DASHBOARD DATA ---
         $total_emps = safeFetchColumn($pdo, "SELECT COUNT(*) FROM employees");
         $total_visits = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits");
         $today_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE DATE(created_at) = CURDATE()");
@@ -47,7 +47,7 @@ try {
         // Fetch System Settings for capacity
         $settings_map = [];
         try {
-            $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('max_capacity')");
+            $settings_stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('max_capacity', 'office_start_hour', 'office_end_hour')");
             if ($settings_stmt) {
                 $settings_map = $settings_stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             }
@@ -87,7 +87,6 @@ try {
         }
 
         // Trends and Prediction logic (Predicting for TOMORROW)
-        // Aligning exactly with web app logic: simple historical average
         $avg_visits = count($trends_data) > 0 ? array_sum($trends_data) / count($trends_data) : 0;
         $prediction = ceil($avg_visits * 1.1);
         $prediction_change = "+10%";
@@ -109,9 +108,7 @@ try {
             $satisfaction = round(($happy_visitors / $total_processed) * 100) . "%";
         }
 
-        // Additional data for AdminDashboard.js
-        $active_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE status = 'checked_in'");
-
+        // Overstays
         $overstay_sql = "SELECT v.id, vr.name as visitor_name, vr.mobile, v.created_at, e.name as host_name 
                          FROM visits v 
                          JOIN visitors vr ON v.visitor_id = vr.id
@@ -122,6 +119,7 @@ try {
         $overstay_list = safeFetchAll($pdo, $overstay_sql);
         $overstay_count = count($overstay_list);
 
+        // Recent Activity
         $recent_sql = "SELECT v.id, vr.name as visitor_name, v.status, v.created_at, e.name as host_name, e.department, v.visit_photo as photo_url, v.check_in_time, v.check_out_time
                        FROM visits v 
                        JOIN visitors vr ON v.visitor_id = vr.id 
@@ -130,7 +128,7 @@ try {
                        LIMIT 10";
         $recent_activity = safeFetchAll($pdo, $recent_sql);
 
-        // Fixed Zone density logic to show UNIQUE department names and area names
+        // Zone Density
         $dept_zones_raw = safeFetchAll($pdo, "SELECT COALESCE(e.department, 'Other') as name, COUNT(v.id) as count 
                                    FROM visits v 
                                    LEFT JOIN employees e ON v.employee_id = e.id 
@@ -154,19 +152,21 @@ try {
             return $z;
         }, $area_zones_raw);
 
-        // Ensure at least some data is shown for zones
-        if (empty($dept_zones)) {
-            $dept_zones = [['name' => 'General', 'count' => 0, 'density' => 0]];
-        }
-        if (empty($area_zones)) {
-            $area_zones = [['name' => 'Main Lobby', 'count' => 0, 'density' => 0]];
-        }
-
+        // Records lists
         $all_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name 
                                        FROM visits v 
                                        JOIN visitors vr ON v.visitor_id = vr.id
                                        LEFT JOIN employees e ON v.employee_id = e.id 
                                        ORDER BY v.created_at DESC LIMIT 50");
+        
+        $today_visits_list = safeFetchAll($pdo, "SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, e.name as host_name 
+                                       FROM visits v 
+                                       JOIN visitors vr ON v.visitor_id = vr.id
+                                       LEFT JOIN employees e ON v.employee_id = e.id 
+                                       WHERE DATE(v.created_at) = CURDATE()
+                                       ORDER BY v.created_at DESC");
+
+        $employee_list = safeFetchAll($pdo, "SELECT id, name, department, mobile FROM employees ORDER BY name ASC LIMIT 50");
 
         // Peak Hour Calculation
         $peak_hour_sql = "SELECT HOUR(created_at) as hr, COUNT(*) as count 
@@ -185,9 +185,8 @@ try {
         }
 
         $most_visited_hosts = safeFetchAll($pdo, "SELECT e.name, COUNT(*) as visit_count FROM visits v JOIN employees e ON v.employee_id = e.id GROUP BY v.employee_id ORDER BY visit_count DESC LIMIT 3");
-        $employee_list = safeFetchAll($pdo, "SELECT id, name, department, mobile FROM employees ORDER BY name ASC LIMIT 50");
 
-        // Best Time Slot Calculation (matching web app)
+        // Best Time Slot Calculation
         $start_h = (int) ($settings_map['office_start_hour'] ?? 8);
         $end_h = (int) ($settings_map['office_end_hour'] ?? 18);
         $hours_array = [];
@@ -218,7 +217,7 @@ try {
                 'prediction_tomorrow' => (int) $prediction,
                 'prediction_change' => $prediction_change,
                 'crowd_density' => $crowd_density,
-                'active_visitors' => (int) $active_visitors,
+                'active_visitors' => (int) $inside_now,
                 'overstay_count' => $overstay_count,
                 'overstay_list' => $overstay_list,
                 'peak_time' => $peak_time,
@@ -243,63 +242,12 @@ try {
             ]
         ];
 
-        sendResponse('success', 'Admin dashboard data retrieved', $response_data);
-
-    } else if ($role === 'security') {
-        // --- SECURITY DASHBOARD DATA ---
-        $today_visitors = $pdo->query("SELECT COUNT(*) FROM visits WHERE DATE(created_at) = CURDATE()")->fetchColumn();
-        $inside_now = $pdo->query("SELECT COUNT(*) FROM visits WHERE status = 'checked_in'")->fetchColumn();
-
-        // Overstay Alerts
-        $overstay_sql = "SELECT v.id, vr.name as visitor_name, v.status, v.created_at, e.name as host_name, v.visit_photo as photo_url,
-                               TIMESTAMPDIFF(MINUTE, v.created_at, NOW()) as overstay_minutes
-                        FROM visits v 
-                        JOIN visitors vr ON v.visitor_id = vr.id
-                        LEFT JOIN employees e ON v.employee_id = e.id 
-                        WHERE v.status = 'checked_in' 
-                        AND v.check_in_time < DATE_SUB(NOW(), INTERVAL 8 HOUR) 
-                        ORDER BY v.check_in_time ASC";
-        $overstay_list = $pdo->query($overstay_sql)->fetchAll(PDO::FETCH_ASSOC);
-        $overstay_count = count($overstay_list);
-
-        // Recent Activity
-        $recent_sql = "SELECT v.id, vr.name as visitor_name, v.status, v.created_at, e.name as host_name, e.department, v.visit_photo as photo_url, v.check_in_time, v.check_out_time
-                       FROM visits v 
-                       JOIN visitors vr ON v.visitor_id = vr.id 
-                       LEFT JOIN employees e ON v.employee_id = e.id 
-                       ORDER BY v.created_at DESC 
-                       LIMIT 10";
-        $recent_activity = $pdo->query($recent_sql)->fetchAll(PDO::FETCH_ASSOC);
-
-        // Visitor Records
-        $records_visits = $pdo->query("SELECT v.id, vr.name as visitor_name, vr.mobile, v.status, v.created_at, 
-                                       e.name as host_name, e.department, v.purpose, v.visit_code,
-                                       v.visit_photo as photo_url, v.check_in_time, v.check_out_time
-                                       FROM visits v 
-                                       JOIN visitors vr ON v.visitor_id = vr.id 
-                                       LEFT JOIN employees e ON v.employee_id = e.id 
-                                       ORDER BY v.created_at DESC 
-                                       LIMIT 50")->fetchAll(PDO::FETCH_ASSOC);
-
-        $response_data = [
-            'stats' => [
-                'today_visitors' => (int) $today_visitors,
-                'inside_now' => (int) $inside_now,
-                'overstay_count' => $overstay_count
-            ],
-            'recent_activity' => $recent_activity,
-            'records' => [
-                'visits' => $records_visits
-            ],
-            'overstay_list' => $overstay_list
-        ];
-
-        sendResponse('success', 'Security dashboard data retrieved', $response_data);
+        sendResponse('success', 'Dashboard data retrieved', $response_data);
 
     } else if ($employee_id) {
         // Host Stats (Legacy/Fallback)
-        $today_visitors = $pdo->query("SELECT COUNT(*) FROM visits WHERE employee_id = " . intval($employee_id) . " AND DATE(created_at) = CURDATE()")->fetchColumn();
-        $inside_now = $pdo->query("SELECT COUNT(*) FROM visits WHERE employee_id = " . intval($employee_id) . " AND status = 'checked_in'")->fetchColumn();
+        $today_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE employee_id = ? AND DATE(created_at) = CURDATE()", [$employee_id]);
+        $inside_now = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'checked_in'", [$employee_id]);
 
         sendResponse('success', 'Host stats retrieved', [
             'today_visitors' => (int) $today_visitors,

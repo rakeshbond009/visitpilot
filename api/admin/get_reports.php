@@ -6,7 +6,7 @@ require_once '../includes/api_header.php';
 $permissions = $_SESSION['permissions'] ?? [];
 $is_admin = ($_SESSION['role'] === 'admin');
 
-$can_view_all = $is_admin || in_array('admin_reports', $permissions) || in_array('view_employee_report', $permissions);
+$can_view_all = $is_admin || in_array('admin_reports', $permissions) || in_array('security_reports', $permissions) || in_array('view_employee_report', $permissions);
 $can_view_own = in_array('host_reports', $permissions);
 
 if (!$can_view_all && !$can_view_own) {
