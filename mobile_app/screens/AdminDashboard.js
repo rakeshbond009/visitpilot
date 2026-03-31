@@ -84,8 +84,9 @@ export default function AdminDashboard({ navigation }) {
     const [modalType, setModalType] = useState(null); // 'employees', 'visits', 'overstays', 'efficiency'
     const [modalFilter, setModalFilter] = useState(null);
     const [modalSearchTerm, setModalSearchTerm] = useState('');
-    const [selectedVisit, setSelectedVisit] = useState(null);
     const [detailsVisible, setDetailsVisible] = useState(false);
+    const [selectedEmployee, setSelectedEmployee] = useState(null);
+    const [employeeDetailsVisible, setEmployeeDetailsVisible] = useState(false);
 
     // SweetAlert Modal State
     const [alertVisible, setAlertVisible] = useState(false);
@@ -196,6 +197,9 @@ export default function AdminDashboard({ navigation }) {
     const handleRecordClick = (item, type) => {
         if (type === 'visits') {
             fetchVisitDetails(item.id);
+        } else if (type === 'employees') {
+            setSelectedEmployee(item);
+            setEmployeeDetailsVisible(true);
         }
     };
 
@@ -585,7 +589,11 @@ export default function AdminDashboard({ navigation }) {
                 {renderModalSearch()}
                 <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                     {filteredEmployees.map((emp, idx) => (
-                        <View key={idx} style={styles.employeeCard}>
+                        <TouchableOpacity 
+                            key={idx} 
+                            style={styles.employeeCard}
+                            onPress={() => handleRecordClick(emp, 'employees')}
+                        >
                             <View style={styles.employeeMainInfo}>
                                 <View style={[styles.recordAvatar, { backgroundColor: emp.status === 'active' ? '#e0f2fe' : '#f1f5f9' }]}>
                                     <Text style={[styles.avatarText, { color: emp.status === 'active' ? '#0284c7' : '#64748b' }]}>
@@ -615,7 +623,7 @@ export default function AdminDashboard({ navigation }) {
                                     <Text style={styles.contactText} numberOfLines={1}>{emp.email}</Text>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))}
                     {filteredEmployees.length === 0 && (
                         <View style={styles.emptyState}>
@@ -626,6 +634,98 @@ export default function AdminDashboard({ navigation }) {
                     <View style={{ height: 20 }} />
                 </ScrollView>
             </View>
+        );
+    };
+
+    const renderEmployeeDetailsModal = () => {
+        if (!selectedEmployee) return null;
+        const emp = selectedEmployee;
+        
+        // Find visits hosted by this employee
+        const hostVisits = (records.visits || []).filter(v => v.host_name === emp.name).slice(0, 5);
+
+        return (
+            <Modal
+                animationType="slide"
+                transparent={false}
+                visible={employeeDetailsVisible}
+                onRequestClose={() => setEmployeeDetailsVisible(false)}
+            >
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+                    <View style={[styles.fullModalHeader, { backgroundColor: '#ef4444' }]}>
+                        <TouchableOpacity onPress={() => setEmployeeDetailsVisible(false)} style={styles.fullModalBack}>
+                            <Icon name="arrow-left" size={24} color="#fff" />
+                        </TouchableOpacity>
+                        <Text style={styles.fullModalTitleText}>Employee Profile</Text>
+                    </View>
+
+                    <ScrollView style={{ flex: 1 }}>
+                        <View style={styles.detailProfileSection}>
+                            <View style={[styles.detailAvatar, { backgroundColor: '#fee2e2' }]}>
+                                <Text style={styles.detailAvatarText}>{emp.name.charAt(0).toUpperCase()}</Text>
+                            </View>
+                            <Text style={styles.detailName}>{emp.name}</Text>
+                            <View style={[styles.miniStatusBadge, { backgroundColor: emp.status === 'active' ? '#dcfce7' : '#f1f5f9', marginTop: 8 }]}>
+                                <Text style={[styles.miniStatusText, { color: emp.status === 'active' ? '#166534' : '#64748b' }]}>
+                                    {(emp.status || 'active').toUpperCase()}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.detailInfoCard}>
+                            <Text style={styles.detailSectionTitle}>Work Information</Text>
+                            <View style={styles.detailInfoRow}>
+                                <Icon name="office-building" size={20} color="#64748b" />
+                                <View style={styles.detailInfoContent}>
+                                    <Text style={styles.detailLabel}>Department</Text>
+                                    <Text style={styles.detailValue}>{emp.department}</Text>
+                                </View>
+                            </View>
+                            <View style={styles.detailInfoRow}>
+                                <Icon name="account-tie" size={20} color="#64748b" />
+                                <View style={styles.detailInfoContent}>
+                                    <Text style={styles.detailLabel}>Role / Designation</Text>
+                                    <Text style={styles.detailValue}>{emp.role || 'Staff'}</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        <View style={styles.detailInfoCard}>
+                            <Text style={styles.detailSectionTitle}>Contact Details</Text>
+                            <TouchableOpacity style={styles.detailInfoRow} onPress={() => showAlert('Call', `Calling ${emp.mobile}`)}>
+                                <Icon name="phone" size={20} color="#3b82f6" />
+                                <View style={styles.detailInfoContent}>
+                                    <Text style={styles.detailLabel}>Mobile Number</Text>
+                                    <Text style={[styles.detailValue, { color: '#3b82f6' }]}>{emp.mobile}</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.detailInfoRow} onPress={() => showAlert('Email', `Emailing ${emp.email}`)}>
+                                <Icon name="email" size={20} color="#3b82f6" />
+                                <View style={styles.detailInfoContent}>
+                                    <Text style={styles.detailLabel}>Email Address</Text>
+                                    <Text style={[styles.detailValue, { color: '#3b82f6' }]}>{emp.email}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.detailInfoCard}>
+                            <Text style={styles.detailSectionTitle}>Hosted Visits (Recent)</Text>
+                            {hostVisits.length > 0 ? (
+                                hostVisits.map((v, i) => (
+                                    <View key={i} style={styles.minimalVisitRow}>
+                                        <View style={[styles.statusDot, { backgroundColor: v.status === 'checked_in' ? '#10b981' : '#cbd5e1', marginRight: 10 }]} />
+                                        <Text style={styles.minimalVisitName}>{v.visitor_name}</Text>
+                                        <Text style={styles.minimalVisitDate}>{v.created_at?.split(' ')[0]}</Text>
+                                    </View>
+                                ))
+                            ) : (
+                                <Text style={styles.noDataTextSmall}>No recent visits hosted.</Text>
+                            )}
+                        </View>
+                        <View style={{ height: 40 }} />
+                    </ScrollView>
+                </SafeAreaView>
+            </Modal>
         );
     };
 
@@ -1717,7 +1817,6 @@ export default function AdminDashboard({ navigation }) {
                     return records.visits || [];
                 })()}
                 onVisitPress={(visit) => {
-                    setModalVisible(false);
                     handleRecordClick(visit, 'visits');
                 }}
             />
@@ -1739,6 +1838,7 @@ export default function AdminDashboard({ navigation }) {
             {renderReportsModal()}
             {renderSettingsModal()}
             {renderVisitorsModal()}
+            {renderEmployeeDetailsModal()}
 
             {/* Filter Modal */}
             <Modal
@@ -3755,5 +3855,20 @@ const styles = StyleSheet.create({
     alertCancelButton: { borderColor: '#cbd5e1', backgroundColor: '#f8fafc' },
     alertCancelButtonText: { color: '#64748b', fontSize: 15, fontWeight: 'bold' },
     alertConfirmButton: { borderWidth: 0, elevation: 2 },
-    alertConfirmButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' }
+    alertConfirmButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
+    // Employee Detail Styles
+    detailProfileSection: { alignItems: 'center', padding: 30, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    detailAvatar: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+    detailAvatarText: { fontSize: 40, fontWeight: 'bold', color: '#ef4444' },
+    detailName: { fontSize: 24, fontWeight: '800', color: '#1e293b' },
+    detailInfoCard: { backgroundColor: '#fff', marginHorizontal: 20, marginTop: 20, borderRadius: 16, padding: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
+    detailSectionTitle: { fontSize: 14, fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: 15, letterSpacing: 1 },
+    detailInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 15 },
+    detailInfoContent: { flex: 1 },
+    detailLabel: { fontSize: 12, color: '#94a3b8', marginBottom: 2 },
+    detailValue: { fontSize: 16, color: '#1e293b', fontWeight: '600' },
+    minimalVisitRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+    minimalVisitName: { flex: 1, fontSize: 14, fontWeight: '600', color: '#334155' },
+    minimalVisitDate: { fontSize: 12, color: '#94a3b8' },
+    noDataTextSmall: { fontSize: 13, color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', padding: 10 }
 });

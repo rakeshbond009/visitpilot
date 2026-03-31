@@ -155,7 +155,7 @@ try {
     $best_time = ($best_hour > 12 ? $best_hour - 12 : $best_hour) . ":00 " . ($best_hour >= 12 ? "PM" : "AM");
 
     // Zone Density (Department-wise) - UNIQUE DEPARTMENTS
-    $dept_sql = "SELECT COALESCE(NULLIF(e.department, ''), 'Other') as name, COUNT(v.id) as count 
+    $dept_sql = "SELECT COALESCE(e.department, 'Other') as name, COUNT(v.id) as count 
                  FROM visits v 
                  LEFT JOIN employees e ON v.employee_id = e.id 
                  WHERE v.status = 'checked_in' 
@@ -168,7 +168,7 @@ try {
     }, $dept_zones_raw);
 
     // Zone Density (Access Area-wise) - UNIQUE AREAS
-    $area_sql = "SELECT COALESCE(NULLIF(access_area, ''), 'Unassigned') as name, COUNT(id) as count 
+    $area_sql = "SELECT COALESCE(access_area, 'Unassigned') as name, COUNT(id) as count 
                  FROM visits 
                  WHERE status = 'checked_in' 
                  GROUP BY name 

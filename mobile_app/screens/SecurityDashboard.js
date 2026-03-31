@@ -455,7 +455,7 @@ export default function SecurityDashboard({ navigation }) {
                             <Text style={{ color: '#94a3b8', fontStyle: 'italic', textAlign: 'center', marginVertical: 10 }}>No active visitors in any zone</Text>
                         ) : (
                             zones.map((item, index) => {
-                                const pct = item.density || Math.min(100, (item.count / 10) * 100);
+                                const pct = Math.min(100, (item.count / 10) * 100);
                                 const color = pct > 80 ? '#ef4444' : (pct > 40 ? '#f59e0b' : '#10b981');
                                 const status = pct > 80 ? 'High Congestion' : (pct > 40 ? 'Moderate Traffic' : 'Low Activity');
 
@@ -1033,8 +1033,8 @@ export default function SecurityDashboard({ navigation }) {
                 }
             );
         } else if (action === 'approve' || action === 'reject') {
-             const label = action === 'approve' ? 'Approve' : 'Reject';
-             showAlert(
+            const label = action === 'approve' ? 'Approve' : 'Reject';
+            showAlert(
                 'Confirm ' + label,
                 `Are you sure you want to ${label} this visit request?`,
                 'warning',
@@ -1087,7 +1087,7 @@ export default function SecurityDashboard({ navigation }) {
                     </View>
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
-                        
+
                         {alertConfig.showCancel ? (
                             <View style={styles.alertActionRow}>
                                 <TouchableOpacity
@@ -1122,7 +1122,7 @@ export default function SecurityDashboard({ navigation }) {
 
     const renderVisitDetailsModal = () => {
         if (!selectedVisit) return null;
-        
+
         return (
             <VisitDetailModal
                 visible={detailsVisible}
@@ -1602,7 +1602,7 @@ export default function SecurityDashboard({ navigation }) {
                 color={modalType === 'overstays' ? '#ef4444' : '#3b82f6'}
                 visits={(() => {
                     if (modalType === 'overstays') return records.overstays || [];
-                    
+
                     const isToday = (dateStr) => {
                         if (!dateStr) return false;
                         const d = new Date(dateStr.indexOf('T') === -1 && dateStr.indexOf(' ') > -1 ? dateStr.replace(' ', 'T') : dateStr);
@@ -1629,7 +1629,6 @@ export default function SecurityDashboard({ navigation }) {
                     });
                 })()}
                 onVisitPress={(visit) => {
-                    setModalVisible(false);
                     fetchVisitDetails(visit.id);
                 }}
             />
