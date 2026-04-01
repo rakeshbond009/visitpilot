@@ -828,13 +828,7 @@ export default function RegisterVisitor({ navigation, route }) {
 
                     <TouchableOpacity
                         style={[styles.mainSubmitBtn, loading && styles.disabledBtn]}
-                        onPress={() => {
-                            if (otpEnabled && !isOtpVerified) {
-                                alert("Please verify your mobile number with OTP first.");
-                                return;
-                            }
-                            handleRegister();
-                        }}
+                        onPress={() => handleRegister()}
                         disabled={loading}
                     >
                         {loading ? (
