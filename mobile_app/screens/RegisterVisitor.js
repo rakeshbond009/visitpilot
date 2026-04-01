@@ -599,7 +599,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                 <View style={styles.inputGroup}>
                                     <TextInput
                                         style={styles.modernInput}
-                                        placeholder="FULL NAME"
+                                        placeholder={`FULL NAME${isMandatory('visitor_name') ? ' *' : ''}`}
                                         placeholderTextColor="#94a3b8"
                                         value={name}
                                         onChangeText={setName}
