@@ -74,7 +74,7 @@
                     data.new_visits.forEach(visit => {
                         if (!notifiedVisits.has(visit.id)) {
                             notifiedVisits.add(visit.id);
-                            
+
                             console.log("New Visitor Arrival Alert:", visit.visitor_name);
                             triggerNewVisitorAlert(visit);
 
@@ -320,13 +320,8 @@
                 const uploadData = await uploadRes.json();
 
                 if (uploadData.success) {
-                    Swal.fire({
-                        title: 'Approved!',
-                        text: 'Visitor has been successfully approved.',
-                        icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    // Progress to share view immediately after successful upload
+                    console.log("Visitor approved and pass uploaded.");
                     const modalActions = document.getElementById('modal-actions');
                     const modalShareArea = document.getElementById('modal-share-area');
                     if (modalActions) modalActions.classList.add('d-none');
@@ -397,8 +392,12 @@
                 }
 
                 // Show a small success alert
-                // Success toast or nothing (Per User Request)
-                console.log(data.skipped ? 'Notice: ' + data.message : 'Resend Successful');
+                AppDialog.show({
+                    title: data.skipped ? 'Notice' : 'Notification Status',
+                    text: data.message || 'Pass Whatsapp to Visitor.',
+                    icon: data.skipped ? 'info' : 'success',
+                    confirmButtonText: 'OK'
+                });
             } else {
                 throw new Error(data.message || "Cloud API failed");
             }

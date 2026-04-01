@@ -390,7 +390,7 @@
         }
     }
     
-    // Explicitly attach to window for global accessibility to prevent dashboard refreshes
+    // Explicitly attach to window for global accessibility to prevent page refreshes
     window.viewVisitDetails = viewVisitDetails;
     window.viewPass = viewPass;
 </script>
