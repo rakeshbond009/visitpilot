@@ -546,7 +546,10 @@ $scheduled_today = (int) $stmt->fetchColumn();
     // --- REAL-TIME ENGINE ---
 
 
-    async function syncHostDashboard() {
+    async function syncHostDashboard(force = false) {
+        // Prevent background polling from re-rendering the DOM while a modal is open
+        if (!force && document.querySelector('.modal.show')) return;
+        
         try {
             // Using BASE_URL for consistency if defined, else relative
             const apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL + 'host/api/get_dashboard_data.php' : 'api/get_dashboard_data.php';
@@ -616,7 +619,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
     }
 
     syncHostDashboard(); // Initial load
-    setInterval(syncHostDashboard, 2000);
+    setInterval(() => syncHostDashboard(false), 2000);
 
     // Initial State for dashboard refresh logic
     let lastPendingCount = <?php echo $pending_count; ?>;
@@ -1007,8 +1010,6 @@ $scheduled_today = (int) $stmt->fetchColumn();
         margin-bottom: 2px;
     }
 </style>
-
-</script>
 
 <?php require_once '../includes/visit_details_modal.php'; ?>
 <?php require_once 'footer.php'; ?>

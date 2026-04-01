@@ -636,7 +636,10 @@ if ($time_saved_min > 60) {
     }
 
     // --- REAL-TIME ENGINE ---
-    async function refreshDashboardTable() {
+    async function refreshDashboardTable(force = false) {
+        // Prevent background polling from re-rendering the DOM while a modal is open
+        if (!force && document.querySelector('.modal.show')) return;
+        
         try {
             const response = await fetch('api/get_dashboard_data.php');
             const data = await response.json();
@@ -810,7 +813,8 @@ if ($time_saved_min > 60) {
 
     // --- EVENT LISTENERS ---
     applySavedBGMode();
-    setInterval(refreshDashboardTable, 2000);
+    applySavedBGMode();
+    setInterval(() => refreshDashboardTable(false), 2000);
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
     <?php if (isset($_GET['new_visit_id'])):
@@ -830,13 +834,57 @@ if ($time_saved_min > 60) {
         }
         ?>
         window.addEventListener('load', () => {
-            AppDialog.show({
-                title: '<?php echo $msgTitle; ?>',
-                text: '<?php echo addslashes($msgText); ?>',
-                icon: 'success',
-                confirmButtonText: 'OK'
-            });
-            setTimeout(() => { window.history.replaceState({}, document.title, window.location.pathname); }, 1000);
+            const visitId = '<?php echo $_GET['new_visit_id']; ?>';
+            const visit = todaysVisits.find(v => v.id == visitId);
+            
+            if (visit) {
+                Swal.fire({
+                    title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
+                    html: `
+                        <div class="text-center p-2">
+                            <div class="mb-3">
+                                <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}" 
+                                     class="rounded-circle border border-4 border-primary shadow animate__animated animate__zoomIn" 
+                                     width="100" height="100" style="object-fit: cover;"
+                                     onerror="this.src='../assets/img/visitor-icon.png'">
+                            </div>
+                            <h4 class="fw-bold mb-1">${visit.visitor_name}</h4>
+                            <p class="text-muted mb-3">${visit.mobile}</p>
+                            
+                            <div class="p-3 bg-light rounded-4 border text-start mb-0">
+                                <p class="mb-2 small text-muted text-center"><?php echo addslashes($msgText); ?></p>
+                                <div class="row g-2 mt-2">
+                                    <div class="col-6">
+                                        <div class="p-2 bg-white rounded-3 border text-center">
+                                            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.55rem;">Host</small>
+                                            <span class="fw-bold text-dark small">${visit.host_name}</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="p-2 bg-white rounded-3 border text-center">
+                                            <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.55rem;">Visit Code</small>
+                                            <span class="fw-bold text-primary small">${visit.visit_code}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Done',
+                    confirmButtonColor: '#0d6efd',
+                    customClass: {
+                        popup: 'rounded-4 border-0 shadow-lg',
+                        confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
+                    }
+                }).then(() => {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('new_visit_id');
+                    url.searchParams.delete('msg');
+                    url.searchParams.delete('wa_status');
+                    window.history.replaceState({}, '', url);
+                });
+            }
         });
         <?php
     endif; ?>

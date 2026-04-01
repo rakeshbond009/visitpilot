@@ -18,6 +18,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <?php include_once '../includes/app_dialogs.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php include_once '../includes/visit_details_modal.php'; ?>
 
 <!-- PDF Generation Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
