@@ -30,8 +30,10 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles)
 $stmt = $pdo->prepare("SELECT employee_id FROM users WHERE id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $host_employee_id = $stmt->fetchColumn();
+$is_admin = ($_SESSION['role'] === 'admin');
 
-if (!$host_employee_id) {
+// Only block non-admins if they don't have an employee profile
+if (!$is_admin && !$host_employee_id) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
@@ -43,7 +45,6 @@ if (!$host_employee_id) {
 
 // Get last check timestamp from request (optional)
 $last_check = isset($_GET['last_check']) ? $_GET['last_check'] : null;
-$is_admin = ($_SESSION['role'] === 'admin');
 
 // Get pending approvals count
 if ($is_admin) {

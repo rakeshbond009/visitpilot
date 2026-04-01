@@ -110,11 +110,7 @@
     }
 
     async function viewVisitDetails(visitId) {
-        console.log("Visit Details Viewer called for visit ID:", visitId);
-        if (!visitId) {
-            console.warn("No ID provided to viewVisitDetails");
-            return;
-        }
+        if (!visitId) return;
 
         // Hide other modals if open (e.g. summary list, notifications) to prevent overlapping issues
         const validModals = ['detailsModal', 'detailsListModal', 'notificationModal', 'deleteConfirmModal', 'inputModal'];
@@ -179,7 +175,7 @@
                 if (v.approved_at) {
                     let decision = 'Decision Made';
                     let decisionClass = 'secondary';
-                    
+
                     if (v.approval_status === 'approved') {
                         decision = 'Approved';
                         decisionClass = 'success';

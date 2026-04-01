@@ -622,21 +622,13 @@ if ($time_saved_min > 60) {
             },
             backdrop: `rgba(0,0,0,0.5)`
         }).then((result) => {
-            console.log("Swal result received:", result);
             if (result.isConfirmed) {
-                console.log("Confirmed. Launching viewVisitDetails for:", visit.id);
                 // Short timeout to allow Swal to finish closing, avoiding Bootstrap modal backdrop overlaps
                 setTimeout(() => {
                     if (typeof viewVisitDetails === 'function') {
-                        console.log("Calling viewVisitDetails function...");
                         viewVisitDetails(visit.id);
-                    } else {
-                        console.error("viewVisitDetails function NOT FOUND on dashboard!");
-                        alert("Error: Details Viewer not initialized properly.");
                     }
                 }, 400);
-            } else {
-                console.log("Dismissed or Cancelled.");
             }
         });
 
