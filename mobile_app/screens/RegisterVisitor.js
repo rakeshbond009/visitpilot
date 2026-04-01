@@ -89,8 +89,9 @@ export default function RegisterVisitor({ navigation, route }) {
         if (route.params?.code) {
             setLookupValue(route.params.code);
             // We use setTimeout to ensure states are initialized before calling lookup
+            // We pass false to skip the redundant alert when redirected from scan
             setTimeout(() => {
-                lookupInvitation(route.params.code);
+                lookupInvitation(route.params.code, false);
             }, 500);
         }
     }, [route.params?.code]);
@@ -199,7 +200,7 @@ export default function RegisterVisitor({ navigation, route }) {
         }
     };
 
-    const lookupInvitation = async (passedCode = null) => {
+    const lookupInvitation = async (passedCode = null, showSuccessAlert = true) => {
         const queryValue = passedCode || lookupValue;
         if (!queryValue) return;
 
@@ -219,8 +220,10 @@ export default function RegisterVisitor({ navigation, route }) {
                 setInvitationId(inv.id || null);
                 setIsPreApproved(true);
                 
-                const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}`;
-                showAlert('Success', `Invitation found and details pre-filled!\n\n${details}`, 'success');
+                if (showSuccessAlert) {
+                    const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}`;
+                    showAlert('Success', `Invitation found and details pre-filled!\n\n${details}`, 'success');
+                }
             } else {
                 showAlert('Not Found', response.data.message || 'No active invitation found.', 'error');
             }
