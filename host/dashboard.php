@@ -547,7 +547,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
 
 
     async function syncHostDashboard(force = false) {
-        // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
+        // Prevent background polling from re-rendering the DOM while a modal is open
         if (!force && document.querySelector('.modal.show')) return;
         
         try {
@@ -1009,5 +1009,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
         font-weight: 700;
         margin-bottom: 2px;
     }
+</style>
+
 <?php require_once '../includes/visit_details_modal.php'; ?>
 <?php require_once 'footer.php'; ?>

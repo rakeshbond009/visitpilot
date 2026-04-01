@@ -137,7 +137,7 @@
                         if (typeof window.viewVisitDetails === 'function') {
                             window.viewVisitDetails(visit.id);
                         } else {
-                            console.warn("viewVisitDetails not found globally. Skipping modal launch.");
+                            console.warn("viewVisitDetails not found globally.");
                         }
                     }, 500);
                 }

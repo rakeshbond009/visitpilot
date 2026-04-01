@@ -625,10 +625,10 @@ if ($time_saved_min > 60) {
             if (result.isConfirmed) {
                 // Short timeout to allow Swal to finish closing, avoiding Bootstrap modal backdrop overlaps
                 setTimeout(() => {
-                    if (typeof window.viewVisitDetails === 'function') {
-                        window.viewVisitDetails(visit.id);
+                    if (typeof viewVisitDetails === 'function') {
+                        viewVisitDetails(visit.id);
                     }
-                }, 500);
+                }, 400);
             }
         });
 
@@ -637,7 +637,7 @@ if ($time_saved_min > 60) {
 
     // --- REAL-TIME ENGINE ---
     async function refreshDashboardTable(force = false) {
-        // Skip updates if a modal is open to ensure stability
+        // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
         if (!force && document.querySelector('.modal.show')) return;
         
         try {

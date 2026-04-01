@@ -665,7 +665,7 @@ if ($time_saved_minutes > 60) {
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
     async function refreshDashboardTable(force = false) {
-        // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
+        // Prevent background polling from re-rendering the DOM while a modal is open
         if (!force && document.querySelector('.modal.show')) return;
         
         try {
@@ -857,12 +857,13 @@ if ($time_saved_minutes > 60) {
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                // Ensure SweetAlert cleans up and doesn't interfere with the Bootstrap modal
+                // IMPORTANT: 350ms delay ensures SweetAlert cleans up its backdrop 
+                // BEFORE Bootstrap attempts to launch the visitDetailsModal.
                 setTimeout(() => {
-                    if (typeof window.viewVisitDetails === 'function') {
-                        window.viewVisitDetails(visit.id);
+                    if (typeof viewVisitDetails === 'function') {
+                        viewVisitDetails(visit.id);
                     }
-                }, 500);
+                }, 350);
             }
         });
     }
