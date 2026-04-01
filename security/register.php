@@ -600,7 +600,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         </div>
                                     </div>
 
-                                    <div class="row g-3 mt-0" id="idProofContainer" style="display:none;">
+                                    <div class="row g-3 mt-0" id="idProofContainer" style="<?php echo (isFieldMandatory('id_proof') || !empty($visitor['id_proof_number'])) ? 'display:flex;' : 'display:none;'; ?>">
                                         <div class="col-md-6">
                                             <div class="form-floating">
                                                 <select name="id_proof_type" class="form-select" id="idProofSelect">
