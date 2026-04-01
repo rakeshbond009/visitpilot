@@ -1,6 +1,7 @@
 // Camera functionality for visitor registration
 let videoStream = null;
 let videoElement = null;
+let currentDeviceId = null;
 
 function initCamera() {
     videoElement = document.createElement('video');
@@ -8,44 +9,99 @@ function initCamera() {
     videoElement.setAttribute('autoplay', '');
 }
 
-function startCamera() {
+async function enumerateCameras(selectElementId = 'cameraSelect') {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        return [];
+    }
+
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        const select = document.getElementById(selectElementId);
+        if (select) {
+            select.innerHTML = '';
+            videoDevices.forEach((device, index) => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${index + 1}`;
+                if (currentDeviceId === device.deviceId) option.selected = true;
+                select.appendChild(option);
+            });
+
+            // Listen for changes
+            select.onchange = () => {
+                startCamera(select.value);
+            };
+        }
+        return videoDevices;
+    } catch (err) {
+        console.error('Error listing cameras:', err);
+        return [];
+    }
+}
+
+function startCamera(deviceId = null) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Camera access is not supported in this browser.');
         return;
     }
 
-    navigator.mediaDevices.getUserMedia({
-        video: {
-            width: { ideal: 640 },
-            height: { ideal: 480 },
+    // If already running, stop it
+    stopCamera();
+
+    const constraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
             facingMode: 'user'
         }
-    })
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints)
         .then(stream => {
             videoStream = stream;
             if (!videoElement) initCamera();
             videoElement.srcObject = stream;
             videoElement.play();
 
-            const container = document.getElementById('camera_view');
-            container.innerHTML = '';
-            container.style.display = 'block'; // Ensure it's visible
-            videoElement.style.width = '100%';
-            videoElement.style.height = '100%';
-            videoElement.style.objectFit = 'cover';
-            container.appendChild(videoElement);
+            // Store current device ID from the track
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+                currentDeviceId = track.getSettings().deviceId;
+                // Update any list if it exists
+                const select = document.getElementById('cameraSelect');
+                if (select && !select.value) {
+                     // First time load, refresh list to get labels
+                     enumerateCameras('cameraSelect');
+                }
+            }
 
-            // Hide Instruction Overlay
+            const container = document.getElementById('camera_view');
+            if (container) {
+                container.innerHTML = '';
+                container.style.display = 'block';
+                videoElement.style.width = '100%';
+                videoElement.style.height = '100%';
+                videoElement.style.objectFit = 'cover';
+                container.appendChild(videoElement);
+            }
+
+            // Hide instruction/preview
             const instruction = document.getElementById('camera_instruction');
             if (instruction) instruction.style.display = 'none';
-
-            // Hide Preview if it was shown
             const preview = document.getElementById('photo_preview');
             if (preview) preview.style.display = 'none';
         })
         .catch(err => {
             console.error('Camera error:', err);
-            alert('Unable to access camera. Please check permissions.');
+            // If specific device failed, try default
+            if (deviceId) {
+                console.warn('Specific camera failed, falling back to default.');
+                startCamera(null);
+            } else {
+                alert('Unable to access camera. Please check permissions.');
+            }
         });
 }
 

@@ -704,7 +704,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <!-- Right Column: Camera Only -->
                         <div class="col-lg-4">
                             <div class="section-card mb-4">
-                                <div class="section-header"><i class="bi bi-camera-video-fill"></i> Live Photo <?php echo isFieldMandatory('photo') ? '<span class="text-danger">*</span>' : ''; ?></div>
+                                <div class="section-header d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-camera-video-fill me-2"></i>Live Photo <?php echo isFieldMandatory('photo') ? '<span class="text-danger">*</span>' : ''; ?></span>
+                                    <div class="camera-switch-wrapper" style="width: 150px;">
+                                        <select id="cameraSelect" class="form-select form-select-sm border-0 bg-light shadow-none" style="font-size: 0.75rem; font-weight: 600;">
+                                            <option value="">Loading Cameras...</option>
+                                        </select>
+                                    </div>
+                                </div>
                                 <div class="camera-box mb-3 shadow-sm border-0">
                                     <div id="camera_view" style="width:100%; height:100%;"></div>
                                     <div id="photo_preview" style="display:none; width:100%; height:100%;">
@@ -994,8 +1001,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     });
 
-    // Auto-start camera on load
-    window.addEventListener('load', startCamera);
+    // Auto-start camera and list devices on load
+    window.addEventListener('load', () => {
+        startCamera();
+        enumerateCameras('cameraSelect');
+    });
 
     function toggleIdProof(toggle) {
         const container = document.getElementById('idProofContainer');
