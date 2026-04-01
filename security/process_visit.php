@@ -60,39 +60,7 @@ elseif ($action == 'checkin_by_code') {
     $visit = $stmt->fetch();
 
     if ($visit) {
-        if ($visit['status'] == 'approved' || $visit['status'] == 'registered') {
-            if ($visit['approval_status'] == 'approved') {
-                echo "Swal.fire({
-                    title: 'Confirm Check-In',
-                    text: 'Do you want to check in " . addslashes($visit['visitor_name']) . "?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Yes, Check In',
-                    cancelButtonText: 'Cancel'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href='process_visit.php?action=do_checkin&id=" . $visit['id'] . "';
-                    } else {
-                        window.location.href='$home_url';
-                    }
-                });";
-            } else {
-                echo "Swal.fire('Approval Pending', 'This visit is pending host approval.', 'warning').then(() => { window.location.href='$home_url'; });";
-            }
-        }
-        elseif ($visit['status'] == 'pending' && $visit['is_invited'] == 1) {
-            // Check permission before redirecting (Android-style)
-            if (canView('security_register')) {
-                echo "window.location.href='register.php?code=$code';";
-            } else {
-                echo "Swal.fire({
-                    title: 'Invitation Found',
-                    text: 'Found invitation for: " . addslashes($visit['visitor_name']) . ".\\n\\nPlease ask the security officer to complete the registration at the gate.',
-                    icon: 'success'
-                }).then(() => { window.location.href='$home_url'; });";
-            }
-        }
-        elseif ($visit['status'] == 'checked_in') {
+        if ($visit['status'] == 'checked_in') {
             echo "Swal.fire({
                 title: 'Already Checked In',
                 text: 'Visitor is already inside. Do you want to check OUT?',
@@ -108,11 +76,46 @@ elseif ($action == 'checkin_by_code') {
                 }
             });";
         }
-        elseif ($visit['approval_status'] == 'pending' || $visit['status'] == 'pending') {
-            echo "Swal.fire('Approval Pending', 'This visit request is currently awaiting host approval.', 'warning').then(() => { window.location.href='$home_url'; });";
+        // 2. Invitation Flow: Always redirect to registration if not checked out (Android parity)
+        elseif ($visit['is_invited'] == 1 && $visit['status'] != 'checked_out') {
+            // Check permission before redirecting (Android-style)
+            if (canView('security_register')) {
+                echo "window.location.href='register.php?code=$code';";
+            } else {
+                echo "Swal.fire({
+                    title: 'Invitation Found',
+                    text: 'Found invitation for: " . addslashes($visit['visitor_name']) . ".\\n\\nPlease ask the security officer to complete the registration at the gate.',
+                    icon: 'success'
+                }).then(() => { window.location.href='$home_url'; });";
+            }
+        }
+        // 3. Normal Flow: Approved or Registered Visits
+        elseif ($visit['status'] == 'approved' || $visit['status'] == 'registered') {
+            // Confirmation required for Check-in
+            $msg = "Visit request for " . addslashes($visit['visitor_name']) . " is approved. Do you want to Mark Check In?";
+            echo "Swal.fire({
+                title: 'Confirm Check-In',
+                text: '$msg',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Check In',
+                cancelButtonText: 'No, Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href='process_visit.php?action=do_checkin&id=" . $visit['id'] . "';
+                } else {
+                    window.location.href='$home_url';
+                }
+            });";
+        }
+        elseif ($visit['status'] == 'pending') {
+            echo "Swal.fire('Approval Pending', 'This visit is pending host approval.', 'warning').then(() => { window.location.href='$home_url'; });";
+        }
+        elseif ($visit['status'] == 'checked_out') {
+            echo "Swal.fire('Completed Visit', 'This visitor has already checked out.', 'error').then(() => { window.location.href='$home_url'; });";
         }
         else {
-            echo "Swal.fire('Already Processed', 'This visit has been checked out, rejected, or is no longer active.', 'info').then(() => { window.location.href='$home_url'; });";
+            echo "Swal.fire('Error', 'Invalid visit status: " . $visit['status'] . "', 'error').then(() => { window.location.href='$home_url'; });";
         }
     }
     else {
