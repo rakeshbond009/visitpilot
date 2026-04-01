@@ -486,7 +486,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
                         btn.classList.replace('btn-success', 'btn-outline-success');
                     }
                 }
-                AppDialog.show({
+                Swal.fire({
                     title: data.skipped ? 'Notice' : 'Invitation Status',
                     text: data.message || 'Invitation processed successfully.',
                     icon: data.skipped ? 'info' : 'success',
@@ -779,22 +779,14 @@ $scheduled_today = (int) $stmt->fetchColumn();
         const visitor = currentDashboardData.pending_list.find(v => v.id == id);
         if (!visitor) return;
 
-        const result = await AppDialog.confirm({
-            title: 'Approve Visitor?',
-            text: `Send WhatsApp pass to ${visitor.visitor_name}?`,
-            icon: 'question',
-            confirmButtonText: 'Yes, Approve & Share'
-        });
+        // SKIP CONFIRMATION (Per User Request)
+        // Close the details modal first if open
+        const detailsModal = bootstrap.Modal.getInstance(document.getElementById('detailsListModal'));
+        if (detailsModal) detailsModal.hide();
 
-        if (result.isConfirmed) {
-            // Close the details modal first
-            const detailsModal = bootstrap.Modal.getInstance(document.getElementById('detailsListModal'));
-            if (detailsModal) detailsModal.hide();
-
-            // Trigger the main approval flow
-            triggerNewVisitorAlert(visitor);
-            approveAndPrepareShare();
-        }
+        // Trigger the main approval flow directly
+        triggerNewVisitorAlert(visitor);
+        approveAndPrepareShare();
     }
 
     async function rejectDirectly(id) {
@@ -818,11 +810,6 @@ $scheduled_today = (int) $stmt->fetchColumn();
                 if (!value) return 'You need to provide a reason!';
             }
         });
-
-        if (!result.isConfirmed && bootstrapDetailsModal) {
-            bootstrapDetailsModal.show();
-            return;
-        }
 
         if (result.isConfirmed && result.value) {
             try {

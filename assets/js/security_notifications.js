@@ -130,13 +130,22 @@
                 cancelButtonText: 'Dismiss'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    console.log("Manage Visit clicked for visit:", visit.id);
-                    // Increased delay to ensure the AppDialog modal is fully hidden before opening the next modal
+                    // Debug to see if visit.id exists
+                    console.log("[VMS DEBUG] Notification Result:", result);
+                    console.log("[VMS DEBUG] Visit ID:", visit.id);
+
                     setTimeout(() => {
                         if (typeof window.viewVisitDetails === 'function') {
                             window.viewVisitDetails(visit.id);
                         } else {
-                            console.error("viewVisitDetails not found on this page.");
+                            // If on dashboard and function missing, something is wrong with script loading
+                            const isOnDashboard = window.location.pathname.endsWith('dashboard.php');
+                            if (isOnDashboard) {
+                                alert("System Error: View Details module not found on dashboard. Please refresh manually.");
+                                console.error("viewVisitDetails missing from dashboard scope.");
+                            } else {
+                                window.location.href = (typeof HOME_URL !== 'undefined') ? HOME_URL : `dashboard.php`;
+                            }
                         }
                     }, 400);
                 }

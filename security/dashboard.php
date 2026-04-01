@@ -1002,6 +1002,11 @@ if ($time_saved_min > 60) {
                         popup: 'rounded-4 border-0 shadow-lg',
                         confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
                     }
+                }).then(() => {
+                    const url = new URL(window.location);
+                    url.searchParams.delete('action_success');
+                    url.searchParams.delete('v_id');
+                    window.history.replaceState({}, '', url);
                 });
             }
         }
