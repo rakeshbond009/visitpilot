@@ -338,17 +338,26 @@ export default function HostDashboard({ navigation }) {
                 setScanModalVisible(false);
                 setScanned(false);
                 
-                // Show more detailed alert
-                showAlert(
-                    'Pre-Approved Invitation',
-                    `Found invitation for: ${visitorName}\n\nHost: ${hostName}\nPurpose: ${purposeText}\n\nProceed to register this visitor?`,
-                    'success',
-                    {
-                        showCancel: true,
-                        confirmText: 'Register Now',
-                        onConfirm: () => navigation.navigate('RegisterVisitor', { code: code })
-                    }
-                );
+                if (hasPermission('security_register')) {
+                    // Show more detailed alert with action
+                    showAlert(
+                        'Pre-Approved Invitation',
+                        `Found invitation for: ${visitorName}\n\nHost: ${hostName}\nPurpose: ${purposeText}\n\nProceed to register this visitor?`,
+                        'success',
+                        {
+                            showCancel: true,
+                            confirmText: 'Register Now',
+                            onConfirm: () => navigation.navigate('RegisterVisitor', { code: code })
+                        }
+                    );
+                } else {
+                    // No permission to register - show info only
+                    showAlert(
+                        'Invitation Found',
+                        `An invitation for ${visitorName} was found.\n\nPlease ask the security officer to complete the registration at the gate.`,
+                        'success'
+                    );
+                }
             } else {
                 showAlert('QR Scan Result', response.data.message || 'The scanned QR code is currently inactive or has an invalid status.', 'error');
                 setScanned(false);

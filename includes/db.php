@@ -375,6 +375,7 @@ function enforcePageSecurity()
         'invite.php' => ['host_invite'],
         'pending_approvals.php' => ['host_pending'],
         'my_visitors.php' => ['host_history'],
+        'process_visit.php' => [], // Allow any logged-in user to process visits
         'ai_chat.php' => ['access_ai_rag_chat'],
         'app_issues.php' => ['report_issue']
     ];
@@ -398,6 +399,10 @@ function enforcePageSecurity()
     // B. Page-Level Permission Overrides (Allow Entry based on specific permissions)
     if (!$denied && isset($pagePermissions[$filename])) {
         $allowedPerms = $pagePermissions[$filename];
+        if (empty($allowedPerms)) {
+            return; // Open to all logged-in users
+        }
+
         $hasAny = false;
         foreach ($allowedPerms as $p) {
             if (canView($p)) {
@@ -421,7 +426,7 @@ function enforcePageSecurity()
         if ($isAdminSec && $role !== 'admin') {
             $denied = true;
             $reason = "Admin Folder Default Access Denied for role: $role";
-        } elseif ($isSecuritySec && !in_array($role, ['security', 'admin'])) {
+        } elseif ($isSecuritySec && !in_array($role, ['security', 'admin', 'host', 'employee'])) {
             $denied = true;
             $reason = "Security Folder Default Access Denied for role: $role";
         } elseif ($isHostSec && !in_array($role, ['host', 'employee', 'admin'])) {
