@@ -42,6 +42,26 @@ export default function InviteVisitor({ navigation }) {
         fetchInitialData();
     }, []);
 
+    // Auto-fill visitor lookup
+    useEffect(() => {
+        if (mobile.length === 10) {
+            lookupVisitor(mobile);
+        }
+    }, [mobile]);
+
+    const lookupVisitor = async (phone) => {
+        try {
+            const response = await apiClient.get(`api/visitor/search.php?mobile=${phone}`);
+            if (response.data.status === 'success') {
+                const visitor = response.data.data;
+                setName(visitor.name || '');
+                setEmail(visitor.email || '');
+            }
+        } catch (error) {
+            console.log('Lookup silent failure', error.message);
+        }
+    };
+
     const fetchInitialData = async () => {
         setLoading(true);
         try {
