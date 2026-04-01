@@ -75,8 +75,19 @@ const AppDialog = {
         }
 
         return new Promise((resolve) => {
+            let confirmed = false;
+            
+            const handleOk = (e) => {
+                if (e) e.preventDefault();
+                confirmed = true;
+                modal.hide();
+            };
+            
+            okBtn.addEventListener('click', handleOk);
+
             modalEl.addEventListener('hidden.bs.modal', function handler() {
-                resolve({ isConfirmed: true });
+                resolve({ isConfirmed: confirmed });
+                okBtn.removeEventListener('click', handleOk);
                 modalEl.removeEventListener('hidden.bs.modal', handler);
             }, { once: true });
         });
@@ -113,16 +124,17 @@ const AppDialog = {
         modal.show();
 
         return new Promise((resolve) => {
-            const handleConfirm = () => {
+            let confirmed = false;
+            const handleConfirm = (e) => {
+                if (e) e.preventDefault();
+                confirmed = true;
                 modal.hide();
-                resolve({ isConfirmed: true });
-                confirmBtn.removeEventListener('click', handleConfirm);
             };
 
             confirmBtn.addEventListener('click', handleConfirm);
 
             modalEl.addEventListener('hidden.bs.modal', function handler() {
-                resolve({ isConfirmed: false });
+                resolve({ isConfirmed: confirmed });
                 confirmBtn.removeEventListener('click', handleConfirm);
                 modalEl.removeEventListener('hidden.bs.modal', handler);
             }, { once: true });
@@ -153,8 +165,12 @@ const AppDialog = {
         modal.show();
 
         return new Promise((resolve) => {
-            const handleSubmit = () => {
-                const val = inputField.value.trim();
+            let confirmed = false;
+            let val = '';
+
+            const handleSubmit = (e) => {
+                if (e) e.preventDefault();
+                val = inputField.value.trim();
                 if (options.inputValidator) {
                     const error = options.inputValidator(val);
                     if (error) {
@@ -167,15 +183,14 @@ const AppDialog = {
                     return;
                 }
 
+                confirmed = true;
                 modal.hide();
-                resolve({ isConfirmed: true, value: val });
-                submitBtn.removeEventListener('click', handleSubmit);
             };
 
             submitBtn.addEventListener('click', handleSubmit);
 
             modalEl.addEventListener('hidden.bs.modal', function handler() {
-                resolve({ isConfirmed: false });
+                resolve({ isConfirmed: confirmed, value: val });
                 submitBtn.removeEventListener('click', handleSubmit);
                 modalEl.removeEventListener('hidden.bs.modal', handler);
             }, { once: true });

@@ -375,15 +375,11 @@
         if (approvalStatus === 'approved') {
             window.open(passUrl, '_blank');
         } else if (approvalStatus === 'pending') {
-            if (window.Swal) {
-                Swal.fire({
-                    title: 'Approval Pending',
-                    text: 'This visit has not been approved by the host yet. You can only print the entrance pass once the approval is granted.',
-                    icon: 'warning'
-                });
-            } else {
-                alert('This visit is still pending approval. Entrance pass can only be printed after host approval.');
-            }
+            AppDialog.show({
+                title: 'Approval Pending',
+                text: 'This visit has not been approved by the host yet. You can only print the entrance pass once the approval is granted.',
+                icon: 'warning'
+            });
         } else {
             alert('This visit has been rejected. Cannot print pass.');
         }

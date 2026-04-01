@@ -17,6 +17,9 @@
     let currentVisitorData = null;
     let isSharingMode = false;
 
+    // Track notified visits to avoid duplicates across polls when using >= comparison
+    const notifiedVisits = new Set();
+
     // Sounds
     let hbAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
     let notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
@@ -55,16 +58,22 @@
                 lastCheckTime = data.timestamp;
 
                 if (data.new_visits && data.new_visits.length > 0) {
-                    console.log("New Visitor Found:", data.new_visits[0].visitor_name);
-                    triggerNewVisitorAlert(data.new_visits[0]);
+                    data.new_visits.forEach(visit => {
+                        if (!notifiedVisits.has(visit.id)) {
+                            notifiedVisits.add(visit.id);
+                            
+                            console.log("New Visitor Arrival Alert:", visit.visitor_name);
+                            triggerNewVisitorAlert(visit);
 
-                    // Browser Notification
-                    if ("Notification" in window && Notification.permission === "granted") {
-                        new Notification("New Visitor Arrival", {
-                            body: `${data.new_visits[0].visitor_name} is waiting for you.`,
-                            icon: (typeof BASE_URL !== 'undefined') ? BASE_URL + "assets/img/visitor-icon.png" : "../assets/img/visitor-icon.png"
-                        });
-                    }
+                            // Browser Notification
+                            if ("Notification" in window && Notification.permission === "granted") {
+                                new Notification("New Visitor Arrival", {
+                                    body: `${visit.visitor_name} is waiting for you.`,
+                                    icon: (typeof BASE_URL !== 'undefined') ? BASE_URL + "assets/img/visitor-icon.png" : "../assets/img/visitor-icon.png"
+                                });
+                            }
+                        }
+                    });
                 }
             }
         } catch (e) {
@@ -375,22 +384,18 @@
                 }
 
                 // Show a small success alert
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: data.skipped ? 'Notice' : 'Notification Status',
-                        text: data.message || 'Pass Whatsapp to Visitor.',
-                        icon: data.skipped ? 'info' : 'success',
-                        confirmButtonText: 'OK'
-                    });
-                }
+                AppDialog.show({
+                    title: data.skipped ? 'Notice' : 'Notification Status',
+                    text: data.message || 'Pass Whatsapp to Visitor.',
+                    icon: data.skipped ? 'info' : 'success',
+                    confirmButtonText: 'OK'
+                });
             } else {
                 throw new Error(data.message || "Cloud API failed");
             }
         } catch (e) {
             console.error("Resend Error:", e);
-            if (typeof Swal !== 'undefined') {
-                Swal.fire('Error', e.message || 'Failed to send WhatsApp message', 'error');
-            }
+            AppDialog.show('Error', e.message || 'Failed to send WhatsApp message', 'error');
 
             if (btn) {
                 btn.disabled = false;
@@ -416,7 +421,7 @@
             }
 
             // Ask for rejection reason
-            const { value: reason } = await Swal.fire({
+            const { isConfirmed, value: reason } = await AppDialog.prompt({
                 title: 'Reject Visit?',
                 text: `Provide a reason for rejecting ${visitorName}:`,
                 input: 'text',
@@ -433,7 +438,7 @@
                 }
             });
 
-            if (!reason) {
+            if (!isConfirmed) {
                 // If cancelled, show the visitor modal again
                 if (bootstrapModal) bootstrapModal.show();
                 return;

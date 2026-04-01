@@ -426,7 +426,7 @@ if (isset($_GET['q'])) {
                     event.preventDefault();
                     event.stopPropagation(); // Stop row click
                     if (status === 'pending') {
-                        Swal.fire({
+                        AppDialog.show({
                             icon: 'info',
                             title: 'Approval Pending',
                             text: 'This pass cannot be viewed yet because the host has not approved the visit.'
@@ -442,7 +442,7 @@ if (isset($_GET['q'])) {
                     const actionText = action === 'checkin' ? 'Check In' : 'Check Out';
                     const confirmBtnColor = action === 'checkin' ? '#198754' : '#dc3545';
 
-                    Swal.fire({
+                    AppDialog.confirm({
                         title: `Confirm ${actionText}`,
                         text: `Are you sure you want to ${actionText.toLowerCase()} this visitor?`,
                         icon: 'question',
@@ -456,7 +456,7 @@ if (isset($_GET['q'])) {
                             fetch(`process_visit.php?action=${action}&id=${visitId}`)
                                 .then(response => {
                                     if (response.ok) {
-                                        Swal.fire(
+                                        AppDialog.show(
                                             'Success!',
                                             `Visitor has been ${actionText.toLowerCase()}ed.`,
                                             'success'
@@ -464,11 +464,11 @@ if (isset($_GET['q'])) {
                                             location.reload();
                                         });
                                     } else {
-                                        Swal.fire('Error', 'Action failed. Please try again.', 'error');
+                                        AppDialog.show('Error', 'Action failed. Please try again.', 'error');
                                     }
                                 })
                                 .catch(() => {
-                                    Swal.fire('Error', 'Network error. Please try again.', 'error');
+                                    AppDialog.show('Error', 'Network error. Please try again.', 'error');
                                 });
                         }
                     });
@@ -601,7 +601,7 @@ if (isset($_GET['q'])) {
 
                 document.getElementById('aiSearchBtn').addEventListener('click', async () => {
                     if (!hasApiKey) {
-                        Swal.fire({
+                        AppDialog.show({
                             icon: 'warning',
                             title: 'AI API Key not configured.',
                             html: 'To use ASK AI, you need to link your API key in **AI Integration Settings**.<br><br>' +
@@ -613,7 +613,7 @@ if (isset($_GET['q'])) {
 
                     const query = document.getElementById('searchInput').value;
                     if (!query) {
-                        Swal.fire('Input Required', 'Please type what you are looking for.', 'info');
+                        AppDialog.show('Input Required', 'Please type what you are looking for.', 'info');
                         return;
                     }
 
@@ -675,10 +675,10 @@ if (isset($_GET['q'])) {
                                 resultsTable.innerHTML = html;
                             }
                         } else {
-                            Swal.fire('AI Error', result.message, 'error');
+                            AppDialog.show('AI Error', result.message, 'error');
                         }
                     } catch (error) {
-                        Swal.fire('Error', 'Connection failed.', 'error');
+                        AppDialog.show('Error', 'Connection failed.', 'error');
                     } finally {
                         loader.classList.add('d-none');
                     }
@@ -749,19 +749,19 @@ if (isset($_GET['q'])) {
 
                     function handleVoiceComplete(transcript) {
                         if (!transcript.trim()) return;
-                        Swal.fire({
+                        AppDialog.confirm({
                             title: 'Analyze with AI?',
                             text: `You said: "${transcript}". How should I proceed?`,
                             icon: 'question',
                             showCancelButton: true,
-                            confirmButtonText: '<i class="bi bi-robot"></i> ASK AI',
-                            cancelButtonText: '<i class="bi bi-search"></i> Normal Search',
+                            confirmButtonText: 'ASK AI',
+                            cancelButtonText: 'Normal Search',
                             confirmButtonColor: '#6610f2',
                             cancelButtonColor: '#0d6efd'
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 document.getElementById('aiSearchBtn').click();
-                            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            } else {
                                 document.getElementById('searchForm').submit();
                             }
                         });

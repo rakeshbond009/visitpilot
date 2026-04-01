@@ -486,7 +486,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
                         btn.classList.replace('btn-success', 'btn-outline-success');
                     }
                 }
-                Swal.fire({
+                AppDialog.show({
                     title: data.skipped ? 'Notice' : 'Invitation Status',
                     text: data.message || 'Invitation processed successfully.',
                     icon: data.skipped ? 'info' : 'success',
@@ -505,7 +505,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
     }
 
     async function cancelInvitation(vId, visitorName, mobile, hostName) {
-        const result = await Swal.fire({
+        const result = await AppDialog.confirm({
             title: 'Cancel Invitation?',
             text: `This will cancel the invitation for ${visitorName || 'this visitor'} and attempt to notify them via WhatsApp.`,
             icon: 'warning',
@@ -520,14 +520,14 @@ $scheduled_today = (int) $stmt->fetchColumn();
                 const res = await fetch(`pending_approvals.php?ajax_action=1&v_id=${vId}&act=cancel_invite&visitor_name=${encodeURIComponent(visitorName || '')}&host_name=${encodeURIComponent(hostName || '')}`);
                 const data = await res.json();
                 if (data.success) {
-                    Swal.fire('Canceled!', data.message || 'The invitation has been canceled.', 'success').then(() => {
+                    AppDialog.show('Canceled!', data.message || 'The invitation has been canceled.', 'success').then(() => {
                         location.reload();
                     });
                 } else {
-                    Swal.fire('Error', data.message || "Failed to cancel", 'error');
+                    AppDialog.show('Error', data.message || "Failed to cancel", 'error');
                 }
             } catch (e) {
-                Swal.fire('Error', "Error connecting to server", 'error');
+                AppDialog.show('Error', "Error connecting to server", 'error');
             }
         }
     }

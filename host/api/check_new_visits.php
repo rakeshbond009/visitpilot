@@ -75,9 +75,9 @@ if ($last_check) {
             JOIN visitors vis ON v.visitor_id = vis.id 
             WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " 
             AND (
-                (v.approval_status = 'pending' AND v.created_at > ?)
+                (v.approval_status = 'pending' AND v.created_at >= ?)
                 OR 
-                (v.is_invited = 1 AND v.status = 'checked_in' AND v.check_in_time > ?)
+                (v.is_invited = 1 AND v.status = 'checked_in' AND v.check_in_time >= ?)
             )
             ORDER BY v.created_at DESC";
     $stmt = $pdo->prepare($sql);

@@ -46,7 +46,7 @@ if ($limit_employee_id) {
 }
 
 if ($last_check) {
-    $where .= " AND v.approved_at > ?";
+    $where .= " AND v.approved_at >= ?";
     $params[] = $last_check;
 }
 

@@ -1072,7 +1072,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     async function startOTPVerification(fromToggle = false) {
         const visitorMobile = document.getElementById('mobileInput').value;
         if (!visitorMobile || visitorMobile.length < 10) {
-            Swal.fire('Mobile Required', 'Please enter a valid Visitor Mobile number first.', 'warning');
+            AppDialog.show('Mobile Required', 'Please enter a valid Visitor Mobile number first.', 'warning');
             if (fromToggle) document.getElementById('requireOtpToggle').checked = false;
             return;
         }
@@ -1105,7 +1105,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (fromToggle) document.getElementById('requireOtpToggle').checked = false;
             }
         } catch (err) {
-            Swal.fire('Connection Error', 'Failed to send OTP. Please check server connection.', 'error');
+            AppDialog.show('Connection Error', 'Failed to send OTP. Please check server connection.', 'error');
             otpModalInstance.hide();
             if (fromToggle) document.getElementById('requireOtpToggle').checked = false;
         }
@@ -1206,7 +1206,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 `;
             } else {
                 resDiv.style.display = 'none';
-                Swal.fire({
+                AppDialog.show({
                     title: 'Invitation Error',
                     text: data.message,
                     icon: 'warning',
@@ -1264,7 +1264,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         hiddenVisitId.value = inv.id;
 
         // Visual feedback
-        Swal.fire({
+        AppDialog.show({
             title: 'Invite Applied!',
             text: 'Form has been pre-filled with the invitation details. Just capture a photo to complete.',
             icon: 'success',
