@@ -779,13 +779,10 @@ $scheduled_today = (int) $stmt->fetchColumn();
         const visitor = currentDashboardData.pending_list.find(v => v.id == id);
         if (!visitor) return;
 
-        const result = await Swal.fire({
+        const result = await AppDialog.confirm({
             title: 'Approve Visitor?',
             text: `Send WhatsApp pass to ${visitor.visitor_name}?`,
             icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#d33',
             confirmButtonText: 'Yes, Approve & Share'
         });
 
@@ -794,14 +791,14 @@ $scheduled_today = (int) $stmt->fetchColumn();
             const detailsModal = bootstrap.Modal.getInstance(document.getElementById('detailsListModal'));
             if (detailsModal) detailsModal.hide();
 
-            // Trigger the main approval flow (which handles PDF and WhatsApp)
+            // Trigger the main approval flow
             triggerNewVisitorAlert(visitor);
             approveAndPrepareShare();
         }
     }
 
     async function rejectDirectly(id) {
-        // Hide the details list modal first to prevent focus trapping with SweetAlert
+        // Prepare details modal handle
         const detailsModalEl = document.getElementById('detailsListModal');
         let bootstrapDetailsModal = null;
         if (detailsModalEl) {
@@ -809,40 +806,33 @@ $scheduled_today = (int) $stmt->fetchColumn();
             if (bootstrapDetailsModal) bootstrapDetailsModal.hide();
         }
 
-        const { value: reason } = await Swal.fire({
+        const result = await AppDialog.show({
             title: 'Reject Visitor?',
             text: "Please provide a reason for rejection:",
             input: 'text',
             inputPlaceholder: 'Reason for rejection...',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Reject',
             inputValidator: (value) => {
-                if (!value) {
-                    return 'You need to provide a reason!'
-                }
+                if (!value) return 'You need to provide a reason!';
             }
         });
 
-        if (!reason && bootstrapDetailsModal) {
-            // Re-show if cancelled
+        if (!result.isConfirmed && bootstrapDetailsModal) {
             bootstrapDetailsModal.show();
             return;
         }
 
-        if (reason) {
+        if (result.isConfirmed && result.value) {
             try {
-                const res = await fetch(`pending_approvals.php?ajax_action=1&v_id=${id}&act=reject&reason=${encodeURIComponent(reason)}`);
+                const res = await fetch(`pending_approvals.php?ajax_action=1&v_id=${id}&act=reject&reason=${encodeURIComponent(result.value)}`);
                 if (res.ok) {
                     syncHostDashboard();
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('detailsListModal'));
-                    if (modal) modal.hide();
-                    Swal.fire('Rejected', 'Visitor has been rejected.', 'success');
+                    AppDialog.show('Rejected', 'Visitor has been rejected.', 'success');
                 }
             } catch (e) {
-                Swal.fire('Error', 'Action failed', 'error');
+                AppDialog.show('Error', 'Action failed', 'error');
             }
         }
     }

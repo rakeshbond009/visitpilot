@@ -275,28 +275,24 @@ $pending = $stmt->fetchAll();
         } catch (e) { console.error("Sync error", e); }
     }
 
-    function openRejectDialog(vId, name) {
-        // Use Global SweetAlert for simpler UI
-        Swal.fire({
+    async function openRejectDialog(vId, name) {
+        // Use Global AppDialog for native UI
+        const result = await AppDialog.show({
             title: 'Reject Visitor?',
             text: `Please provide a reason for rejecting ${name}:`,
             input: 'text',
             inputPlaceholder: 'Reason for rejection...',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, Reject',
             inputValidator: (value) => {
-                if (!value) {
-                    return 'You need to provide a reason!'
-                }
-            }
-        }).then((result) => {
-            if (result.isConfirmed) {
-                processReject(vId, result.value);
+                if (!value) return 'You need to provide a reason!';
             }
         });
+
+        if (result.isConfirmed) {
+            processReject(vId, result.value);
+        }
     }
 
     async function processReject(vId, reason) {

@@ -41,7 +41,7 @@ elseif ($_SESSION['role'] === 'host' || $_SESSION['role'] === 'employee') {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- SweetAlert removed for AppDialog consistency -->
     <script src="../assets/js/datetime-format.js"></script>
     <style>
         .navbar {

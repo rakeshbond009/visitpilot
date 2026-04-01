@@ -830,7 +830,7 @@ if ($time_saved_min > 60) {
         }
         ?>
         window.addEventListener('load', () => {
-            Swal.fire({
+            AppDialog.show({
                 title: '<?php echo $msgTitle; ?>',
                 text: '<?php echo addslashes($msgText); ?>',
                 icon: 'success',

@@ -233,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Redundant library removed for AppDialog consistency -->
 <style>
     .reg-card {
         background: rgba(255, 255, 255, 0.9);
@@ -810,7 +810,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     const photoData = document.getElementById('photo_data').value;
 
                     if (!mobile || mobile.length < 10) {
-                        Swal.fire('Mobile Required', 'Please enter a valid Visitor Mobile number first.', 'warning');
+                        AppDialog.show('Mobile Required', 'Please enter a valid Visitor Mobile number first.', 'warning');
                         this.checked = false;
                         return;
                     }
@@ -944,12 +944,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </div>`;
                         }
 
-                        Swal.fire({
+                        AppDialog.show({
                             title: 'Existing Visitor Found!',
                             html: visitInfo,
                             icon: 'info',
-                            confirmButtonText: 'OK, Continue',
-                            confirmButtonColor: '#4361ee'
+                            confirmButtonText: 'OK, Continue'
                         });
                     }
                 })
@@ -996,7 +995,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         const mobile = document.getElementById('mobileInput').value;
         if (!mobile || mobile.length !== 10 || isNaN(mobile)) {
-            Swal.fire({
+            AppDialog.show({
                 title: 'Invalid Mobile Number',
                 text: 'Please enter a valid 10-digit mobile number.',
                 icon: 'error'
@@ -1066,7 +1065,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="bi bi-shield-check me-2"></i>SAVE & NOTIFY HOST';
             }
-            Swal.fire('Connection Error', 'Failed to communicate with the server. Please check your internet connection.', 'error');
+            AppDialog.show('Connection Error', 'Failed to communicate with the server. Please check your internet connection.', 'error');
         }
     }
 
@@ -1101,7 +1100,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     currentMobile = data.data.target_mobile;
                 }
             } else {
-                Swal.fire('OTP Error', data.message, 'error');
+                AppDialog.show('OTP Error', data.message, 'error');
                 otpModalInstance.hide();
                 if (fromToggle) document.getElementById('requireOtpToggle').checked = false;
             }
@@ -1116,7 +1115,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const otp = realInput.value;
 
         if (otp.length < 6) {
-            Swal.fire('Invalid OTP', 'Please enter all 6 digits.', 'warning');
+            AppDialog.show('Invalid OTP', 'Please enter all 6 digits.', 'warning');
             return;
         }
 
