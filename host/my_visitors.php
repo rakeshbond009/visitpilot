@@ -148,7 +148,7 @@ endif; ?>
                             </td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <img src="../<?php echo !empty($v['visit_photo']) ? $v['visit_photo'] : ($v['photo_path'] ?: 'assets/img/visitor-icon.png'); ?>" 
+                                    <img src="../<?php echo !empty($v['visit_photo']) ? $v['visit_photo'] : 'assets/img/visitor-icon.png'; ?>" 
                                          class="rounded-circle me-3 border shadow-sm" width="40" height="40" style="object-fit:cover"
                                          onerror="this.src='../assets/img/visitor-icon.png';">
                                     <div>

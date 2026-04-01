@@ -43,15 +43,10 @@ try {
 
     if ($visitor) {
         $visitor_id = $visitor['id'];
-        // 2. Update existing visitor
-        $stmt = $pdo->prepare("SELECT photo_path FROM visitors WHERE id = ?");
-        $stmt->execute([$visitor_id]);
-        $existing_photo = $stmt->fetchColumn();
-
-        $sql = "UPDATE visitors SET name=?, mobile=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
+        // Update details including photo if changed
+        $sql = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
         $params = [
             $data['name'],
-            $data['mobile'],
             $data['email'] ?? '',
             $data['address'] ?? '',
             $data['id_proof_type'] ?? '',
@@ -61,9 +56,6 @@ try {
         if ($photo_path) {
             $sql .= ", photo_path=?";
             $params[] = $photo_path;
-        } else {
-            // Keep using the last captured photo for the current visit record
-            $photo_path = $existing_photo;
         }
         $sql .= " WHERE id=?";
         $params[] = $visitor_id;

@@ -560,7 +560,7 @@ if ($time_saved_min > 60) {
                     </div>
 
                     <div class="position-relative d-inline-block mb-3">
-                        <img src="../${visit.visit_photo || visit.photo_path || 'assets/img/visitor-icon.png'}" 
+                        <img src="../${visit.visit_photo || 'assets/img/visitor-icon.png'}" 
                              class="rounded-circle shadow-sm border border-3" 
                              style="width: 80px; height: 80px; object-fit: cover; border-color: ${color} !important;"
                              onerror="this.src='../assets/img/visitor-icon.png'">
@@ -795,18 +795,18 @@ if ($time_saved_min > 60) {
         $v_stmt->execute([$_GET['new_visit_id']]);
         $visit_details = $v_stmt->fetch();
         ?>
-            <script>
-                (function () {
-                    const visit = <?php echo json_encode($visit_details); ?>;
-                    if (visit) {
-                        Swal.fire({
-                            title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
-                            html: `
+            < script >
+            (function () {
+                const visit = <?php echo json_encode($visit_details); ?>;
+                if (visit) {
+                    Swal.fire({
+                        title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
+                        html: `
                         <div class="text-center p-2">
                             <div class="mb-3">
-                                <img src="../${visit.visit_photo || visit.photo_path || 'assets/img/visitor-icon.png'}" 
-                                     class="rounded-circle shadow-sm border border-light me-3" 
-                                     style="width: 70px; height: 70px; object-fit: cover;"
+                                <img src="../${visit.visit_photo || 'assets/img/visitor-icon.png'}" 
+                                     class="rounded-circle border border-4 border-primary shadow animate__animated animate__zoomIn" 
+                                     width="100" height="100" style="object-fit: cover;"
                                      onerror="this.src='../assets/img/visitor-icon.png'">
                             </div>
                             <h4 class="fw-bold mb-1">${visit.visitor_name}</h4>
@@ -831,26 +831,26 @@ if ($time_saved_min > 60) {
                             </div>
                         </div>
                     `,
-                            icon: 'success',
-                            timer: 4000,
-                            timerProgressBar: true,
-                            confirmButtonText: 'Done',
-                            confirmButtonColor: '#0d6efd',
-                            customClass: {
-                                popup: 'rounded-4 border-0 shadow-lg',
-                                confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
-                            }
-                        }).then(() => {
-                            const url = new URL(window.location);
-                            url.searchParams.delete('new_visit_id');
-                            url.searchParams.delete('msg');
-                            url.searchParams.delete('wa_status');
-                            window.history.replaceState({}, '', url);
-                        });
-                    }
-                })();
-            </script>
-        <?php
+                        icon: 'success',
+                        timer: 4000,
+                        timerProgressBar: true,
+                        confirmButtonText: 'Done',
+                        confirmButtonColor: '#0d6efd',
+                        customClass: {
+                            popup: 'rounded-4 border-0 shadow-lg',
+                            confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
+                        }
+                    }).then(() => {
+                        const url = new URL(window.location);
+                        url.searchParams.delete('new_visit_id');
+                        url.searchParams.delete('msg');
+                        url.searchParams.delete('wa_status');
+                        window.history.replaceState({}, '', url);
+                    });
+                }
+            })();
+    </script>
+    <?php
     endif; ?>
 
 const serverToday = '<?php echo date("Y-m-d"); ?>';
@@ -972,9 +972,9 @@ return v.status === 'checked_in' && v.check_in_time && new Date(v.check_in_time)
         html: `
         <div class="text-center p-2">
             <div class="mb-3">
-                <img src="../${visit.visit_photo || visit.photo_path || 'assets/img/visitor-icon.png'}" 
-                     class="rounded-circle me-3 border shadow-sm" width="35" height="35" style="object-fit:cover;"
-                     onerror="this.src='../assets/img/visitor-icon.png';">
+                <img src="../${visit.visit_photo || 'assets/img/visitor-icon.png'}"
+                    class="rounded-circle border border-4 border-success shadow" width="100" height="100"
+                    style="object-fit: cover;" onerror="this.src='../assets/img/visitor-icon.png'">
             </div>
             <h4 class="fw-bold mb-1">${visitorName}</h4>
             <p class="text-muted mb-3">${visit.mobile}</p>

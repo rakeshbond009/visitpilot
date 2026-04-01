@@ -72,12 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($exist) {
             $visitor_id = $exist['id'];
-            
-            // Get existing photo in case no new one is uploaded
-            $stmt = $pdo->prepare("SELECT photo_path FROM visitors WHERE id = ?");
-            $stmt->execute([$visitor_id]);
-            $existing_photo = $stmt->fetchColumn();
-
             // Update details
             $sql = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
             $params = [$name, $email, $address, $id_proof_type, $id_proof_number];
@@ -85,9 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($photo_path) {
                 $sql .= ", photo_path=?";
                 $params[] = $photo_path;
-            } else {
-                // Fallback to the last photo for the current visit record
-                $photo_path = $existing_photo;
             }
             $sql .= " WHERE id=?";
             $params[] = $visitor_id;
@@ -914,6 +905,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         document.getElementById('nameInput').value = v.name || '';
                         document.getElementById('emailInput').value = v.email || '';
                         document.getElementById('addressInput').value = v.address || '';
+                        
+                        // Force NEW photo capture for every visit - CLEAR old one
+                        const photoPreview = document.getElementById('photo_preview');
+                        const cameraView = document.getElementById('camera_view');
+                        if (photoPreview) photoPreview.style.display = 'none';
+                        if (cameraView) cameraView.style.display = 'block';
+                        document.getElementById('photo_data').value = '';
+                        // Also clear the captured image src to be safe
+                        const capturedImg = document.getElementById('captured_image');
+                        if (capturedImg) capturedImg.src = '';
 
                         // Populate ID Proof
                         if (v.id_proof_number) {

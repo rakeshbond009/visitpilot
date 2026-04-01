@@ -219,6 +219,7 @@ export default function RegisterVisitor({ navigation, route }) {
                 setPurpose(inv.purpose || '');
                 setInvitationId(inv.id || null);
                 setIsPreApproved(true);
+                setPhoto(null); // Force new photo for every visit
                 
                 if (showSuccessAlert) {
                     const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}`;
@@ -307,7 +308,7 @@ export default function RegisterVisitor({ navigation, route }) {
                 setAddress(v.address || '');
                 setIdType(v.id_proof_type || 'Aadhar');
                 setIdNumber(v.id_proof_number || '');
-                if (v.photo_url) setPhoto(v.photo_url);
+                setPhoto(null); // Force new photo for every visit
 
                 // Auto-fill last host and purpose if available
                 if (v.last_visit) {

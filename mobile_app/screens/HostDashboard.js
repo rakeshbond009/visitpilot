@@ -318,7 +318,7 @@ export default function HostDashboard({ navigation }) {
         try {
             setDetailsLoading(true);
             let response;
-            
+
             if (action === 'whatsapp') {
                 response = await apiClient.get('api/visit/resend_whatsapp.php', {
                     params: { visit_id: visitId, type: 'invitation' }
@@ -445,7 +445,7 @@ export default function HostDashboard({ navigation }) {
             >
                 <View style={styles.cardHeader}>
                     <Image
-                        source={{ uri: getPhotoUrl(item.visit_photo || item.photo_path || item.visitor_photo) }}
+                        source={{ uri: getPhotoUrl(item.visit_photo) }}
                         style={styles.avatar}
                         onError={(e) => console.log('Image Load Error')}
                     />
