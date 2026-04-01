@@ -86,8 +86,8 @@
         const isApproved = visit.approval_status === 'approved';
         const color = isApproved ? '#28a745' : '#dc3545';
 
-        if (typeof Swal !== 'undefined') {
-            Swal.fire({
+        if (typeof AppDialog !== 'undefined') {
+            AppDialog.show({
                 title: `<span class="fw-bold text-dark mt-2" style="font-size: 1.1rem; letter-spacing: -0.5px;">Arrival Status Update</span>`,
                 html: `
                     <div class="text-center p-2">
@@ -114,13 +114,7 @@
                 confirmButtonText: 'Manage Visit',
                 showCancelButton: true,
                 confirmButtonColor: color,
-                cancelButtonText: 'Dismiss',
-                reverseButtons: true,
-                customClass: {
-                    popup: 'rounded-5 shadow-2xl border-0 overflow-hidden',
-                    title: 'border-0 pb-0',
-                    htmlContainer: 'pt-0 pb-3 px-3'
-                }
+                cancelButtonText: 'Dismiss'
             }).then((result) => {
                 if (result.isConfirmed) {
                     if (typeof window.viewVisitDetails === 'function') {
