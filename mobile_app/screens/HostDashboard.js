@@ -445,7 +445,7 @@ export default function HostDashboard({ navigation }) {
             >
                 <View style={styles.cardHeader}>
                     <Image
-                        source={{ uri: getPhotoUrl(item.photo_path || item.visit_photo || item.visitor_photo) }}
+                        source={{ uri: getPhotoUrl(item.visit_photo || item.photo_path || item.visitor_photo) }}
                         style={styles.avatar}
                         onError={(e) => console.log('Image Load Error')}
                     />

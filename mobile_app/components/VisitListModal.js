@@ -61,7 +61,7 @@ const VisitListModal = ({ visible, onClose, title = "Visits", color = '#10b981',
     });
 
     const renderCard = (item, idx) => {
-        const photo = getPhotoUrl(item.photo_path || item.visit_photo || item.visitor_photo);
+        const photo = getPhotoUrl(item.visit_photo || item.photo_path || item.visitor_photo);
         const avatarUri = photo
             ? { uri: photo }
             : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(item.visitor_name || 'V')}&background=random` };

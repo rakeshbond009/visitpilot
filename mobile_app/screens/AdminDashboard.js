@@ -1175,8 +1175,8 @@ export default function AdminDashboard({ navigation }) {
                 onPress={() => fetchVisitDetails(item.id)}
             >
                 <Image
-                    source={item.photo_path || item.visit_photo || item.visitor_photo ?
-                        { uri: getPhotoUrl(item.photo_path || item.visit_photo || item.visitor_photo) } :
+                    source={item.visit_photo || item.photo_path || item.visitor_photo ?
+                        { uri: getPhotoUrl(item.visit_photo || item.photo_path || item.visitor_photo) } :
                         { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.visitor_name || 'Visitor') + '&background=random' }
                     }
                     style={styles.visitorThumbBig}

@@ -560,7 +560,7 @@ if ($time_saved_min > 60) {
                     </div>
 
                     <div class="position-relative d-inline-block mb-3">
-                        <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}" 
+                        <img src="../${visit.visit_photo || visit.photo_path || 'assets/img/visitor-icon.png'}" 
                              class="rounded-circle shadow-sm border border-3" 
                              style="width: 80px; height: 80px; object-fit: cover; border-color: ${color} !important;"
                              onerror="this.src='../assets/img/visitor-icon.png'">
@@ -804,9 +804,9 @@ if ($time_saved_min > 60) {
                             html: `
                         <div class="text-center p-2">
                             <div class="mb-3">
-                                <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}" 
-                                     class="rounded-circle border border-4 border-primary shadow animate__animated animate__zoomIn" 
-                                     width="100" height="100" style="object-fit: cover;"
+                                <img src="../${visit.visit_photo || visit.photo_path || 'assets/img/visitor-icon.png'}" 
+                                     class="rounded-circle shadow-sm border border-light me-3" 
+                                     style="width: 70px; height: 70px; object-fit: cover;"
                                      onerror="this.src='../assets/img/visitor-icon.png'">
                             </div>
                             <h4 class="fw-bold mb-1">${visit.visitor_name}</h4>
@@ -972,9 +972,9 @@ return v.status === 'checked_in' && v.check_in_time && new Date(v.check_in_time)
         html: `
         <div class="text-center p-2">
             <div class="mb-3">
-                <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}"
-                    class="rounded-circle border border-4 border-success shadow" width="100" height="100"
-                    style="object-fit: cover;" onerror="this.src='../assets/img/visitor-icon.png'">
+                <img src="../${visit.visit_photo || visit.photo_path || 'assets/img/visitor-icon.png'}" 
+                     class="rounded-circle me-3 border shadow-sm" width="35" height="35" style="object-fit:cover;"
+                     onerror="this.src='../assets/img/visitor-icon.png';">
             </div>
             <h4 class="fw-bold mb-1">${visitorName}</h4>
             <p class="text-muted mb-3">${visit.mobile}</p>
