@@ -42,6 +42,7 @@ elseif ($_SESSION['role'] === 'host' || $_SESSION['role'] === 'employee') {
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
     <!-- SweetAlert removed for AppDialog consistency -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <script src="../assets/js/datetime-format.js"></script>
     <style>
         .navbar {

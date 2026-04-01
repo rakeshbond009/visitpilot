@@ -1017,7 +1017,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     async function submitRegistrationForm() {
-        // Show Full Page Loader
         const fullLoader = document.getElementById('fullPageLoader');
         if (fullLoader) {
             fullLoader.style.display = 'flex';
@@ -1033,55 +1032,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const formData = new FormData(form);
 
         try {
-            // Using fetch to handle the POST submission as an AJAX request.
-            // This keeps the visitor on the current page with the loader visible 
-            // while the server processes notifications and redirects.
             const response = await fetch('register.php', {
                 method: 'POST',
                 body: formData
             });
 
-            if (response.redirected) {
-                // Hide Loader as entry is saved
-                if (fullLoader) fullLoader.style.display = 'none';
-
-                // Show Success Message for 3 seconds before moving
-                AppDialog.show({
-                    title: 'Registration Successful!',
-                    text: 'Entry has been recorded and host notified.',
-                    icon: 'success',
-                    timer: 3000,
-                    showConfirmButton: false
-                }).then(() => {
-                    window.location.href = response.url;
-                });
-            } else {
-                // If it returned HTML (maybe an error), replace the document or show it
-                const html = await response.text();
-                // We check if it's a script-based alert from the server
-                if (html.includes('alert(')) {
-                    if (fullLoader) fullLoader.style.display = 'none';
-                    // Extract alert message if possible and show using AppDialog
-                    const match = html.match(/alert\('(.*?)'\)/);
-                    const errorMsg = match ? match[1] : 'Registration failed.';
-                    AppDialog.show('Registration Error', errorMsg, 'error').then(() => {
-                        if (btn) {
-                            btn.disabled = false;
-                            btn.innerHTML = 'COMPLETE REGISTRATION & CHECK-IN <i class="bi bi-arrow-right-circle ms-2"></i>';
-                        }
-                    });
-                } else {
-                    window.location.reload();
+            if (response.ok) {
+                // Transform loader to Success state
+                if (fullLoader) {
+                    fullLoader.innerHTML = `
+                        <div class="text-center animate__animated animate__zoomIn">
+                            <div class="mb-4">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem; filter: drop-shadow(0 10px 15px rgba(25, 135, 84, 0.2));"></i>
+                            </div>
+                            <h2 class="fw-bold text-dark mb-1">Registration Complete!</h2>
+                            <p class="text-muted fs-5">Visitor has been registered successfully.</p>
+                            <div class="spinner-border spinner-border-sm text-primary mt-2" role="status"></div>
+                            <small class="text-muted d-block mt-1">Redirecting to Dashboard...</small>
+                        </div>
+                    `;
                 }
+
+                // Wait 2 seconds for visual confirmation then redirect
+                setTimeout(() => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        window.location.href = 'dashboard.php';
+                    }
+                }, 2000);
+            } else {
+                const text = await response.text();
+                throw new Error("Server returned an error state.");
             }
         } catch (err) {
-            console.error("AJAX Submit Error:", err);
+            console.error("Submission Error:", err);
             if (fullLoader) fullLoader.style.display = 'none';
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-shield-check me-2"></i>SAVE & NOTIFY HOST';
+                btn.innerHTML = 'COMPLETE REGISTRATION & CHECK-IN <i class="bi bi-arrow-right-circle ms-2"></i>';
             }
-            AppDialog.show('Connection Error', 'Failed to communicate with the server. Please check your internet connection.', 'error');
+            AppDialog.show('Registration Error', 'Something went wrong. Please try again.', 'error');
         }
     }
 
