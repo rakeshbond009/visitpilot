@@ -72,6 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         if ($exist) {
             $visitor_id = $exist['id'];
+            
+            // Get existing photo in case no new one is uploaded
+            $stmt = $pdo->prepare("SELECT photo_path FROM visitors WHERE id = ?");
+            $stmt->execute([$visitor_id]);
+            $existing_photo = $stmt->fetchColumn();
+
             // Update details
             $sql = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
             $params = [$name, $email, $address, $id_proof_type, $id_proof_number];
@@ -79,6 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if ($photo_path) {
                 $sql .= ", photo_path=?";
                 $params[] = $photo_path;
+            } else {
+                // Fallback to the last photo for the current visit record
+                $photo_path = $existing_photo;
             }
             $sql .= " WHERE id=?";
             $params[] = $visitor_id;
