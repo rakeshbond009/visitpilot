@@ -81,8 +81,16 @@ elseif ($action == 'checkin_by_code') {
             }
         }
         elseif ($visit['status'] == 'pending' && $visit['is_invited'] == 1) {
-            // It's a pending invitation - redirect to registration for pre-fill
-            echo "window.location.href='register.php?code=$code';";
+            // Check permission before redirecting (Android-style)
+            if (canView('security_register')) {
+                echo "window.location.href='register.php?code=$code';";
+            } else {
+                echo "Swal.fire({
+                    title: 'Invitation Found',
+                    text: 'Found invitation for: " . addslashes($visit['visitor_name']) . ".\\n\\nPlease ask the security officer to complete the registration at the gate.',
+                    icon: 'success'
+                }).then(() => { window.location.href='$home_url'; });";
+            }
         }
         elseif ($visit['status'] == 'checked_in') {
             echo "Swal.fire({

@@ -198,9 +198,6 @@ const AppDialog = {
     }
 };
 
-// Export Globally
-window.AppDialog = AppDialog;
-
 // Only define the Swal mock if the real SweetAlert2 library is not loaded
 if (typeof Swal === 'undefined') {
     window.Swal = {
@@ -216,35 +213,3 @@ if (typeof Swal === 'undefined') {
         }
     };
 }
-
-/**
- * Handle Global URL-based Security Alerts
- */
-(function() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const alertType = urlParams.get('security_alert');
-    const pageName = urlParams.get('page');
-
-    if (alertType === 'unauthorized_access') {
-        const msg = pageName ? `You do not have permission to access the <b>${pageName}</b> page. Please contact your administrator.` : "You do not have the required permissions to perform this action.";
-        
-        // Wait for page to load then show alert
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                Swal.fire({
-                    title: 'Permission Denied',
-                    html: msg,
-                    icon: 'error',
-                    confirmButtonText: 'I Understand',
-                    confirmButtonColor: '#dc3545'
-                }).then(() => {
-                    // Clean URL
-                    const url = new URL(window.location);
-                    url.searchParams.delete('security_alert');
-                    url.searchParams.delete('page');
-                    window.history.replaceState({}, '', url);
-                });
-            }, 500);
-        });
-    }
-})();
