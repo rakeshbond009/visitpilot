@@ -1,6 +1,6 @@
 <!-- Visit Details Modal -->
 <!-- Included via PHP in Dashboard/Reports pages -->
-<div class="modal fade" id="visitDetailsModal" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+<div class="modal fade" id="visitDetailsModal" tabindex="-1" aria-hidden="true" style="z-index: 10000;">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-primary text-white border-0 py-3">
@@ -110,7 +110,11 @@
     }
 
     async function viewVisitDetails(visitId) {
-        if (!visitId) return;
+        console.log("Visit Details Viewer called for visit ID:", visitId);
+        if (!visitId) {
+            console.warn("No ID provided to viewVisitDetails");
+            return;
+        }
 
         // Hide other modals if open (e.g. summary list, notifications) to prevent overlapping issues
         const validModals = ['detailsModal', 'detailsListModal', 'notificationModal', 'deleteConfirmModal', 'inputModal'];
@@ -137,6 +141,11 @@
                 <span class="visually-hidden">Loading...</span>
             </div>
         </div>`;
+
+        // Robust backdrop cleanup before showing
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.paddingRight = '';
 
         modal.show();
 
