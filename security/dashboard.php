@@ -639,7 +639,7 @@ if ($time_saved_min > 60) {
     async function refreshDashboardTable(force = false) {
         // Prevent background polling from re-rendering the DOM while a modal is open
         if (!force && document.querySelector('.modal.show')) return;
-        
+
         try {
             const response = await fetch('api/get_dashboard_data.php');
             const data = await response.json();
@@ -832,11 +832,18 @@ if ($time_saved_min > 60) {
                 $msgText .= ' (WhatsApp API not configured)';
             }
         }
+        
+        $v_stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.name as host_name, v.visit_code 
+                                 FROM visits v 
+                                 JOIN visitors vis ON v.visitor_id = vis.id 
+                                 LEFT JOIN employees emp ON v.employee_id = emp.id 
+                                 WHERE v.id = ?");
+        $v_stmt->execute([$_GET['new_visit_id']]);
+        $visit_details = $v_stmt->fetch();
         ?>
-        window.addEventListener('load', () => {
-            const visitId = '<?php echo $_GET['new_visit_id']; ?>';
-            const visit = todaysVisits.find(v => v.id == visitId);
-            
+        <script>
+        (function() {
+            const visit = <?php echo json_encode($visit_details); ?>;
             if (visit) {
                 Swal.fire({
                     title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
@@ -871,6 +878,8 @@ if ($time_saved_min > 60) {
                         </div>
                     `,
                     icon: 'success',
+                    timer: 4000,
+                    timerProgressBar: true,
                     confirmButtonText: 'Done',
                     confirmButtonColor: '#0d6efd',
                     customClass: {
@@ -885,7 +894,8 @@ if ($time_saved_min > 60) {
                     window.history.replaceState({}, '', url);
                 });
             }
-        });
+        })();
+        </script>
         <?php
     endif; ?>
 
