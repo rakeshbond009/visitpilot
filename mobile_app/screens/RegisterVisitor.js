@@ -60,7 +60,7 @@ export default function RegisterVisitor({ navigation, route }) {
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
     const [user, setUser] = useState(null);
-    const [mandatoryFields, setMandatoryFields] = useState([]);
+    const [mandatoryFields, setMandatoryFields] = useState(["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [registerResult, setRegisterResult] = useState(null);
     const [scanned, setScanned] = useState(false);
@@ -266,6 +266,12 @@ export default function RegisterVisitor({ navigation, route }) {
                 const meta = metaResponse.data.data;
                 setPurposes(meta.purposes || []);
                 setAreas(meta.areas || []);
+                
+                if (meta.mandatory_fields) {
+                    setMandatoryFields(meta.mandatory_fields);
+                    if (meta.mandatory_fields.includes('id_proof')) setIdProofEnabled(true);
+                    if (meta.mandatory_fields.includes('otp_check')) setOtpEnabled(true);
+                }
 
                 if (meta.purposes?.length > 0) setPurpose(meta.purposes[0].purpose_name);
                 if (meta.areas?.length > 0) setAccessArea(meta.areas[0].area_name);
@@ -790,20 +796,45 @@ export default function RegisterVisitor({ navigation, route }) {
                                 <View style={styles.toggleRow}>
                                     <Switch
                                         value={otpEnabled}
-                                        onValueChange={onOtpToggleChange}
+                                        onValueChange={(val) => {
+                                            onOtpToggleChange(val);
+                                            if (val && mobile.length === 10) sendOTP();
+                                        }}
                                         disabled={isMandatory('otp_check')}
                                         trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
                                         thumbColor={otpEnabled ? '#3b82f6' : '#f4f3f4'}
                                     />
                                     <Text style={[styles.toggleLabel, { fontWeight: '800', fontSize: 12 }]}>ENABLE OTP CHECK{isMandatory('otp_check') ? ' *' : ''}</Text>
                                 </View>
+                                
+                                {otpEnabled && !isOtpVerified && mobile.length === 10 && (
+                                    <TouchableOpacity 
+                                        style={[styles.sendOtpBtnInline, { marginTop: 12 }]}
+                                        onPress={sendOTP}
+                                    >
+                                        <Text style={styles.sendOtpBtnTextInline}>SEND OTP FOR VERIFICATION</Text>
+                                    </TouchableOpacity>
+                                )}
+                                
+                                {isOtpVerified && (
+                                    <View style={[styles.verifiedBadgeInline, { marginTop: 12 }]}>
+                                        <Icon name="check-decagram" size={16} color="#059669" />
+                                        <Text style={styles.verifiedTextInline}>MOBILE VERIFIED</Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
                     </View>
 
                     <TouchableOpacity
                         style={[styles.mainSubmitBtn, loading && styles.disabledBtn]}
-                        onPress={handleRegister}
+                        onPress={() => {
+                            if (otpEnabled && !isOtpVerified) {
+                                alert("Please verify your mobile number with OTP first.");
+                                return;
+                            }
+                            handleRegister();
+                        }}
                         disabled={loading}
                     >
                         {loading ? (
@@ -1034,6 +1065,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                         setPhoto(null);
                                         setIsPreApproved(false);
                                         setInvitationId(null);
+                                        setIsOtpVerified(false);
                                     }}
                                 >
                                     <Icon name="plus" size={20} color="#475569" style={{ marginRight: 8 }} />
@@ -1573,6 +1605,36 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         flex: 1,
         fontWeight: '500',
+    },
+    sendOtpBtnInline: {
+        backgroundColor: '#f59e0b',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sendOtpBtnTextInline: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    verifiedBadgeInline: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#ecfdf5',
+        paddingVertical: 10,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#10b981',
+    },
+    verifiedTextInline: {
+        color: '#065f46',
+        fontSize: 13,
+        fontWeight: '800',
+        marginLeft: 6,
     },
 });
 

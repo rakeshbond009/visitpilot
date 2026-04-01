@@ -737,3 +737,10 @@
 [2026-04-01 22:22:54] CALL: Template visitor_arrival_host_alert to 919873028739
 [2026-04-01 22:22:54] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
 [2026-04-01 22:22:55] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-04-01 22:34:53] CALL: Template visitor_otp_verification to 919873028739
+[2026-04-01 22:34:53] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"911914"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"911914"}]}]}}
+[2026-04-01 22:34:54] SUCCESS (200): Template visitor_otp_verification sent to 919873028739 (Lang: en)
+[2026-04-01 22:35:15] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-04-01 22:35:15] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-04-01 22:35:15] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-04-01 22:35:15] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)

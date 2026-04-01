@@ -734,6 +734,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         endif; ?>
                                     </label>
                                 </div>
+                                
+                                <!-- Manual Send OTP Button (Visible if mandatory and not verified) -->
+                                <button type="button" id="sendOtpManualBtn" class="btn btn-outline-warning w-100 mt-2 btn-sm fw-bold" 
+                                    onclick="startOTPVerification()" 
+                                    style="<?php echo isFieldMandatory('otp_check') ? '' : 'display:none;'; ?>">
+                                    <i class="bi bi-shield-check me-1"></i> SEND OTP FOR VERIFICATION
+                                </button>
+                                
+                                <!-- Verification Success Badge -->
+                                <div id="verifiedBadge" class="alert alert-success py-2 mt-2 mb-0 d-none" style="font-size: 0.8rem;">
+                                    <i class="bi bi-check-circle-fill me-2"></i> HOST VERIFIED
+                                </div>
                             </div>
                         </div>
                     </div>
