@@ -10,8 +10,31 @@
     let hbAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
     let notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
 
-    // Track notified visits to avoid duplicates across polls
-    const notifiedVisits = new Set();
+    // Track notified visits to avoid duplicates across polls, persisted in localStorage
+    const STORAGE_KEY = 'vms_notified_visits';
+    const getInitialNotified = () => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return saved ? new Set(JSON.parse(saved)) : new Set();
+        } catch (e) { return new Set(); }
+    };
+    const notifiedVisits = getInitialNotified();
+
+    function saveNotified(id) {
+        notifiedVisits.add(id);
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(notifiedVisits)));
+        } catch (e) { }
+    }
+
+    // Daily cleanup: If it's a new day, clear the cache to keep it clean
+    const lastStorageDate = localStorage.getItem('vms_notify_date');
+    const today = new Date().toDateString();
+    if (lastStorageDate !== today) {
+        notifiedVisits.clear();
+        localStorage.setItem(STORAGE_KEY, '[]');
+        localStorage.setItem('vms_notify_date', today);
+    }
 
     // Unlock audio on first user interaction to ensure notifications work after redirects
     const unlockAudio = () => {
@@ -36,6 +59,7 @@
             let apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL + 'security/api/check_status_updates.php' : 'api/check_status_updates.php';
 
             let url = apiPath;
+            const isFirstLoad = !lastCheckTime;
             if (lastCheckTime) {
                 url += `?last_check=${encodeURIComponent(lastCheckTime)}`;
             }
@@ -44,19 +68,25 @@
             const data = await response.json();
 
             if (data.success) {
-                if (!lastCheckTime) {
-                    lastCheckTime = data.timestamp;
-                    // First load, don't notify old ones, but store them to avoid future notifications
-                    if (data.updates) data.updates.forEach(v => notifiedVisits.add(v.id));
-                    return;
-                }
                 lastCheckTime = data.timestamp;
 
                 // Process new status changes
                 if (data.updates && data.updates.length > 0) {
                     data.updates.forEach(visit => {
                         if (!notifiedVisits.has(visit.id)) {
-                            notifiedVisits.add(visit.id);
+                            // If it's the first load (fresh refresh), only notify if it's very recent (last 2 mins)
+                            // to avoid a flood of old notifications.
+                            if (isFirstLoad) {
+                                const approvedAt = new Date(visit.approved_at).getTime();
+                                const now = new Date().getTime();
+                                // If approved more than 2 minutes ago, just mark as seen silently
+                                if (now - approvedAt > 120000) {
+                                    saveNotified(visit.id);
+                                    return;
+                                }
+                            }
+
+                            saveNotified(visit.id);
 
                             // 1. Play Sound
                             // Notification sound should always trigger for status updates 
