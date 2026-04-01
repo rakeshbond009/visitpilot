@@ -397,12 +397,8 @@
                 }
 
                 // Show a small success alert
-                AppDialog.show({
-                    title: data.skipped ? 'Notice' : 'Notification Status',
-                    text: data.message || 'Pass Whatsapp to Visitor.',
-                    icon: data.skipped ? 'info' : 'success',
-                    confirmButtonText: 'OK'
-                });
+                // Success toast or nothing (Per User Request)
+                console.log(data.skipped ? 'Notice: ' + data.message : 'Resend Successful');
             } else {
                 throw new Error(data.message || "Cloud API failed");
             }

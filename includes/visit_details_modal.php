@@ -110,6 +110,8 @@
     }
 
     async function viewVisitDetails(visitId) {
+        window.viewVisitDetails = viewVisitDetails; // Global accessibility
+
         if (!visitId) return;
 
         // Hide other modals if open (e.g. summary list, notifications) to prevent overlapping issues

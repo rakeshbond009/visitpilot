@@ -136,7 +136,7 @@
                         if (typeof window.viewVisitDetails === 'function') {
                             window.viewVisitDetails(visit.id);
                         } else {
-                            window.location.href = (typeof HOME_URL !== 'undefined') ? HOME_URL : `dashboard.php`;
+                            console.error("viewVisitDetails not found on this page.");
                         }
                     }, 400);
                 }

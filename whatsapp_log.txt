@@ -721,3 +721,6 @@
 [2026-03-30 23:40:15] TRACE: PDF Uploaded to Meta. Media ID: 1865897760781691
 [2026-03-30 23:40:15] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"1865897760781691","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
 [2026-03-30 23:40:16] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-04-01 13:33:10] CALL: Template visit_rejection_visitor_notify to 919152078513
+[2026-04-01 13:33:10] TRACE (Payload): To: 919152078513 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919152078513","type":"template","template":{"name":"visit_rejection_visitor_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*SMFG India Home Finance Company Limited*"},{"type":"text","text":"*no*"}]}]}}
+[2026-04-01 13:33:11] SUCCESS (200): Template visit_rejection_visitor_notify sent to 919152078513 (Lang: en)
