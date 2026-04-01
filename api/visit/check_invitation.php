@@ -29,7 +29,7 @@ try {
             sendResponse('error', 'This meeting has been canceled by the host.');
         } elseif ($scheduled_date < $today) {
             sendResponse('error', 'This invitation has expired (Scheduled Date: ' . date('d-M-Y', strtotime($invitation['visit_date'])) . '). Please ask for a new invite.');
-        } elseif (!in_array($invitation['status'], ['pending', 'approved']) || !empty($invitation['visit_photo'])) {
+        } elseif (!in_array($invitation['status'], ['pending', 'approved'])) {
             sendResponse('error', 'This invitation code has already been used or is inactive.');
         } else {
             sendResponse('success', 'Invitation found', $invitation);
