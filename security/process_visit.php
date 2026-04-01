@@ -71,7 +71,7 @@ elseif ($action == 'checkin_by_code') {
                     cancelButtonText: 'Cancel'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        window.location.href='process_visit.php?action=checkin&id=" . $visit['id'] . "';
+                        window.location.href='process_visit.php?action=do_checkin&id=" . $visit['id'] . "';
                     } else {
                         window.location.href='$home_url';
                     }
