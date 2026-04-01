@@ -667,7 +667,7 @@ if ($time_saved_minutes > 60) {
     async function refreshDashboardTable(force = false) {
         // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
         if (!force && document.querySelector('.modal.show')) return;
-        
+
         try {
             // Add cache buster to prevent stale data
             const response = await fetch('api/get_dashboard_data.php?t=' + new Date().getTime());

@@ -637,8 +637,8 @@ if ($time_saved_min > 60) {
 
     // --- REAL-TIME ENGINE ---
     async function refreshDashboardTable(force = false) {
-        // Prevent background polling from re-rendering the DOM while a modal is open
-        if (!force && document.querySelector('.modal.show')) return;
+        // Prevent background polling from re-rendering the DOM while a modal OR a SweetAlert is open
+        if (!force && (document.querySelector('.modal.show') || document.querySelector('.swal2-container'))) return;
 
         try {
             const response = await fetch('api/get_dashboard_data.php');
@@ -832,7 +832,7 @@ if ($time_saved_min > 60) {
                 $msgText .= ' (WhatsApp API not configured)';
             }
         }
-        
+
         $v_stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.name as host_name, v.visit_code 
                                  FROM visits v 
                                  JOIN visitors vis ON v.visitor_id = vis.id 
@@ -842,12 +842,12 @@ if ($time_saved_min > 60) {
         $visit_details = $v_stmt->fetch();
         ?>
         <script>
-        (function() {
-            const visit = <?php echo json_encode($visit_details); ?>;
-            if (visit) {
-                Swal.fire({
-                    title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
-                    html: `
+            (function () {
+                const visit = <?php echo json_encode($visit_details); ?>;
+                if (visit) {
+                    Swal.fire({
+                        title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
+                        html: `
                         <div class="text-center p-2">
                             <div class="mb-3">
                                 <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}" 
@@ -877,200 +877,192 @@ if ($time_saved_min > 60) {
                             </div>
                         </div>
                     `,
-                    icon: 'success',
-                    timer: 4000,
-                    timerProgressBar: true,
-                    confirmButtonText: 'Done',
-                    confirmButtonColor: '#0d6efd',
-                    customClass: {
-                        popup: 'rounded-4 border-0 shadow-lg',
-                        confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
-                    }
-                }).then(() => {
-                    const url = new URL(window.location);
-                    url.searchParams.delete('new_visit_id');
-                    url.searchParams.delete('msg');
-                    url.searchParams.delete('wa_status');
-                    window.history.replaceState({}, '', url);
-                });
-            }
-        })();
+                        icon: 'success',
+                        timer: 4000,
+                        timerProgressBar: true,
+                        confirmButtonText: 'Done',
+                        confirmButtonColor: '#0d6efd',
+                        customClass: {
+                            popup: 'rounded-4 border-0 shadow-lg',
+                            confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
+                        }
+                    }).then(() => {
+                        const url = new URL(window.location);
+                        url.searchParams.delete('new_visit_id');
+                        url.searchParams.delete('msg');
+                        url.searchParams.delete('wa_status');
+                        window.history.replaceState({}, '', url);
+                    });
+                }
+            })();
         </script>
         <?php
     endif; ?>
 
-    const serverToday = '<?php echo date("Y-m-d"); ?>';
+    <script>
 
-    // Modal Logic
-    function showDetails(type) {
-        const titleMap = {
-            'total': 'Total Visitors Today',
-            'active': 'Currently Inside (Checked In)',
-            'pending': 'Pending Approvals',
-            'overstay': 'Alert: Overstaying Visitors (>8h)'
-        };
-        const tbody = document.getElementById('modalTableBody');
-        tbody.innerHTML = '';
+const serverToday = '<?php echo date("Y-m-d"); ?>';
 
-        const searchInput = document.getElementById('detailsModalSearch');
-        if (searchInput) searchInput.value = '';
+// Modal Logic
+function showDetails(type) {
+const titleMap = {
+'total': 'Total Visitors Today',
+'active': 'Currently Inside (Checked In)',
+'pending': 'Pending Approvals',
+'overstay': 'Alert: Overstaying Visitors (>8h)'
+};
+const tbody = document.getElementById('modalTableBody');
+tbody.innerHTML = '';
 
-        const eightHoursAgo = new Date(Date.now() - 8 * 3600 * 1000);
+const searchInput = document.getElementById('detailsModalSearch');
+if (searchInput) searchInput.value = '';
 
-        const filtered = todaysVisits.filter(v => {
-            if (type === 'total') {
-                return v.created_at.startsWith(serverToday);
-            }
-            if (type === 'active') return v.status === 'checked_in';
-            if (type === 'pending') return v.approval_status === 'pending';
-            if (type === 'checkin_pending') {
-                return v.status === 'approved' && (v.created_at.startsWith(serverToday) || (v.is_invited == 1 && v.visit_date === serverToday));
-            }
-            if (type === 'overstay') {
-                return v.status === 'checked_in' && v.check_in_time && new Date(v.check_in_time) < eightHoursAgo;
-            }
-            return true;
-        });
+const eightHoursAgo = new Date(Date.now() - 8 * 3600 * 1000);
 
-        document.getElementById('modalTitle').innerText = titleMap[type] || 'Visit Details';
-        document.getElementById('recordCount').innerText = filtered.length + ' record(s)';
+const filtered = todaysVisits.filter(v => {
+if (type === 'total') {
+return v.created_at.startsWith(serverToday);
+}
+if (type === 'active') return v.status === 'checked_in';
+if (type === 'pending') return v.approval_status === 'pending';
+if (type === 'checkin_pending') {
+return v.status === 'approved' && (v.created_at.startsWith(serverToday) || (v.is_invited == 1 && v.visit_date ===
+serverToday));
+}
+if (type === 'overstay') {
+return v.status === 'checked_in' && v.check_in_time && new Date(v.check_in_time) < eightHoursAgo; } return true; });
+    document.getElementById('modalTitle').innerText=titleMap[type] || 'Visit Details' ;
+    document.getElementById('recordCount').innerText=filtered.length + ' record(s)' ; if (filtered.length===0) {
+    tbody.innerHTML='<tr><td colspan="4" class="text-center text-muted py-5">No records found</td></tr>' ; } else {
+    filtered.forEach(visit=> {
+    const statusBadgeParams = {
+    'registered': 'bg-info',
+    'checked_in': 'bg-success',
+    'checked_out': 'bg-secondary',
+    'approved': 'bg-primary',
+    'pending': 'bg-warning text-dark',
+    'rejected': 'bg-danger'
+    };
+    const statusBadge = statusBadgeParams[visit.status] || 'bg-secondary';
 
-        if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-5">No records found</td></tr>';
-        } else {
-            filtered.forEach(visit => {
-                const statusBadgeParams = {
-                    'registered': 'bg-info',
-                    'checked_in': 'bg-success',
-                    'checked_out': 'bg-secondary',
-                    'approved': 'bg-primary',
-                    'pending': 'bg-warning text-dark',
-                    'rejected': 'bg-danger'
-                };
-                const statusBadge = statusBadgeParams[visit.status] || 'bg-secondary';
+    // Actions (simplified for modal)
+    const showPass = visit.approval_status !== 'rejected';
+    const showCheckin = visit.status === 'approved' && visit.approval_status === 'approved';
+    const showCheckout = visit.status === 'checked_in';
 
-                // Actions (simplified for modal)
-                const showPass = visit.approval_status !== 'rejected';
-                const showCheckin = visit.status === 'approved' && visit.approval_status === 'approved';
-                const showCheckout = visit.status === 'checked_in';
+    // Date Formatting
+    const d = new Date(visit.created_at);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const formattedDate = `<div class="fw-bold text-dark">${day}-${month}-${year}</div><small
+        class="text-muted">${hours}:${minutes} ${ampm}</small>`;
 
-                // Date Formatting
-                const d = new Date(visit.created_at);
-                const day = String(d.getDate()).padStart(2, '0');
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const year = String(d.getFullYear()).slice(-2);
-                let hours = d.getHours();
-                const minutes = String(d.getMinutes()).padStart(2, '0');
-                const ampm = hours >= 12 ? 'PM' : 'AM';
-                hours = hours % 12;
-                hours = hours ? hours : 12;
-                const formattedDate = `<div class="fw-bold text-dark">${day}-${month}-${year}</div><small class="text-muted">${hours}:${minutes} ${ampm}</small>`;
+    const row = `
+    <tr onclick="viewVisitDetails(${visit.id})" style="cursor: pointer;">
+        <td class="ps-4">
+            <div class="fw-bold text-dark">${visit.visitor_name}</div>
+            <small class="text-muted">${visit.mobile}</small>
+        </td>
+        <td>
+            <div class="fw-bold text-dark">${visit.host_name || '-'}</div>
+            <small class="text-muted">${visit.department || '-'}</small>
+        </td>
+        <td>${formattedDate}</td>
+        <td><span class="badge rounded-pill ${statusBadge}">${visit.status.replace('_', ' ').toUpperCase()}</span></td>
+        <td class="small fw-bold text-success">${visit.check_in_time ? formatTime(visit.check_in_time) : '-'}</td>
+        <td class="small fw-bold text-danger">${visit.check_out_time ? formatTime(visit.check_out_time) : '-'}</td>
+        <td class="text-end pe-4" onclick="event.stopPropagation()">
+            <div class="btn-group btn-group-sm">
+                ${showPass ? `<a href="javascript:void(0);" onclick="viewPass(${visit.id}, '${visit.approval_status}')"
+                    class="btn btn-outline-primary"><i class="bi bi-ticket-detailed"></i></a>` : ''}
+                ${showCheckin ? `<a href="process_visit.php?action=checkin&id=${visit.id}"
+                    class="btn btn-success fw-bold">Check In</a>` : ''}
+                ${showCheckout ? `<a href="process_visit.php?action=checkout&id=${visit.id}"
+                    class="btn btn-danger">Check Out</a>` : ''}
+            </div>
+        </td>
+    </tr>
+    `;
+    tbody.innerHTML += row;
+    });
+    }
 
-                const row = `
-                    <tr onclick="viewVisitDetails(${visit.id})" style="cursor: pointer;">
-                        <td class="ps-4">
-                            <div class="fw-bold text-dark">${visit.visitor_name}</div>
-                            <small class="text-muted">${visit.mobile}</small>
-                        </td>
-                        <td>
-                            <div class="fw-bold text-dark">${visit.host_name || '-'}</div>
-                            <small class="text-muted">${visit.department || '-'}</small>
-                        </td>
-                        <td>${formattedDate}</td>
-                        <td><span class="badge rounded-pill ${statusBadge}">${visit.status.replace('_', ' ').toUpperCase()}</span></td>
-                        <td class="small fw-bold text-success">${visit.check_in_time ? formatTime(visit.check_in_time) : '-'}</td>
-                        <td class="small fw-bold text-danger">${visit.check_out_time ? formatTime(visit.check_out_time) : '-'}</td>
-                        <td class="text-end pe-4" onclick="event.stopPropagation()">
-                             <div class="btn-group btn-group-sm">
-                                ${showPass ? `<a href="javascript:void(0);" onclick="viewPass(${visit.id}, '${visit.approval_status}')" class="btn btn-outline-primary"><i class="bi bi-ticket-detailed"></i></a>` : ''}
-                                ${showCheckin ? `<a href="process_visit.php?action=checkin&id=${visit.id}" class="btn btn-success fw-bold">Check In</a>` : ''}
-                                ${showCheckout ? `<a href="process_visit.php?action=checkout&id=${visit.id}" class="btn btn-danger">Check Out</a>` : ''}
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
-        }
-
-        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal'));
-        modal.show();
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('detailsModal'));
+    modal.show();
     }
 
     function filterDetailsModalTable() {
-        const input = document.getElementById('detailsModalSearch');
-        if (!input) return;
-        const filter = input.value.toLowerCase();
-        const modalBody = document.getElementById('modalTableBody');
-        const rows = modalBody.getElementsByTagName('tr');
+    const input = document.getElementById('detailsModalSearch');
+    if (!input) return;
+    const filter = input.value.toLowerCase();
+    const modalBody = document.getElementById('modalTableBody');
+    const rows = modalBody.getElementsByTagName('tr');
 
-        for (let i = 0; i < rows.length; i++) {
-            const rowText = rows[i].textContent.toLowerCase();
-            rows[i].style.display = rowText.includes(filter) ? '' : 'none';
+    for (let i = 0; i < rows.length; i++) { const rowText=rows[i].textContent.toLowerCase();
+        rows[i].style.display=rowText.includes(filter) ? '' : 'none' ; } } // --- SUCCESS DIALOG FOR CHECK-IN/OUT ---
+        (function () { const urlParams=new URLSearchParams(window.location.search); const
+        action=urlParams.get('action_success'); const vId=urlParams.get('v_id'); if (action && vId) { const
+        visit=todaysVisits.find(v=> v.id == vId);
+        if (visit) {
+        const isCheckin = action === 'checkin';
+        const visitorName = visit.visitor_name || 'Visitor';
+        const hostName = visit.host_name || 'Host';
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        Swal.fire({
+        title: `<h3 class="fw-bold mb-1">${isCheckin ? 'Check-in Successful!' : 'Check-out Successful!'}</h3>`,
+        html: `
+        <div class="text-center p-2">
+            <div class="mb-3">
+                <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}"
+                    class="rounded-circle border border-4 border-success shadow" width="100" height="100"
+                    style="object-fit: cover;" onerror="this.src='../assets/img/visitor-icon.png'">
+            </div>
+            <h4 class="fw-bold mb-1">${visitorName}</h4>
+            <p class="text-muted mb-3">${visit.mobile}</p>
+
+            <div class="row g-2 justify-content-center">
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded-3 border text-center">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.55rem;">${isCheckin
+                            ? 'Entry Time' : 'Exit Time'}</small>
+                        <span class="fw-bold text-dark small">${timeStr}</span>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="p-2 bg-light rounded-3 border text-center">
+                        <small class="text-muted d-block text-uppercase fw-bold"
+                            style="font-size: 0.55rem;">Host</small>
+                        <span class="fw-bold text-dark small">${hostName}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `,
+        icon: 'success',
+        confirmButtonText: 'Done',
+        confirmButtonColor: '#198754',
+        customClass: {
+        popup: 'rounded-4 border-0 shadow-lg',
+        confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
         }
-    }
-
-    // --- SUCCESS DIALOG FOR CHECK-IN/OUT ---
-    (function () {
-        const urlParams = new URLSearchParams(window.location.search);
-        const action = urlParams.get('action_success');
-        const vId = urlParams.get('v_id');
-
-        if (action && vId) {
-            const visit = todaysVisits.find(v => v.id == vId);
-            if (visit) {
-                const isCheckin = action === 'checkin';
-                const visitorName = visit.visitor_name || 'Visitor';
-                const hostName = visit.host_name || 'Host';
-                const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-                Swal.fire({
-                    title: `<h3 class="fw-bold mb-1">${isCheckin ? 'Check-in Successful!' : 'Check-out Successful!'}</h3>`,
-                    html: `
-                        <div class="text-center p-2">
-                            <div class="mb-3">
-                                <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}" 
-                                     class="rounded-circle border border-4 border-success shadow" 
-                                     width="100" height="100" style="object-fit: cover;"
-                                     onerror="this.src='../assets/img/visitor-icon.png'">
-                            </div>
-                            <h4 class="fw-bold mb-1">${visitorName}</h4>
-                            <p class="text-muted mb-3">${visit.mobile}</p>
-                            
-                            <div class="row g-2 justify-content-center">
-                                <div class="col-6">
-                                    <div class="p-2 bg-light rounded-3 border text-center">
-                                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.55rem;">${isCheckin ? 'Entry Time' : 'Exit Time'}</small>
-                                        <span class="fw-bold text-dark small">${timeStr}</span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="p-2 bg-light rounded-3 border text-center">
-                                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.55rem;">Host</small>
-                                        <span class="fw-bold text-dark small">${hostName}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `,
-                    icon: 'success',
-                    confirmButtonText: 'Done',
-                    confirmButtonColor: '#198754',
-                    customClass: {
-                        popup: 'rounded-4 border-0 shadow-lg',
-                        confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
-                    }
-                }).then(() => {
-                    const url = new URL(window.location);
-                    url.searchParams.delete('action_success');
-                    url.searchParams.delete('v_id');
-                    window.history.replaceState({}, '', url);
-                });
-            }
+        }).then(() => {
+        const url = new URL(window.location);
+        url.searchParams.delete('action_success');
+        url.searchParams.delete('v_id');
+        window.history.replaceState({}, '', url);
+        });
         }
-    })();
-</script>
+        }
+        })();
+        </script>
 
 
-<?php require_once '../includes/visit_details_modal.php'; ?>
-<?php require_once 'footer.php'; ?>
+        <?php require_once '../includes/visit_details_modal.php'; ?>
+        <?php require_once 'footer.php'; ?>

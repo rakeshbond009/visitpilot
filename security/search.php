@@ -205,7 +205,6 @@ if (isset($_GET['q'])) {
         <div class="container py-4">
             <?php require_once 'footer.php'; ?>
 
-
             <!-- Visit Details Modal -->
             <div class="modal fade" id="visitDetailsModal" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -426,7 +425,7 @@ if (isset($_GET['q'])) {
                     event.preventDefault();
                     event.stopPropagation(); // Stop row click
                     if (status === 'pending') {
-                        AppDialog.show({
+                        Swal.fire({
                             icon: 'info',
                             title: 'Approval Pending',
                             text: 'This pass cannot be viewed yet because the host has not approved the visit.'

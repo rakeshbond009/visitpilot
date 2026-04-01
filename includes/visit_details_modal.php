@@ -389,7 +389,7 @@
             alert('This visit has been rejected. Cannot print pass.');
         }
     }
-    
+
     // Global accessibility for dashboard polling stability
     window.viewVisitDetails = viewVisitDetails;
     window.viewPass = viewPass;
