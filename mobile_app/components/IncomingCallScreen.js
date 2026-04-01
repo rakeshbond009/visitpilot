@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Animated, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 
 const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
+    const [actionLoading, setActionLoading] = useState(false);
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const slideAnim = useRef(new Animated.Value(height)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -42,9 +43,10 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
                 ])
             ).start();
         } else {
-            // Reset animations
+            // Reset animations and loading state
             slideAnim.setValue(height);
             opacityAnim.setValue(0);
+            setActionLoading(false);
         }
     }, [visible]);
 
@@ -109,16 +111,42 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
 
                     <View style={styles.actionSection}>
                         <View style={styles.actionRow}>
-                            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton} onPress={onReject}>
+                            <TouchableOpacity 
+                                activeOpacity={0.7} 
+                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]} 
+                                onPress={() => {
+                                    if (actionLoading) return;
+                                    setActionLoading(true);
+                                    onReject();
+                                }}
+                                disabled={actionLoading}
+                            >
                                 <View style={[styles.iconCircle, styles.rejectBtnColor]}>
-                                    <Ionicons name="close" size={36} color="#fff" />
+                                    {actionLoading ? (
+                                        <ActivityIndicator color="#fff" size="large" />
+                                    ) : (
+                                        <Ionicons name="close" size={36} color="#fff" />
+                                    )}
                                 </View>
                                 <Text style={styles.btnText}>Decline</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton} onPress={onAccept}>
+                            <TouchableOpacity 
+                                activeOpacity={0.7} 
+                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]} 
+                                onPress={() => {
+                                    if (actionLoading) return;
+                                    setActionLoading(true);
+                                    onAccept();
+                                }}
+                                disabled={actionLoading}
+                            >
                                 <View style={[styles.iconCircle, styles.acceptBtnColor]}>
-                                    <Ionicons name="checkmark-sharp" size={38} color="#fff" />
+                                    {actionLoading ? (
+                                        <ActivityIndicator color="#fff" size="large" />
+                                    ) : (
+                                        <Ionicons name="checkmark-sharp" size={38} color="#fff" />
+                                    )}
                                 </View>
                                 <Text style={styles.btnText}>Authorize</Text>
                             </TouchableOpacity>
