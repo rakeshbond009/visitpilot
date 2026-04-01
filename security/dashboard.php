@@ -732,52 +732,7 @@ if ($time_saved_min > 60) {
                     }
                 }
 
-                // Update Table
-                const tbody = document.getElementById('visitor-log-body');
-                let html = '';
-
-                data.visits.forEach(visit => {
-                    const statusBadgeParams = {
-                        'registered': 'bg-info', 'checked_in': 'bg-success', 'checked_out': 'bg-secondary',
-                        'approved': 'bg-primary', 'pending': 'bg-warning text-dark', 'rejected': 'bg-danger'
-                    };
-                    const statusBadge = statusBadgeParams[visit.status] || 'bg-secondary';
-                    const showPass = visit.approval_status !== 'rejected';
-                    const showCheckin = visit.status === 'approved' && visit.approval_status === 'approved';
-                    const showCheckout = visit.status === 'checked_in';
-
-                    const displayPhoto = visit.visit_photo;
-
-                    html += `
-                    <tr id="row-${visit.id}" class="animate__animated animate__fadeIn" onclick="viewVisitDetails(${visit.id})" style="cursor: pointer;">
-                        <td class="ps-4"><strong>${visit.visit_code}</strong></td>
-                        <td>
-                            <div class="d-flex align-items-center">
-                                <img src="../${displayPhoto || 'assets/img/visitor-icon.png'}" 
-                                     class="rounded-circle me-2 shadow-sm" width="40" height="40" style="object-fit:cover"
-                                     onerror="this.src='../assets/img/visitor-icon.png'">
-                                <div>
-                                    <div class="fw-bold small">${visit.visitor_name}</div>
-                                    <div class="text-muted" style="font-size:0.7rem">${visit.mobile}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="small">${visit.host_name}</td>
-                        <td class="small">${visit.department || '-'}</td>
-                        <td><span class="badge rounded-pill ${statusBadge}" style="font-size:0.65rem">${visit.status.replace('_', ' ').toUpperCase()}</span></td>
-                        <td class="small fw-bold text-success">${visit.check_in_time ? formatTime(visit.check_in_time) : '-'}</td>
-                        <td class="small fw-bold text-danger">${visit.check_out_time ? formatTime(visit.check_out_time) : '-'}</td>
-                        <td class="text-end pe-4" onclick="event.stopPropagation()">
-                            <div class="btn-group btn-group-sm">
-                                ${showPass ? `<a href="javascript:void(0);" onclick="viewPass(${visit.id}, '${visit.approval_status}')" class="btn btn-outline-primary"><i class="bi bi-ticket-detailed"></i></a>` : ''}
-                                ${showCheckin ? `<a href="process_visit.php?action=checkin&id=${visit.id}" class="btn btn-success fw-bold">Check In</a>` : ''}
-                                ${showCheckout ? `<a href="process_visit.php?action=checkout&id=${visit.id}" class="btn btn-danger">Check Out</a>` : ''}
-                            </div>
-                        </td>
-                    </tr>`;
-                });
-                if (html === '') html = '<tr><td colspan="5" class="text-center text-muted py-5">No visitors today</td></tr>';
-                tbody.innerHTML = html;
+                // Update Table logic removed as requested (table no longer present on dashboard)
             }
         } catch (e) { console.error("Refresh failed", e); }
     }
@@ -813,7 +768,6 @@ if ($time_saved_min > 60) {
 
     // --- EVENT LISTENERS ---
     applySavedBGMode();
-    applySavedBGMode();
     setInterval(() => refreshDashboardTable(false), 2000);
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
@@ -841,13 +795,13 @@ if ($time_saved_min > 60) {
         $v_stmt->execute([$_GET['new_visit_id']]);
         $visit_details = $v_stmt->fetch();
         ?>
-            < script >
-            (function () {
-                const visit = <?php echo json_encode($visit_details); ?>;
-                if (visit) {
-                    Swal.fire({
-                        title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
-                        html: `
+            <script>
+                (function () {
+                    const visit = <?php echo json_encode($visit_details); ?>;
+                    if (visit) {
+                        Swal.fire({
+                            title: `<h3 class="fw-bold mb-1"><?php echo $msgTitle; ?></h3>`,
+                            html: `
                         <div class="text-center p-2">
                             <div class="mb-3">
                                 <img src="../${visit.photo_path || 'assets/img/visitor-icon.png'}" 
@@ -877,26 +831,26 @@ if ($time_saved_min > 60) {
                             </div>
                         </div>
                     `,
-                        icon: 'success',
-                        timer: 4000,
-                        timerProgressBar: true,
-                        confirmButtonText: 'Done',
-                        confirmButtonColor: '#0d6efd',
-                        customClass: {
-                            popup: 'rounded-4 border-0 shadow-lg',
-                            confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
-                        }
-                    }).then(() => {
-                        const url = new URL(window.location);
-                        url.searchParams.delete('new_visit_id');
-                        url.searchParams.delete('msg');
-                        url.searchParams.delete('wa_status');
-                        window.history.replaceState({}, '', url);
-                    });
-                }
-            })();
-    </script>
-    <?php
+                            icon: 'success',
+                            timer: 4000,
+                            timerProgressBar: true,
+                            confirmButtonText: 'Done',
+                            confirmButtonColor: '#0d6efd',
+                            customClass: {
+                                popup: 'rounded-4 border-0 shadow-lg',
+                                confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
+                            }
+                        }).then(() => {
+                            const url = new URL(window.location);
+                            url.searchParams.delete('new_visit_id');
+                            url.searchParams.delete('msg');
+                            url.searchParams.delete('wa_status');
+                            window.history.replaceState({}, '', url);
+                        });
+                    }
+                })();
+            </script>
+        <?php
     endif; ?>
 
 const serverToday = '<?php echo date("Y-m-d"); ?>';
