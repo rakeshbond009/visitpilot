@@ -41,11 +41,12 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
     public void openOverlaySettings() {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                // Use current activity if available for better deep-linking on some Android versions
+                // Use current activity if available for better deep-linking on some Android
+                // versions
                 Activity currentActivity = getCurrentActivity();
                 Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
                 intent.setData(Uri.parse("package:" + reactContext.getPackageName()));
-                
+
                 if (currentActivity != null) {
                     currentActivity.startActivity(intent);
                 } else {
@@ -72,27 +73,26 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
                         activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                     } else {
                         activity.getWindow().addFlags(
-                            WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
-                            WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
-                            WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
-                            WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-                        );
+                                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
+                                        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON |
+                                        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                                        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
                     }
                 }
             });
-        } 
-        
+        }
+
         // ALWAYS try to bring to front/launch if called, to handle background/killed states
-        // We use the application context to start activity
         try {
-            Intent intent = new Intent(reactContext, MainActivity.class);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | 
-                            Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP |
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            reactContext.startActivity(intent);
+            String packageName = reactContext.getPackageName();
+            Intent intent = reactContext.getPackageManager().getLaunchIntentForPackage(packageName);
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | 
+                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                reactContext.startActivity(intent);
+            }
         } catch (Exception e) {
-            // Log error
             e.printStackTrace();
         }
     }

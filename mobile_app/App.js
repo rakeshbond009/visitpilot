@@ -180,24 +180,24 @@ function AppContent() {
             });
         }, 5000);
 
+        // Check for notifications on start, and poll for a few seconds in case of background launch
         const checkNotifications = async () => {
             try {
+                // 1. Check for last response (if user tapped)
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
-                    console.log(" [App.js] Last Notification Response:", JSON.stringify(response));
                     const data = standardizeArrivalData(response.notification.request.content.data);
-                    // Only show overlay for actual visitor arrivals
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data);
                         setShowOverlay(true);
-                        return;
+                        return true;
                     }
                 }
 
+                // 2. Check for presented notifications
                 const presented = await Notifications.getPresentedNotificationsAsync();
                 const arrivalNotif = presented.find(n => {
                     const d = n.request.content.data;
-                    // Check if it is strictly an arrival notification
                     return d?.type === 'visitor_arrival' || d?.is_call_priority === 'true';
                 });
 
@@ -206,14 +206,27 @@ function AppContent() {
                     if (data) {
                         setArrivalData(data);
                         setShowOverlay(true);
+                        return true;
                     }
                 }
             } catch (err) {
                 console.log("Check Notifications Error:", err);
             }
+            return false;
         };
 
+        // Initial check
         checkNotifications();
+        
+        // Polling check for 10 seconds (useful for background -> foreground wakeups)
+        const pollInterval = setInterval(async () => {
+             const found = await checkNotifications();
+             if (found) clearInterval(pollInterval);
+        }, 1000);
+        
+        const pollTimeout = setTimeout(() => {
+            clearInterval(pollInterval);
+        }, 10000);
 
         notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
             console.log(" [App.js] Notification Received (Foreground):", JSON.stringify(notification));
@@ -239,6 +252,8 @@ function AppContent() {
         return () => {
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+            clearInterval(pollInterval);
+            clearTimeout(pollTimeout);
         };
     }, []);
 
