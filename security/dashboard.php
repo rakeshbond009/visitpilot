@@ -637,8 +637,8 @@ if ($time_saved_min > 60) {
 
     // --- REAL-TIME ENGINE ---
     async function refreshDashboardTable(force = false) {
-        // Prevent background polling from re-rendering the DOM while a modal OR a SweetAlert is open
-        if (!force && (document.querySelector('.modal.show') || document.querySelector('.swal2-container'))) return;
+        // Prevent background polling from re-rendering the DOM while a modal is open
+        if (!force && document.querySelector('.modal.show')) return;
 
         try {
             const response = await fetch('api/get_dashboard_data.php');
@@ -841,7 +841,7 @@ if ($time_saved_min > 60) {
         $v_stmt->execute([$_GET['new_visit_id']]);
         $visit_details = $v_stmt->fetch();
         ?>
-        <script>
+            < script >
             (function () {
                 const visit = <?php echo json_encode($visit_details); ?>;
                 if (visit) {
@@ -895,11 +895,9 @@ if ($time_saved_min > 60) {
                     });
                 }
             })();
-        </script>
-        <?php
+    </script>
+    <?php
     endif; ?>
-
-    <script>
 
 const serverToday = '<?php echo date("Y-m-d"); ?>';
 

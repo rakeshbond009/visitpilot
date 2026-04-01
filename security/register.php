@@ -1042,19 +1042,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             });
 
             if (response.redirected) {
-                // If the server sent a redirect, navigate to the final destination
-                window.location.href = response.url;
+                // Hide Loader as entry is saved
+                if (fullLoader) fullLoader.style.display = 'none';
+
+                // Show Success Message for 3 seconds before moving
+                AppDialog.show({
+                    title: 'Registration Successful!',
+                    text: 'Entry has been recorded and host notified.',
+                    icon: 'success',
+                    timer: 3000,
+                    showConfirmButton: false
+                }).then(() => {
+                    window.location.href = response.url;
+                });
             } else {
                 // If it returned HTML (maybe an error), replace the document or show it
                 const html = await response.text();
                 // We check if it's a script-based alert from the server
                 if (html.includes('alert(')) {
-                    // Extract alert message if possible or just render the HTML
-                    document.open();
-                    document.write(html);
-                    document.close();
+                    if (fullLoader) fullLoader.style.display = 'none';
+                    // Extract alert message if possible and show using AppDialog
+                    const match = html.match(/alert\('(.*?)'\)/);
+                    const errorMsg = match ? match[1] : 'Registration failed.';
+                    AppDialog.show('Registration Error', errorMsg, 'error').then(() => {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = 'COMPLETE REGISTRATION & CHECK-IN <i class="bi bi-arrow-right-circle ms-2"></i>';
+                        }
+                    });
                 } else {
-                    // Generic fall-back
                     window.location.reload();
                 }
             }

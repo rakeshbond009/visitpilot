@@ -431,7 +431,7 @@ if (isset($_GET['q'])) {
                             text: 'This pass cannot be viewed yet because the host has not approved the visit.'
                         });
                     } else {
-                        window.location.href = `pass.php?id=${visitId}`;
+                        window.open(`pass.php?id=${visitId}`, '_blank');
                     }
                 }
                 function confirmAction(event, action, visitId) {
@@ -665,7 +665,7 @@ if (isset($_GET['q'])) {
                                 <td><span class="badge ${badgeClass}">${v.status.toUpperCase().replace('_', ' ')}</span></td>
                                 <td onclick="event.stopPropagation()">
                                     <div class="btn-group btn-group-sm">
-                                        ${v.approval_status !== 'rejected' ? `<a href="pass.php?id=${v.id}" class="btn btn-outline-primary"><i class="bi bi-ticket-detailed"></i></a>` : ''}
+                                        ${v.approval_status !== 'rejected' ? `<a href="pass.php?id=${v.id}" target="_blank" class="btn btn-outline-primary"><i class="bi bi-ticket-detailed"></i></a>` : ''}
                                     </div>
                                 </td>
                             </tr>
