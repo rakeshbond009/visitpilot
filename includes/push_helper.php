@@ -32,7 +32,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
     }
 
     if (empty($users)) {
-        $log("No active FCM tokens found for Employee ID: $employee_id. IMPORTANT: The host must be logged into the VisitPilot Mobile App to register their device token.");
+        $log("No active FCM tokens found for Employee ID: $employee_id");
         return false;
     }
 
@@ -70,18 +70,18 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
         $message = [
             'message' => [
-                'token' => (string)$user['fcm_token'],
+                'token' => (string) $user['fcm_token'],
                 'notification' => [
-                    'title' => (string)$title,
-                    'body' => (string)$body,
+                    'title' => (string) $title,
+                    'body' => (string) $body,
                 ],
                 'data' => array_merge([
-                    'title' => (string)$title,
-                    'body' => (string)$body,
+                    'title' => (string) $title,
+                    'body' => (string) $body,
                     'type' => 'visitor_arrival',
                     'is_call_priority' => 'true',
-                    'visitId' => (string)($data['visit_id'] ?? ''),
-                    'visit_id' => (string)($data['visit_id'] ?? ''),
+                    'visitId' => (string) ($data['visit_id'] ?? ''),
+                    'visit_id' => (string) ($data['visit_id'] ?? ''),
                     'click_action' => 'visitor_arrival_action'
                 ], $data),
                 'android' => [
@@ -92,8 +92,8 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                     'payload' => [
                         'aps' => [
                             'alert' => [
-                                'title' => (string)$title,
-                                'body' => (string)$body,
+                                'title' => (string) $title,
+                                'body' => (string) $body,
                             ],
                             'sound' => 'default',
                             'category' => 'visitor_arrival',
@@ -127,8 +127,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
         if ($curlError) {
             $log("CURL ERROR for User ID {$user['user_id']}: $curlError");
-        }
-        else {
+        } else {
             $log("FCM RESPONSE for User ID {$user['user_id']} [HTTP $httpCode]: $response");
         }
     }
@@ -171,8 +170,7 @@ function getGoogleAccessToken($serviceAccount)
         $tokenData = json_decode(curl_exec($ch), true);
         curl_close($ch);
         return $tokenData['access_token'] ?? '';
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
         return '';
     }
 }
@@ -237,17 +235,13 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
 
         $message = [
             'message' => [
-                'token' => (string)$user['fcm_token'],
-                'notification' => [
-                    'title' => (string)$title,
-                    'body' => (string)$body,
-                ],
+                'token' => (string) $user['fcm_token'],
                 'data' => array_merge([
-                    'title' => (string)$title,
-                    'body' => (string)$body,
-                    'type' => 'visit_update',
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                    'type' => 'visit_update', // Different type for updates
                     'is_call_priority' => 'false',
-                    'visitId' => (string)($data['visit_id'] ?? ''),
+                    'visitId' => (string) ($data['visit_id'] ?? ''),
                     'click_action' => 'visit_update_action'
                 ], $data),
                 'android' => [
@@ -258,8 +252,8 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                     'payload' => [
                         'aps' => [
                             'alert' => [
-                                'title' => (string)$title,
-                                'body' => (string)$body,
+                                'title' => (string) $title,
+                                'body' => (string) $body,
                             ],
                             'sound' => 'default',
                         ]

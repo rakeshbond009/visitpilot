@@ -21,26 +21,18 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
         console.error("[BG Task] Error:", error);
         return;
     }
-    
-    // Remote notifications arrive either wrapped in a notification object or directly in data
-    const payload = data?.notification?.data || data?.notification || data;
-    
-    if (payload) {
+    if (data && data.notification) {
+        const payload = data.notification.data || data.notification;
         console.log("[BG Task] Received Payload:", JSON.stringify(payload));
 
-        const isArrival = payload.type === 'visitor_arrival' || 
-                         payload.is_call_priority === 'true' || 
-                         payload.type === 'is_call_priority'; // Some systems wrap it differently
+        const isArrival = payload.type === 'visitor_arrival' || payload.is_call_priority === 'true';
+        const isApprovalUpdate = payload.type === 'approval_status';
 
         if (isArrival) {
-            // WAKE UP DEVICE IMMEDIATELY (if custom native module exists)
-            try {
-                if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-                    console.log("[BG Task] Waking up device for visitor arrival...");
-                    OverlayPermissionModule.wakeUpApp();
-                }
-            } catch (pErr) {
-                console.log("[BG Task] Waking up app failed:", pErr.message);
+            // WAKE UP DEVICE IMMEDIATELY
+            if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
+                console.log("[BG Task] Waking up device for visitor arrival...");
+                OverlayPermissionModule.wakeUpApp();
             }
 
             await Notifications.scheduleNotificationAsync({
@@ -49,9 +41,9 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
                     body: payload.body || "A visitor is waiting at the gate",
                     data: { ...payload, fullScreenIntent: 'true' },
                     categoryIdentifier: 'visitor_arrival',
-                    sound: 'default', // Using string 'default' for better compatibility
+                    sound: true,
                     priority: Notifications.AndroidNotificationPriority.MAX,
-                    vibrationPattern: [0, 250, 250, 250],
+                    vibrate: [0, 250, 250, 250],
                 },
                 trigger: null,
                 channelId: 'vms_urgent_alerts_v2',
@@ -179,10 +171,14 @@ function AppContent() {
             console.log("Task Manager Error:", e);
         }
 
-        registerForPushNotificationsAsync().then(token => {
-            console.log("App.js - Token Obtained:", token);
-            if (token) updateTokenOnServer(token);
-        });
+        // Defer token registration by 5s so auto-login (checkExistingSession) has time to
+        // populate 'userData' in AsyncStorage before updateTokenOnServer checks it.
+        setTimeout(() => {
+            registerForPushNotificationsAsync(3, 2000).then(token => {
+                console.log('[App.js] Token Obtained:', token ? token.substring(0, 20) + '...' : 'null');
+                if (token) updateTokenOnServer(token);
+            });
+        }, 5000);
 
         const checkNotifications = async () => {
             try {

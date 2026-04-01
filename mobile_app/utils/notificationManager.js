@@ -9,13 +9,7 @@ import apiClient from './apiClient';
 import { NativeModules } from 'react-native';
 const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// NOTE: setNotificationHandler is set centrally in App.js — do NOT set it here to avoid conflicts.
 
 export async function checkOverlayPermission(userId = null) {
   if (Platform.OS === 'android') {
@@ -78,7 +72,7 @@ export async function checkOverlayPermission(userId = null) {
   }
 }
 
-export async function registerForPushNotificationsAsync() {
+export async function registerForPushNotificationsAsync(retryCount = 3, retryDelayMs = 2000) {
   let token;
 
   if (Platform.OS === 'android') {
@@ -102,7 +96,6 @@ export async function registerForPushNotificationsAsync() {
 
   if (!Device.isDevice) {
     console.log('Must use physical device for Push Notifications');
-    // Alert.alert('Notice', 'Running on a simulator. Native tokens are not available.');
     return null;
   }
 
@@ -114,31 +107,53 @@ export async function registerForPushNotificationsAsync() {
   }
 
   if (finalStatus !== 'granted') {
+    console.log('[FCM] Notification permission not granted.');
     return null;
   }
 
-  // CRITICAL: For direct FCM V1/APNS backend, we MUST use the native device token
-  try {
-    const deviceToken = (await Notifications.getDevicePushTokenAsync()).data;
-    console.log("Native Device Token obtained:", deviceToken);
-    token = deviceToken;
-  } catch (e) {
-    console.log("Error getting native device token:", e);
-    // Alert.alert('Native Token Error', e.message || 'Unknown error');
-    // Fallback
+  // CRITICAL: Use native FCM device token with retry loop.
+  // Firebase can take a few seconds to initialize on first launch — retrying avoids empty tokens.
+  for (let attempt = 1; attempt <= retryCount; attempt++) {
     try {
-      const projectId = Constants?.expoConfig?.extra?.eas?.projectId;
-      token = (await Notifications.getExpoPushTokenAsync({
-        ...(projectId ? { projectId } : {})
-      })).data;
-      console.log("Fallback Expo Push Token obtained:", token);
-    } catch (expoError) {
-      console.log("All token retrieval methods failed:", expoError);
-      Alert.alert('Fatal Token Error', 'Native: ' + (e.message || 'None') + '\nExpo: ' + (expoError.message || 'None'));
+      const result = await Notifications.getDevicePushTokenAsync();
+      token = result.data;
+      if (token && token.length > 20) {
+        console.log(`[FCM] Native Device Token obtained (attempt ${attempt}):`, token.substring(0, 20) + '...');
+        // Cache token in AsyncStorage for resilience
+        await AsyncStorage.setItem('cached_fcm_token', token);
+        return token;
+      }
+      console.log(`[FCM] Token empty on attempt ${attempt}, retrying...`);
+    } catch (e) {
+      console.log(`[FCM] getDevicePushTokenAsync failed (attempt ${attempt}):`, e.message);
+    }
+    if (attempt < retryCount) {
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
     }
   }
 
-  return token;
+  // All native attempts failed — try cached token
+  try {
+    const cached = await AsyncStorage.getItem('cached_fcm_token');
+    if (cached && cached.length > 20) {
+      console.log('[FCM] Using cached token as fallback:', cached.substring(0, 20) + '...');
+      return cached;
+    }
+  } catch (e) { }
+
+  // Last resort: Expo push token
+  try {
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId;
+    token = (await Notifications.getExpoPushTokenAsync({
+      ...(projectId ? { projectId } : {})
+    })).data;
+    console.log('[FCM] Fallback Expo Push Token obtained:', token ? token.substring(0, 20) + '...' : 'null');
+    return token;
+  } catch (expoError) {
+    console.log('[FCM] All token retrieval methods failed:', expoError.message);
+  }
+
+  return null;
 }
 
 export async function updateTokenOnServer(token) {

@@ -15,6 +15,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../utils/apiClient';
 import { usePermissions } from '../context/PermissionContext';
+import { registerForPushNotificationsAsync, updateTokenOnServer, checkOverlayPermission } from '../utils/notificationManager';
 
 export default function LoginScreen({ navigation }) {
     const [username, setUsername] = useState('');
@@ -85,16 +86,13 @@ export default function LoginScreen({ navigation }) {
             // Clear any existing session before logging in
             // await AsyncStorage.removeItem('userData'); // Wait, if we remove userData, we lose the session context? No, we are building it.
 
-            // Get FCM token for push notifications
+            // Get FCM token for push notifications (with retry — Firebase needs time to init)
             let fcmToken = null;
             try {
-                // Ensure we import it properly
-                const { registerForPushNotificationsAsync } = require('../utils/notificationManager');
-                // Force a fresh registration attempt to ensure we get the token
-                fcmToken = await registerForPushNotificationsAsync();
-                console.log("Login with FCM Token:", fcmToken);
+                fcmToken = await registerForPushNotificationsAsync(2, 1500);
+                console.log("[FCM] Login pre-fetch token:", fcmToken ? fcmToken.substring(0, 20) + '...' : 'null/empty');
             } catch (tokenError) {
-                console.log("Failed to get token for login:", tokenError);
+                console.log("[FCM] Pre-login token fetch failed (will retry post-login):", tokenError);
             }
 
             // Construct payload
@@ -120,7 +118,7 @@ export default function LoginScreen({ navigation }) {
                 // Important: Add tenant key to user data
                 userData.tenant = tenantKey;
 
-                // Save complete user data
+                // Save complete user data FIRST so updateTokenOnServer can find it
                 await AsyncStorage.setItem('userData', JSON.stringify(userData));
 
                 // Update permissions context
@@ -128,14 +126,27 @@ export default function LoginScreen({ navigation }) {
                     await updatePermissions(userData.permissions, userData.role);
                 }
 
-                // Force check permissions for this new user immediately after login success
+                // NOW push FCM token to server — userData is in AsyncStorage so it won't skip
+                // Use the cached token from login attempt, or fetch again if needed
                 try {
-                    const { checkOverlayPermission } = require('../utils/notificationManager');
-                    // We call it here, but also HostDashboard calls it. 
-                    // Calling it here ensures it runs even if navigation is slow.
+                    let finalToken = fcmToken;
+                    if (!finalToken || finalToken.length < 20) {
+                        console.log('[FCM] Login token was empty, attempting fresh fetch after login...');
+                        finalToken = await registerForPushNotificationsAsync(2, 3000);
+                    }
+                    if (finalToken) {
+                        console.log('[FCM] Sending token to server post-login:', finalToken.substring(0, 20) + '...');
+                        await updateTokenOnServer(finalToken);
+                    } else {
+                        console.log('[FCM] WARNING: Still no token after retry. Push notifications may not work.');
+                    }
+                } catch (tokenSaveError) {
+                    console.log('[FCM] Token post-login save error (non-fatal):', tokenSaveError.message);
+                }
+
+                // Check overlay permission for full screen alerts
+                try {
                     if (userData.id) {
-                        // Reset the flag for this user if it was never set? 
-                        // No, just check.
                         setTimeout(() => checkOverlayPermission(userData.id), 500);
                     }
                 } catch (e) {
