@@ -151,11 +151,10 @@ try {
         $stmt = $pdo->prepare("
              SELECT v.id, v.status, v.approval_status, v.is_invited, v.visit_code, v.purpose, v.visit_photo,
                     vis.name as visitor_name, vis.mobile as visitor_mobile, vis.address as visitor_company,
-                    e.name as host_name, d.name as department
+                    e.name as host_name, e.department as department
             FROM visits v 
             JOIN visitors vis ON v.visitor_id = vis.id 
             LEFT JOIN employees e ON v.employee_id = e.id 
-            LEFT JOIN departments d ON e.department_id = d.id
             WHERE v.visit_code = ?
         ");
         $stmt->execute([$code]);
