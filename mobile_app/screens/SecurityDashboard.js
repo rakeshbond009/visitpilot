@@ -32,7 +32,7 @@ import { checkOverlayPermission } from '../utils/notificationManager';
 const { width, height } = Dimensions.get('window');
 
 export default function SecurityDashboard({ navigation }) {
-    const { hasPermission, permissions, refreshPermissions, role } = usePermissions();
+    const { hasPermission, permissions, refreshPermissions } = usePermissions();
     const [userData, setUserData] = useState(null);
     const [stats, setStats] = useState({
         total_today: 0,
@@ -83,7 +83,6 @@ export default function SecurityDashboard({ navigation }) {
     const [settingsModalVisible, setSettingsModalVisible] = useState(false);
     const [selectedVisit, setSelectedVisit] = useState(null);
     const [detailsVisible, setDetailsVisible] = useState(false);
-    const [detailsLoading, setDetailsLoading] = useState(false);
     const [scanModalVisible, setScanModalVisible] = useState(false);
     const [scanned, setScanned] = useState(false);
     const [permission, requestPermission] = useCameraPermissions();
@@ -127,18 +126,6 @@ export default function SecurityDashboard({ navigation }) {
         });
     };
 
-    const filteredVisits = React.useMemo(() => {
-        return applyDateFilter(visits);
-    }, [visits, filterType, filterStartDate, filterEndDate]);
-
-    const invitationsOnly = React.useMemo(() => {
-        return filteredVisits.filter(v => v.is_invited == 1);
-    }, [filteredVisits]);
-
-    const pendingOnly = React.useMemo(() => {
-        return filteredVisits.filter(v => v.approval_status?.toLowerCase() === 'pending' || v.status?.toLowerCase() === 'pending');
-    }, [filteredVisits]);
-
     const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
     useEffect(() => {
@@ -150,7 +137,7 @@ export default function SecurityDashboard({ navigation }) {
 
     const fetchVisitDetails = async (visitId) => {
         try {
-            setDetailsLoading(true);
+            setLoading(true);
             const response = await apiClient.get('api/visit/details.php', {
                 params: { id: visitId }
             });
@@ -164,7 +151,7 @@ export default function SecurityDashboard({ navigation }) {
             console.error('Visit Details Error:', err);
             showAlert('Error', 'Connection error while loading details', 'error');
         } finally {
-            setDetailsLoading(false);
+            setLoading(false);
         }
     };
 
@@ -617,12 +604,12 @@ export default function SecurityDashboard({ navigation }) {
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Full Visitor Log</Text>
                     </View>
-                    {filteredVisits.length === 0 ? (
+                    {applyDateFilter(visits).length === 0 ? (
                         <View style={styles.emptyLog}>
                             <Text style={styles.emptyLogText}>No visitors found for the selected period</Text>
                         </View>
                     ) : (
-                        filteredVisits.map(visit => (
+                        applyDateFilter(visits).map(visit => (
                             <TouchableOpacity key={visit.id} style={styles.visitRowBig} onPress={() => fetchVisitDetails(visit.id)}>
                                 <Image
                                     source={visit.visit_photo || visit.photo_path ? { uri: `${CONFIG.API_BASE_URL}${visit.visit_photo || visit.photo_path}` } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
@@ -672,14 +659,14 @@ export default function SecurityDashboard({ navigation }) {
                     </View>
 
                     <Text style={[styles.sectionTitle, { marginTop: 30 }]}>Today's Invitations</Text>
-                    {invitationsOnly.length === 0 ? (
+                    {applyDateFilter(visits.filter(v => v.is_invited == 1)).length === 0 ? (
                         <View style={styles.card}>
                             <Text style={{ color: '#94a3b8', textAlign: 'center', padding: 20, fontStyle: 'italic' }}>
                                 No invitations found for the selected period.
                             </Text>
                         </View>
                     ) : (
-                        invitationsOnly.map(visit => (
+                        applyDateFilter(visits.filter(v => v.is_invited == 1)).map(visit => (
                             <TouchableOpacity key={visit.id} style={styles.visitRowBig} onPress={() => fetchVisitDetails(visit.id)}>
                                 <Image
                                     source={visit.visit_photo || visit.photo_path ? { uri: `${CONFIG.API_BASE_URL}${visit.visit_photo || visit.photo_path}` } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
@@ -705,12 +692,12 @@ export default function SecurityDashboard({ navigation }) {
             {logView === 'pending' && hasPermission('host_pending') && (
                 <View>
                     <Text style={styles.sectionTitle}>Pending Approvals</Text>
-                    {pendingOnly.length === 0 ? (
+                    {applyDateFilter(visits.filter(v => v.approval_status?.toLowerCase() === 'pending' || v.status?.toLowerCase() === 'pending')).length === 0 ? (
                         <View style={styles.emptyLog}>
                             <Text style={styles.emptyLogText}>No pending approvals</Text>
                         </View>
                     ) : (
-                        pendingOnly.map(visit => (
+                        applyDateFilter(visits.filter(v => v.approval_status?.toLowerCase() === 'pending' || v.status?.toLowerCase() === 'pending')).map(visit => (
                             <TouchableOpacity key={visit.id} style={styles.visitRowBig} onPress={() => fetchVisitDetails(visit.id)}>
                                 <Image
                                     source={visit.visit_photo || visit.photo_path ? { uri: `${CONFIG.API_BASE_URL}${visit.visit_photo || visit.photo_path}` } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
@@ -1553,16 +1540,6 @@ export default function SecurityDashboard({ navigation }) {
         );
     }
 
-    const renderGlobalLoading = () => {
-        if (!detailsLoading) return null;
-        return (
-            <View style={[styles.modalOverlay, { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', zIndex: 9999, justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color="#3b82f6" />
-                <Text style={{ marginTop: 15, color: '#3b82f6', fontWeight: 'bold' }}>Fetching Details...</Text>
-            </View>
-        );
-    }
-
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
@@ -1707,7 +1684,6 @@ export default function SecurityDashboard({ navigation }) {
 
             {renderSweetAlert()}
             {renderVisitDetailsModal()}
-            {renderGlobalLoading()}
         </SafeAreaView>
     );
 }
