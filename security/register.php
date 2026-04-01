@@ -722,8 +722,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <!-- OTP Toggle at the end of right column -->
                             <div class="section-card border-primary">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input ms-0 me-2" type="checkbox" id="requireOtpToggle"
-                                        name="require_otp" <?php echo !$is_otp_enabled ? 'disabled' : ''; ?>>
+                                    <input class="form-check-input ms-0 me-2" type="checkbox" name="require_otp" id="requireOtpToggle"
+                                        <?php echo isFieldMandatory('otp_check') ? 'checked disabled' : ''; ?>>
                                     <label class="form-check-label fw-bold small text-uppercase mt-1"
                                         for="requireOtpToggle">
                                         Enable OTP Check

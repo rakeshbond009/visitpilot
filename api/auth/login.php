@@ -112,7 +112,7 @@ try {
         // Fetch Mandatory Fields Config
         $mandatory_fields_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_registration_fields'");
         $mandatory_fields_val = $mandatory_fields_stmt ? $mandatory_fields_stmt->fetchColumn() : null;
-        $mandatory_fields = $mandatory_fields_val ? json_decode($mandatory_fields_val, true) : ["visitor_name","mobile_number","id_proof","purpose","meeting_host"];
+        $mandatory_fields = $mandatory_fields_val ? json_decode($mandatory_fields_val, true) : ["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"];
         $user['mandatory_fields'] = $mandatory_fields;
 
         // Return user data (excluding password)

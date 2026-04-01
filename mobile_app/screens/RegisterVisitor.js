@@ -251,6 +251,10 @@ export default function RegisterVisitor({ navigation, route }) {
                     setIdProofEnabled(true);
                 }
 
+                if (parsedUser.mandatory_fields?.includes('otp_check')) {
+                    setOtpEnabled(true);
+                }
+
                 if (parsedUser.employee_id) {
                     setHostId(parsedUser.employee_id?.toString() || '');
                 }
@@ -787,10 +791,11 @@ export default function RegisterVisitor({ navigation, route }) {
                                     <Switch
                                         value={otpEnabled}
                                         onValueChange={onOtpToggleChange}
+                                        disabled={isMandatory('otp_check')}
                                         trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
                                         thumbColor={otpEnabled ? '#3b82f6' : '#f4f3f4'}
                                     />
-                                    <Text style={[styles.toggleLabel, { fontWeight: '800', fontSize: 12 }]}>ENABLE OTP CHECK</Text>
+                                    <Text style={[styles.toggleLabel, { fontWeight: '800', fontSize: 12 }]}>ENABLE OTP CHECK{isMandatory('otp_check') ? ' *' : ''}</Text>
                                 </View>
                             </View>
                         </View>

@@ -441,7 +441,7 @@ $email_defaults = [
     'whatsapp_enabled_processes' => '["visitor_arrival_host_alert","visitor_otp_verification","visit_approval_visitor_notify","visit_rejection_visitor_notify","visitor_meet_notify","invite_cancelled"]',
     'ai_api_key' => '',
     'ai_model' => 'gemini-1.5-flash',
-    'mandatory_registration_fields' => '["visitor_name","mobile_number","id_proof","purpose","meeting_host"]'
+    'mandatory_registration_fields' => '["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"]'
 ];
 $config = array_merge($email_defaults, $raw_settings);
 
@@ -1618,6 +1618,7 @@ $active_tab_id = false;
             'id_proof' => 'ID Proof Type & Number',
             'meeting_host' => 'Who to Meet (Host)',
             'purpose' => 'Purpose of Visit',
+            'otp_check' => 'Mandatory OTP Check',
             'members' => 'Accompanying Visitors',
             'access_area' => 'Access Area',
             'assets_carried' => 'Assets Carried',
