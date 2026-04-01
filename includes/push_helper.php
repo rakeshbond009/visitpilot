@@ -32,7 +32,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
     }
 
     if (empty($users)) {
-        $log("No active FCM tokens found for Employee ID: $employee_id");
+        $log("No active FCM tokens found for Employee ID: $employee_id. IMPORTANT: The host must be logged into the VisitPilot Mobile App to register their device token.");
         return false;
     }
 
@@ -238,10 +238,14 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         $message = [
             'message' => [
                 'token' => (string)$user['fcm_token'],
+                'notification' => [
+                    'title' => (string)$title,
+                    'body' => (string)$body,
+                ],
                 'data' => array_merge([
                     'title' => (string)$title,
                     'body' => (string)$body,
-                    'type' => 'visit_update', // Different type for updates
+                    'type' => 'visit_update',
                     'is_call_priority' => 'false',
                     'visitId' => (string)($data['visit_id'] ?? ''),
                     'click_action' => 'visit_update_action'

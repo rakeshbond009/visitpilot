@@ -21,18 +21,26 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
         console.error("[BG Task] Error:", error);
         return;
     }
-    if (data && data.notification) {
-        const payload = data.notification.data || data.notification;
+    
+    // Remote notifications arrive either wrapped in a notification object or directly in data
+    const payload = data?.notification?.data || data?.notification || data;
+    
+    if (payload) {
         console.log("[BG Task] Received Payload:", JSON.stringify(payload));
 
-        const isArrival = payload.type === 'visitor_arrival' || payload.is_call_priority === 'true';
-        const isApprovalUpdate = payload.type === 'approval_status';
+        const isArrival = payload.type === 'visitor_arrival' || 
+                         payload.is_call_priority === 'true' || 
+                         payload.type === 'is_call_priority'; // Some systems wrap it differently
 
         if (isArrival) {
-            // WAKE UP DEVICE IMMEDIATELY
-            if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-                console.log("[BG Task] Waking up device for visitor arrival...");
-                OverlayPermissionModule.wakeUpApp();
+            // WAKE UP DEVICE IMMEDIATELY (if custom native module exists)
+            try {
+                if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
+                    console.log("[BG Task] Waking up device for visitor arrival...");
+                    OverlayPermissionModule.wakeUpApp();
+                }
+            } catch (pErr) {
+                console.log("[BG Task] Waking up app failed:", pErr.message);
             }
 
             await Notifications.scheduleNotificationAsync({
@@ -41,9 +49,9 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
                     body: payload.body || "A visitor is waiting at the gate",
                     data: { ...payload, fullScreenIntent: 'true' },
                     categoryIdentifier: 'visitor_arrival',
-                    sound: true,
+                    sound: 'default', // Using string 'default' for better compatibility
                     priority: Notifications.AndroidNotificationPriority.MAX,
-                    vibrate: [0, 250, 250, 250],
+                    vibrationPattern: [0, 250, 250, 250],
                 },
                 trigger: null,
                 channelId: 'vms_urgent_alerts_v2',
