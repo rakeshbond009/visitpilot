@@ -86,13 +86,13 @@ export default function LoginScreen({ navigation }) {
             // Clear any existing session before logging in
             // await AsyncStorage.removeItem('userData'); // Wait, if we remove userData, we lose the session context? No, we are building it.
 
-            // Get FCM token for push notifications (with retry — Firebase needs time to init)
+            // Get FCM token for push notifications (with retry loop)
             let fcmToken = null;
             try {
                 fcmToken = await registerForPushNotificationsAsync(2, 1500);
-                console.log("[FCM] Login pre-fetch token:", fcmToken ? fcmToken.substring(0, 20) + '...' : 'null/empty');
+                console.log("[FCM] Pre-fetch token:", fcmToken);
             } catch (tokenError) {
-                console.log("[FCM] Pre-login token fetch failed (will retry post-login):", tokenError);
+                console.log("[FCM] Pre-login token fetch failed:", tokenError);
             }
 
             // Construct payload
@@ -115,19 +115,15 @@ export default function LoginScreen({ navigation }) {
 
             if (result.status === 'success') {
                 const userData = result.data;
-                // Important: Add tenant key to user data
                 userData.tenant = tenantKey;
 
-                // Save complete user data FIRST so updateTokenOnServer can find it
                 await AsyncStorage.setItem('userData', JSON.stringify(userData));
 
-                // Update permissions context
                 if (userData.permissions) {
                     await updatePermissions(userData.permissions, userData.role);
                 }
 
-                // NOW push FCM token to server — userData is in AsyncStorage so it won't skip
-                // Use the cached token from login attempt, or fetch again if needed
+                // NOW push FCM token to server after session is established
                 try {
                     let finalToken = fcmToken;
                     if (!finalToken || finalToken.length < 20) {
@@ -137,20 +133,17 @@ export default function LoginScreen({ navigation }) {
                     if (finalToken) {
                         console.log('[FCM] Sending token to server post-login:', finalToken.substring(0, 20) + '...');
                         await updateTokenOnServer(finalToken);
-                    } else {
-                        console.log('[FCM] WARNING: Still no token after retry. Push notifications may not work.');
                     }
                 } catch (tokenSaveError) {
-                    console.log('[FCM] Token post-login save error (non-fatal):', tokenSaveError.message);
+                    console.log('[FCM] Token save error:', tokenSaveError.message);
                 }
 
-                // Check overlay permission for full screen alerts
                 try {
                     if (userData.id) {
                         setTimeout(() => checkOverlayPermission(userData.id), 500);
                     }
                 } catch (e) {
-                    console.log("Post-login permission check failed:", e);
+                    console.log("Permission check failed:", e);
                 }
 
                 navigateBasedOnRole(userData);

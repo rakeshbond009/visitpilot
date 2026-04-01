@@ -8,7 +8,8 @@ $home_url = getHomeUrl($_SESSION['role']);
 
 echo '<div class="row justify-content-center py-5"><div class="col-md-6 text-center"><div class="spinner-border text-primary mb-3"></div><h4>Processing...</h4></div></div>';
 
-echo "<script>";
+echo "<script>
+document.addEventListener('DOMContentLoaded', function() {";
 if ($action == 'checkin') {
     $stmt = $pdo->prepare("SELECT approval_status FROM visits WHERE id=?");
     $stmt->execute([$id]);
@@ -113,7 +114,8 @@ elseif ($action == 'checkin_by_code') {
 else {
     echo "window.location.href='$home_url';";
 }
-echo "</script>";
+echo "});
+</script>";
 
 require_once 'footer.php';
 ?>

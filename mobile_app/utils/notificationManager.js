@@ -16,17 +16,17 @@ export async function checkOverlayPermission(userId = null) {
     try {
       // 1. Check if permission is ALREADY granted natively
       if (OverlayPermissionModule && OverlayPermissionModule.hasOverlayPermission) {
-          const isGranted = await OverlayPermissionModule.hasOverlayPermission();
-          if (isGranted) {
-              console.log("[Permission Check] Overlay permission is already GRANTED.");
-              return;
-          }
+        const isGranted = await OverlayPermissionModule.hasOverlayPermission();
+        if (isGranted) {
+          console.log("[Permission Check] Overlay permission is already GRANTED.");
+          return;
+        }
       }
 
       // 2. If not granted, check if we've already prompted the user to avoid annoyance
       // Note: We use a persistent key that isn't cleared on logout if we use removeItem('userData') instead of clear()
       const storageKey = userId ? `overlay_perm_prompt_v4_${userId}` : 'overlay_perm_prompt_v4_generic';
-      
+
       const hasRequested = await AsyncStorage.getItem(storageKey);
       console.log(`[Permission Check] User: ${userId}, Key: ${storageKey}, PromptedBefore: ${hasRequested}`);
 
@@ -40,12 +40,12 @@ export async function checkOverlayPermission(userId = null) {
         "Enable Full Screen Alerts",
         "To receive visitor approval calls on your lock screen, you MUST enable 'Appear on top' permission. We will now take you to the specific setting to enable it for 'VMS'.",
         [
-          { 
-            text: "Skip", 
+          {
+            text: "Skip",
             style: "cancel",
             onPress: async () => {
-                 // Mark as prompted to avoid loop
-                 await AsyncStorage.setItem(storageKey, 'true');
+              // Mark as prompted to avoid loop
+              await AsyncStorage.setItem(storageKey, 'true');
             }
           },
           {
@@ -53,13 +53,13 @@ export async function checkOverlayPermission(userId = null) {
             onPress: async () => {
               // Mark as prompted
               await AsyncStorage.setItem(storageKey, 'true');
-              
+
               // 3. Open the SPECIFIC overlay settings page instead of generic app settings
               if (OverlayPermissionModule && OverlayPermissionModule.openOverlaySettings) {
-                  OverlayPermissionModule.openOverlaySettings();
+                OverlayPermissionModule.openOverlaySettings();
               } else {
-                  // Fallback to generic if module fails
-                  RNLinking.openSettings();
+                // Fallback to generic if module fails
+                RNLinking.openSettings();
               }
             }
           }
@@ -107,19 +107,15 @@ export async function registerForPushNotificationsAsync(retryCount = 3, retryDel
   }
 
   if (finalStatus !== 'granted') {
-    console.log('[FCM] Notification permission not granted.');
     return null;
   }
 
-  // CRITICAL: Use native FCM device token with retry loop.
-  // Firebase can take a few seconds to initialize on first launch — retrying avoids empty tokens.
   for (let attempt = 1; attempt <= retryCount; attempt++) {
     try {
       const result = await Notifications.getDevicePushTokenAsync();
       token = result.data;
       if (token && token.length > 20) {
         console.log(`[FCM] Native Device Token obtained (attempt ${attempt}):`, token.substring(0, 20) + '...');
-        // Cache token in AsyncStorage for resilience
         await AsyncStorage.setItem('cached_fcm_token', token);
         return token;
       }
@@ -132,7 +128,6 @@ export async function registerForPushNotificationsAsync(retryCount = 3, retryDel
     }
   }
 
-  // All native attempts failed — try cached token
   try {
     const cached = await AsyncStorage.getItem('cached_fcm_token');
     if (cached && cached.length > 20) {
@@ -141,7 +136,6 @@ export async function registerForPushNotificationsAsync(retryCount = 3, retryDel
     }
   } catch (e) { }
 
-  // Last resort: Expo push token
   try {
     const projectId = Constants?.expoConfig?.extra?.eas?.projectId;
     token = (await Notifications.getExpoPushTokenAsync({
