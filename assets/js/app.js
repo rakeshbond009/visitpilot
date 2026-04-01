@@ -9,36 +9,37 @@ function initCamera() {
     videoElement.setAttribute('autoplay', '');
 }
 
-async function enumerateCameras(selectElementId = 'cameraSelect') {
+function enumerateCameras(selectElementId = 'cameraSelect') {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        return [];
+        return Promise.resolve([]);
     }
 
-    try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        
-        const select = document.getElementById(selectElementId);
-        if (select) {
-            select.innerHTML = '';
-            videoDevices.forEach((device, index) => {
-                const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `Camera ${index + 1}`;
-                if (currentDeviceId === device.deviceId) option.selected = true;
-                select.appendChild(option);
-            });
+    return navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+            
+            const select = document.getElementById(selectElementId);
+            if (select) {
+                select.innerHTML = '';
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    if (currentDeviceId === device.deviceId) option.selected = true;
+                    select.appendChild(option);
+                });
 
-            // Listen for changes
-            select.onchange = () => {
-                startCamera(select.value);
-            };
-        }
-        return videoDevices;
-    } catch (err) {
-        console.error('Error listing cameras:', err);
-        return [];
-    }
+                // Listen for changes
+                select.onchange = () => {
+                    startCamera(select.value);
+                };
+            }
+            return videoDevices;
+        })
+        .catch(err => {
+            console.error('Error listing cameras:', err);
+            return [];
+        });
 }
 
 function startCamera(deviceId = null) {

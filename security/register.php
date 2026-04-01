@@ -822,7 +822,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 </div>
 
-<script src="../assets/js/app.js"></script>
+<script src="../assets/js/app.js?v=<?php echo time(); ?>"></script>
 <script>
     let otpModalInstance = null;
     let currentOtp = null;
