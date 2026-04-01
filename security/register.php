@@ -961,9 +961,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 toggleIdProof(toggle);
                             }
                         } else {
-                            // If no ID proof, ensure the toggle is off and container hidden
+                            // If no ID proof, ensure the toggle is off ONLY IF it's not mandatory (not disabled)
                             const toggle = document.getElementById('captureIdToggle');
-                            if (toggle) {
+                            if (toggle && !toggle.disabled) {
                                 toggle.checked = false;
                                 toggleIdProof(toggle);
                             }
@@ -1325,9 +1325,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 toggleIdProof(toggle);
             }
         } else {
-            // If no ID proof, ensure the toggle is off and container hidden
+            // If no ID proof, ensure the toggle is off ONLY IF it's not mandatory (not disabled)
             const toggle = document.getElementById('captureIdToggle');
-            if (toggle) {
+            if (toggle && !toggle.disabled) {
                 toggle.checked = false;
                 toggleIdProof(toggle);
             }
