@@ -292,6 +292,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $msg = "AI Configuration saved successfully!";
     }
 
+    // Handle Registration Fields Save
+    if (isset($_POST['save_registration_fields'])) {
+        $fields = $_POST['reg_fields'] ?? [];
+        $settings = [
+            'mandatory_registration_fields' => json_encode($fields)
+        ];
+        $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+        foreach ($settings as $key => $val) {
+            $stmt->execute([$key, $val]);
+        }
+        logAction($pdo, $_SESSION['user_id'], "Updated Mandatory Registration Fields Configuration");
+        $msg = "Form configuration saved successfully!";
+    }
+
     if (isset($msg) && $msg != '') {
         $_SESSION['app_msg'] = $msg;
         header("Location: settings.php");
@@ -426,7 +440,8 @@ $email_defaults = [
     'whatsapp_template_language' => 'en',
     'whatsapp_enabled_processes' => '["visitor_arrival_host_alert","visitor_otp_verification","visit_approval_visitor_notify","visit_rejection_visitor_notify","visitor_meet_notify","invite_cancelled"]',
     'ai_api_key' => '',
-    'ai_model' => 'gemini-1.5-flash'
+    'ai_model' => 'gemini-1.5-flash',
+    'mandatory_registration_fields' => '["visitor_name","mobile_number","id_proof","purpose","meeting_host"]'
 ];
 $config = array_merge($email_defaults, $raw_settings);
 
@@ -464,6 +479,7 @@ $tabs = [
     'settings_dahua' => ['id' => 'dahua', 'title' => 'Dahua Integration', 'icon' => 'bi-shield-lock'],
     'settings_whatsapp' => ['id' => 'whatsapp', 'title' => 'WhatsApp Config', 'icon' => 'bi-whatsapp'],
     'settings_ai' => ['id' => 'ai', 'title' => 'AI Integration', 'icon' => 'bi-robot'],
+    'settings_registration' => ['id' => 'registration', 'title' => 'Visitor Form Config', 'icon' => 'bi-ui-checks'],
     'admin_audit' => ['id' => 'info', 'title' => 'System Info', 'icon' => 'bi-info-circle'],
 ];
 
@@ -1590,6 +1606,106 @@ $active_tab_id = false;
         </div>
         <?php
     endif; ?>
+
+    <!-- Tab: Visitor Form Config -->
+    <?php if (canView('settings_registration')): 
+        $mandatory_config = json_decode($config['mandatory_registration_fields'], true) ?: [];
+        $fields_list = [
+            'visitor_name' => 'Visitor Full Name',
+            'mobile_number' => 'Mobile Number',
+            'email' => 'Email Address',
+            'company_address' => 'Company / Address',
+            'id_proof' => 'ID Proof Type & Number',
+            'meeting_host' => 'Who to Meet (Host)',
+            'purpose' => 'Purpose of Visit',
+            'members' => 'Accompanying Visitors',
+            'access_area' => 'Access Area',
+            'assets_carried' => 'Assets Carried',
+            'photo' => 'Visitor Photo'
+        ];
+    ?>
+        <div class="tab-pane fade <?php echo ($active_tab_id === 'registration') ? 'show active' : ''; ?>" id="registration" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card shadow-sm rounded-4 border-0 hover-shadow transition-all">
+                        <div class="card-header bg-dark text-white py-3 border-0 rounded-top-4">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-ui-checks me-2"></i> Registration Mandatory Fields</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <p class="text-muted small mb-4">Select which fields should be <strong>Mandatory</strong> in the visitor registration form. Fields checked here will require input before the form can be submitted.</p>
+                            
+                            <form method="POST">
+                                <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
+                                    <?php foreach ($fields_list as $key => $label): 
+                                        $is_checked = in_array($key, $mandatory_config);
+                                        $is_core = in_array($key, ['visitor_name', 'mobile_number']);
+                                    ?>
+                                        <div class="col">
+                                            <div class="form-check form-switch p-3 border rounded-4 hover-bg-light transition-all d-flex align-items-center justify-content-between">
+                                                <div class="ms-1">
+                                                    <label class="form-check-label fw-bold <?php echo $is_core ? 'text-primary' : 'text-dark'; ?>" for="check_<?php echo $key; ?>">
+                                                        <?php echo $label; ?>
+                                                    </label>
+                                                    <div class="small text-muted">
+                                                        <?php echo $is_core ? 'Required for basic identification' : 'Optional requirement'; ?>
+                                                    </div>
+                                                </div>
+                                                <input class="form-check-input ms-3 me-0" type="checkbox" name="reg_fields[]" 
+                                                       value="<?php echo $key; ?>" id="check_<?php echo $key; ?>"
+                                                       <?php echo $is_checked ? 'checked' : ''; ?>
+                                                       style="width: 2.5rem; height: 1.25rem;">
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+
+                                <div class="alert alert-info border-0 rounded-4 shadow-sm py-3 px-4">
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-info-circle-fill fs-3 me-3 text-primary opacity-50"></i>
+                                        <div class="small">
+                                            <div class="fw-bold">Default Policy Applied</div>
+                                            Checkboxes reflect your current system configuration. Non-essential fields like <strong>Email</strong> and <strong>Photo</strong> are typically optional unless explicitly checked.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 pt-3">
+                                    <button type="submit" name="save_registration_fields" class="btn btn-dark w-100 py-3 rounded-pill fw-bold shadow-sm">
+                                        <i class="bi bi-save me-2"></i> Save Form Requirements
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border-0 rounded-4 bg-light p-5 h-100 d-flex flex-column justify-content-center text-center">
+                        <div class="mb-4">
+                            <i class="bi bi-layout-text-window-reverse display-3 text-dark opacity-10"></i>
+                        </div>
+                        <h4 class="fw-bold">Dynamic Registration</h4>
+                        <p class="text-muted mb-0">Changes here will instantly affect both the <strong>Web Dashboard</strong> and the <strong>Mobile Application</strong> registration screens.</p>
+                        
+                        <div class="mt-5 text-start">
+                            <div class="fw-bold small text-uppercase text-muted mb-3 opacity-75">Visual Indicators</div>
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="p-2 rounded bg-primary bg-opacity-10 me-2">
+                                    <i class="bi bi-asterisk text-primary x-small"></i>
+                                </div>
+                                <span class="small">Mandatory fields will show a red asterisk.</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="p-2 rounded bg-secondary bg-opacity-10 me-2">
+                                    <i class="bi bi-slash-circle text-secondary x-small"></i>
+                                </div>
+                                <span class="small">Optional fields can be skipped by users.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!-- Tab 4: Info (SUPER ADMIN ONLY) -->
     <?php if (canView('admin_audit')): ?>

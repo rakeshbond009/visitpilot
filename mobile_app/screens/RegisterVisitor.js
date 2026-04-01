@@ -60,6 +60,7 @@ export default function RegisterVisitor({ navigation, route }) {
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
     const [user, setUser] = useState(null);
+    const [mandatoryFields, setMandatoryFields] = useState([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [registerResult, setRegisterResult] = useState(null);
     const [scanned, setScanned] = useState(false);
@@ -244,6 +245,12 @@ export default function RegisterVisitor({ navigation, route }) {
             if (userData) {
                 const parsedUser = JSON.parse(userData);
                 setUser(parsedUser);
+                setMandatoryFields(parsedUser.mandatory_fields || ["visitor_name","mobile_number","id_proof","purpose","meeting_host"]);
+                
+                if (parsedUser.mandatory_fields?.includes('id_proof')) {
+                    setIdProofEnabled(true);
+                }
+
                 if (parsedUser.employee_id) {
                     setHostId(parsedUser.employee_id?.toString() || '');
                 }
@@ -360,10 +367,32 @@ export default function RegisterVisitor({ navigation, route }) {
         }
     };
 
+    const isMandatory = (key) => mandatoryFields.includes(key);
+
     const handleRegister = async (otpForcePassed = false) => {
         const cleanMobile = mobile.trim();
-        if (!name || !cleanMobile || !purpose) {
-            showAlert('Error', 'Please fill in all required fields (Name, Mobile, Purpose)', 'error');
+        
+        // Dynamic Validation based on mandatoryFields
+        let errors = [];
+        if (isMandatory('visitor_name') && !name) errors.push('Visitor Name');
+        if (isMandatory('mobile_number') && (!cleanMobile || cleanMobile.length < 10)) errors.push('Mobile Number');
+        if (isMandatory('email') && !email) errors.push('Email Address');
+        if (isMandatory('company_address') && !address) errors.push('Company / Address');
+        if (isMandatory('id_proof') && (!idProofEnabled || !idNumber)) errors.push('ID Proof Type & Number');
+        if (isMandatory('purpose') && !purpose) errors.push('Purpose of Visit');
+        if (isMandatory('meeting_host') && !hostId) errors.push('Host (Who to Meet)');
+        if (isMandatory('access_area') && !accessArea) errors.push('Access Area');
+        if (isMandatory('assets_carried') && !assets) errors.push('Assets Carried');
+        if (isMandatory('photo') && !photo) errors.push('Visitor Photo');
+        
+        // Special check for members if listed as mandatory
+        if (isMandatory('members')) {
+            const hasMember = members.some(m => m.trim() !== '');
+            if (!hasMember) errors.push('Accompanying Visitor List');
+        }
+
+        if (errors.length > 0) {
+            showAlert('Missing Information', `The following fields are mandatory:\n\n• ${errors.join('\n• ')}`, 'error');
             return;
         }
 
@@ -571,7 +600,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                     <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                                         <TextInput
                                             style={styles.modernInput}
-                                            placeholder="MOBILE NUMBER"
+                                            placeholder={`MOBILE NUMBER${isMandatory('mobile_number') ? ' *' : ''}`}
                                             placeholderTextColor="#94a3b8"
                                             value={mobile}
                                             onChangeText={setMobile}
@@ -583,7 +612,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                     <View style={[styles.inputGroup, { flex: 1 }]}>
                                         <TextInput
                                             style={styles.modernInput}
-                                            placeholder="EMAIL ADDRESS (OPTIONAL)"
+                                            placeholder={`EMAIL ADDRESS${isMandatory('email') ? ' *' : ' (OPTIONAL)'}`}
                                             placeholderTextColor="#94a3b8"
                                             value={email}
                                             onChangeText={setEmail}
@@ -595,7 +624,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                 <View style={styles.inputGroup}>
                                     <TextInput
                                         style={styles.modernInput}
-                                        placeholder="COMPANY / ADDRESS"
+                                        placeholder={`COMPANY / ADDRESS${isMandatory('company_address') ? ' *' : ''}`}
                                         placeholderTextColor="#94a3b8"
                                         value={address}
                                         onChangeText={setAddress}
@@ -609,7 +638,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                         trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
                                         thumbColor={idProofEnabled ? '#3b82f6' : '#f4f3f4'}
                                     />
-                                    <Text style={styles.toggleLabel}>Capture ID Proof (Optional)</Text>
+                                    <Text style={styles.toggleLabel}>Capture ID Proof {isMandatory('id_proof') ? ' *' : '(Optional)'}</Text>
                                 </View>
 
                                 {idProofEnabled && (
@@ -645,7 +674,7 @@ export default function RegisterVisitor({ navigation, route }) {
                             <View style={styles.sectionCard}>
                                 <View style={styles.sectionHeader}>
                                     <Icon name="account-group" size={20} color="#3b82f6" />
-                                    <Text style={styles.sectionHeaderText}>ACCOMPANYING VISITORS (OPTIONAL)</Text>
+                                    <Text style={styles.sectionHeaderText}>ACCOMPANYING VISITORS {isMandatory('members') ? '*' : '(OPTIONAL)'}</Text>
                                 </View>
 
                                 {members.map((member, index) => (
@@ -680,7 +709,7 @@ export default function RegisterVisitor({ navigation, route }) {
 
                                 <View style={styles.row}>
                                     <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                                        <Text style={styles.inputLabel}>WHO TO MEET?</Text>
+                                        <Text style={styles.inputLabel}>WHO TO MEET?{isMandatory('meeting_host') ? ' *' : ''}</Text>
                                         <CustomPicker
                                             selectedValue={hostId}
                                             onValueChange={setHostId}
@@ -691,7 +720,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                         />
                                     </View>
                                     <View style={[styles.inputGroup, { flex: 1 }]}>
-                                        <Text style={styles.inputLabel}>PURPOSE</Text>
+                                        <Text style={styles.inputLabel}>PURPOSE{isMandatory('purpose') ? ' *' : ''}</Text>
                                         <CustomPicker
                                             selectedValue={purpose}
                                             onValueChange={setPurpose}
@@ -704,7 +733,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>DESIGNATED ACCESS AREA (OPTIONAL)</Text>
+                                    <Text style={styles.inputLabel}>DESIGNATED ACCESS AREA {isMandatory('access_area') ? '*' : '(OPTIONAL)'}</Text>
                                     <CustomPicker
                                         selectedValue={accessArea}
                                         onValueChange={setAccessArea}
@@ -718,7 +747,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                 <View style={styles.inputGroup}>
                                     <TextInput
                                         style={[styles.modernInput, { height: 80, textAlignVertical: 'top', paddingTop: 12 }]}
-                                        placeholder="ASSETS CARRIED (OPTIONAL)"
+                                        placeholder={`ASSETS CARRIED${isMandatory('assets_carried') ? ' *' : ' (OPTIONAL)'}`}
                                         placeholderTextColor="#94a3b8"
                                         value={assets}
                                         onChangeText={setAssets}
@@ -733,7 +762,7 @@ export default function RegisterVisitor({ navigation, route }) {
                             <View style={styles.sectionCard}>
                                 <View style={styles.sectionHeader}>
                                     <Icon name="video" size={20} color="#3b82f6" />
-                                    <Text style={styles.sectionHeaderText}>LIVE PHOTO</Text>
+                                    <Text style={styles.sectionHeaderText}>LIVE PHOTO{isMandatory('photo') ? ' *' : ''}</Text>
                                 </View>
 
                                 <TouchableOpacity style={styles.cameraBox} activeOpacity={0.7}>

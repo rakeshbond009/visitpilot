@@ -733,3 +733,7 @@
 [2026-04-01 14:08:52] TRACE: PDF Uploaded to Meta. Media ID: 26277737101877851
 [2026-04-01 14:08:52] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visit_approval_visitor_notify","language":{"code":"en"},"components":[{"type":"header","parameters":[{"type":"document","document":{"id":"26277737101877851","filename":"VisitorPass.pdf"}}]},{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"}]}]}}
 [2026-04-01 14:08:52] SUCCESS (200): Template visit_approval_visitor_notify sent to 919873028739 (Lang: en)
+[2026-04-01 22:22:54] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-04-01 22:22:54] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-04-01 22:22:54] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-04-01 22:22:55] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)

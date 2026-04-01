@@ -35,6 +35,16 @@ $wa_processes_val = $wa_processes_stmt ? $wa_processes_stmt->fetchColumn() : nul
 $wa_processes = $wa_processes_val ? json_decode($wa_processes_val, true) : [];
 $is_otp_enabled = is_array($wa_processes) && in_array('visitor_otp_verification', $wa_processes);
 
+// Fetch Mandatory Fields Config
+$mandatory_fields_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_registration_fields'");
+$mandatory_fields_val = $mandatory_fields_stmt ? $mandatory_fields_stmt->fetchColumn() : null;
+$mandatory_fields = $mandatory_fields_val ? json_decode($mandatory_fields_val, true) : ["visitor_name","mobile_number","id_proof","purpose","meeting_host"];
+
+function isFieldMandatory($field) {
+    global $mandatory_fields;
+    return in_array($field, $mandatory_fields);
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = sanitize($_POST['name']);
     $mobile = sanitize($_POST['mobile']);
@@ -534,7 +544,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
 
                 <form method="POST" id="regForm" onsubmit="return handleRegistration(event)">
-                    <input type="hidden" name="photo_data" id="photo_data">
+                    <input type="hidden" name="photo_data" id="photo_data" data-mandatory="<?php echo isFieldMandatory('photo') ? '1' : '0'; ?>">
                     <input type="hidden" name="otp_verified" id="otp_verified_flag" value="0">
 
                     <div class="row g-4">
@@ -549,44 +559,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <div class="col-md-12">
                                         <div class="form-floating">
                                             <input type="text" name="name" class="form-control" id="nameInput"
-                                                placeholder="Full Name" required
+                                                placeholder="Full Name" <?php echo isFieldMandatory('visitor_name') ? 'required' : ''; ?>
                                                 value="<?php echo htmlspecialchars($visitor['name']); ?>">
-                                            <label for="nameInput">Full Name</label>
+                                            <label for="nameInput">Full Name <?php echo isFieldMandatory('visitor_name') ? '<span class="text-danger">*</span>' : ''; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-floating">
                                             <input type="tel" name="mobile" class="form-control" id="mobileInput"
-                                                placeholder="Mobile" required pattern="[0-9]{10}" maxlength="10"
+                                                placeholder="Mobile" <?php echo isFieldMandatory('mobile_number') ? 'required' : ''; ?> pattern="[0-9]{10}" maxlength="10"
                                                 minlength="10" title="Please enter exactly 10 digits"
                                                 oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10)"
                                                 value="<?php echo htmlspecialchars($mobile); ?>">
-                                            <label for="mobileInput">Mobile Number</label>
+                                            <label for="mobileInput">Mobile Number <?php echo isFieldMandatory('mobile_number') ? '<span class="text-danger">*</span>' : ''; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-floating">
                                             <input type="email" name="email" class="form-control" id="emailInput"
-                                                placeholder="Email"
+                                                placeholder="Email" <?php echo isFieldMandatory('email') ? 'required' : ''; ?>
                                                 value="<?php echo htmlspecialchars($visitor['email']); ?>">
-                                            <label for="emailInput">Email Address (Optional)</label>
+                                            <label for="emailInput">Email Address <?php echo isFieldMandatory('email') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-12">
                                         <div class="form-floating">
                                             <input type="text" name="address" class="form-control" id="addressInput"
-                                                placeholder="Address"
+                                                placeholder="Address" <?php echo isFieldMandatory('company_address') ? 'required' : ''; ?>
                                                 value="<?php echo htmlspecialchars($visitor['address']); ?>">
-                                            <label for="addressInput">Company / Address</label>
+                                            <label for="addressInput">Company / Address <?php echo isFieldMandatory('company_address') ? '<span class="text-danger">*</span>' : ''; ?></label>
                                         </div>
                                     </div>
 
                                     <div class="col-12">
                                         <div class="form-check form-switch p-2 bg-light rounded border">
                                             <input class="form-check-input ms-0 me-2" type="checkbox"
-                                                id="captureIdToggle" onchange="toggleIdProof(this)">
+                                                id="captureIdToggle" onchange="toggleIdProof(this)" <?php echo isFieldMandatory('id_proof') ? 'checked disabled' : ''; ?>>
                                             <label class="form-check-label fw-bold lead-sm mt-1"
-                                                for="captureIdToggle">Capture ID Proof (Optional)</label>
+                                                for="captureIdToggle">Capture ID Proof <?php echo isFieldMandatory('id_proof') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
                                         </div>
                                     </div>
 
@@ -609,9 +619,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <div class="col-md-6">
                                             <div class="form-floating">
                                                 <input type="text" name="id_proof_number" class="form-control"
-                                                    id="idNumInput" placeholder="ID Number"
+                                                    id="idNumInput" placeholder="ID Number" <?php echo isFieldMandatory('id_proof') ? 'required' : ''; ?>
                                                     value="<?php echo htmlspecialchars($visitor['id_proof_number']); ?>">
-                                                <label for="idNumInput">ID Number</label>
+                                                <label for="idNumInput">ID Number <?php echo isFieldMandatory('id_proof') ? '<span class="text-danger">*</span>' : ''; ?></label>
                                             </div>
                                         </div>
                                     </div>
@@ -621,7 +631,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <!-- Accompanying Visitors -->
                             <div class="section-card mb-4">
                                 <div class="section-header">
-                                    <i class="bi bi-people-fill"></i> Accompanying Visitors (Optional)
+                                    <i class="bi bi-people-fill"></i> Accompanying Visitors <?php echo isFieldMandatory('members') ? '<span class="text-danger">*</span>' : '(Optional)'; ?>
                                 </div>
                                 <div id="membersContainer">
                                     <!-- Dynamic Rows -->
@@ -639,7 +649,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <div class="form-floating">
-                                            <select name="employee_id" class="form-select" id="hostSelect" required>
+                                            <select name="employee_id" class="form-select" id="hostSelect" <?php echo isFieldMandatory('meeting_host') ? 'required' : ''; ?>>
                                                 <option value="">Select Host...</option>
                                                 <?php foreach ($employees as $emp): ?>
                                                     <option value="<?php echo $emp['id']; ?>">
@@ -648,12 +658,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                     <?php
                                                 endforeach; ?>
                                             </select>
-                                            <label for="hostSelect">Who to Meet?</label>
+                                            <label for="hostSelect">Who to Meet? <?php echo isFieldMandatory('meeting_host') ? '<span class="text-danger">*</span>' : ''; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-floating">
-                                            <select name="purpose" class="form-select" id="purposeSelect" required>
+                                            <select name="purpose" class="form-select" id="purposeSelect" <?php echo isFieldMandatory('purpose') ? 'required' : ''; ?>>
                                                 <?php foreach ($purposes as $p): ?>
                                                     <option value="<?php echo htmlspecialchars($p['purpose_name']); ?>">
                                                         <?php echo htmlspecialchars($p['purpose_name']); ?>
@@ -662,12 +672,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                 endforeach; ?>
                                                 <option value="Other">Other Reason</option>
                                             </select>
-                                            <label for="purposeSelect">Purpose</label>
+                                            <label for="purposeSelect">Purpose <?php echo isFieldMandatory('purpose') ? '<span class="text-danger">*</span>' : ''; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-floating">
-                                            <select name="access_area" class="form-select" id="areaSelect">
+                                            <select name="access_area" class="form-select" id="areaSelect" <?php echo isFieldMandatory('access_area') ? 'required' : ''; ?>>
                                                 <option value="">None / Not Specified</option>
                                                 <?php foreach ($access_areas as $aa): ?>
                                                     <option value="<?php echo htmlspecialchars($aa['area_name']); ?>">
@@ -676,14 +686,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                     <?php
                                                 endforeach; ?>
                                             </select>
-                                            <label for="areaSelect">Designated Access Area (Optional)</label>
+                                            <label for="areaSelect">Designated Access Area <?php echo isFieldMandatory('access_area') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-12">
                                         <div class="form-floating">
                                             <textarea name="assets_carried" class="form-control" id="assetsField"
-                                                placeholder="Assets" style="height: 100px"></textarea>
-                                            <label for="assetsField">Assets Carried (Optional)</label>
+                                                placeholder="Assets" style="height: 100px" <?php echo isFieldMandatory('assets_carried') ? 'required' : ''; ?>></textarea>
+                                            <label for="assetsField">Assets Carried <?php echo isFieldMandatory('assets_carried') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
                                         </div>
                                     </div>
 
@@ -694,7 +704,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <!-- Right Column: Camera Only -->
                         <div class="col-lg-4">
                             <div class="section-card mb-4">
-                                <div class="section-header"><i class="bi bi-camera-video-fill"></i> Live Photo</div>
+                                <div class="section-header"><i class="bi bi-camera-video-fill"></i> Live Photo <?php echo isFieldMandatory('photo') ? '<span class="text-danger">*</span>' : ''; ?></div>
                                 <div class="camera-box mb-3 shadow-sm border-0">
                                     <div id="camera_view" style="width:100%; height:100%;"></div>
                                     <div id="photo_preview" style="display:none; width:100%; height:100%;">
@@ -834,6 +844,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     });
                 }
             });
+        }
+
+        // Initialize ID Proof Visibility
+        const idToggle = document.getElementById('captureIdToggle');
+        if (idToggle && idToggle.checked) {
+            toggleIdProof(idToggle);
         }
     });
 
@@ -1002,6 +1018,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     async function handleRegistration(e) {
         if (e) e.preventDefault();
+        const form = document.getElementById('regForm');
+
+        // Check Native Validation
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return false;
+        }
 
         const mobile = document.getElementById('mobileInput').value;
         if (!mobile || mobile.length !== 10 || isNaN(mobile)) {
@@ -1009,6 +1032,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 title: 'Invalid Mobile Number',
                 text: 'Please enter a valid 10-digit mobile number.',
                 icon: 'error'
+            });
+            return false;
+        }
+
+        // Photo Mandatory Check
+        const photoData = document.getElementById('photo_data').value;
+        const photoMandatory = document.getElementById('photo_data').dataset.mandatory === "1";
+        if (photoMandatory && !photoData) {
+            AppDialog.show({
+                title: 'Photo Required',
+                text: 'A live photograph of the visitor is mandatory to proceed.',
+                icon: 'warning',
+                confirmButtonColor: '#4361ee'
+            });
+            return false;
+        }
+
+        // Accompanying Visitors Check (if mandatory)
+        const membersMandatory = <?php echo isFieldMandatory('members') ? 'true' : 'false'; ?>;
+        const membersRows = document.querySelectorAll('input[name="members[]"]');
+        let hasMember = false;
+        membersRows.forEach(m => { if(m.value.trim() !== '') hasMember = true; });
+        if (membersMandatory && !hasMember) {
+             AppDialog.show({
+                title: 'Missing Information',
+                text: 'Please list at least one accompanying visitor.',
+                icon: 'warning',
+                confirmButtonColor: '#4361ee'
             });
             return false;
         }
