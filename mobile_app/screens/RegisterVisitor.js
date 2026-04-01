@@ -26,6 +26,7 @@ import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 
 const BASE_URL = CONFIG.API_BASE_URL;
+const { width, height } = Dimensions.get('window');
 
 export default function RegisterVisitor({ navigation, route }) {
     const [name, setName] = useState('');
@@ -61,6 +62,8 @@ export default function RegisterVisitor({ navigation, route }) {
     const [user, setUser] = useState(null);
     const [showSuccess, setShowSuccess] = useState(false);
     const [registerResult, setRegisterResult] = useState(null);
+    const [scanned, setScanned] = useState(false);
+    const [scanModalVisible, setScanModalVisible] = useState(false);
 
     // Custom Alert State
     const [alertVisible, setAlertVisible] = useState(false);
@@ -301,12 +304,27 @@ export default function RegisterVisitor({ navigation, route }) {
                 setAddress(v.address || '');
                 setIdType(v.id_proof_type || 'Aadhar');
                 setIdNumber(v.id_proof_number || '');
+                if (v.photo_url) setPhoto(v.photo_url);
+
+                // Auto-fill last host and purpose if available
+                if (v.last_visit) {
+                    if (v.last_visit.employee_id) setHostId(v.last_visit.employee_id.toString());
+                    if (v.last_visit.purpose) setPurpose(v.last_visit.purpose);
+                }
             }
         } catch (error) {
             console.log('Visitor not found or error');
         } finally {
             setSearching(false);
         }
+    };
+
+    const handleBarCodeScanned = async ({ type, data }) => {
+        if (scanned) return;
+        setScanned(true);
+        setScanModalVisible(false);
+        setLookupValue(data);
+        lookupInvitation(data);
     };
 
 
@@ -494,10 +512,19 @@ export default function RegisterVisitor({ navigation, route }) {
                                 <TextInput
                                     style={styles.lookupInput}
                                     placeholder="Enter Mobile # or Visit Code"
-                                    placeholderTextColor="#94a3b8"
+                                    placeholderTextColor="rgba(255,255,255,0.7)"
                                     value={lookupValue}
                                     onChangeText={setLookupValue}
                                 />
+                                <TouchableOpacity
+                                    style={{ padding: 10 }}
+                                    onPress={() => {
+                                        setScanned(false);
+                                        setScanModalVisible(true);
+                                    }}
+                                >
+                                    <Icon name="qrcode-scan" size={24} color="#fff" />
+                                </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.lookupBtn}
                                     onPress={lookupInvitation}
@@ -751,6 +778,36 @@ export default function RegisterVisitor({ navigation, route }) {
                         )}
                     </TouchableOpacity>
 
+                    <Modal
+                        animationType="slide"
+                        transparent={true}
+                        visible={scanModalVisible}
+                        onRequestClose={() => setScanModalVisible(false)}
+                    >
+                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+                            <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, height: '80%' }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                    <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Scan Invitation</Text>
+                                    <TouchableOpacity onPress={() => setScanModalVisible(false)}>
+                                        <Icon name="close" size={24} color="#000" />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={{ flex: 1, backgroundColor: '#000', borderRadius: 12, overflow: 'hidden' }}>
+                                    <CameraView
+                                        style={StyleSheet.absoluteFill}
+                                        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                                        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                                    >
+                                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                            <View style={{ width: 250, height: 250, borderWidth: 2, borderColor: '#00ff00', backgroundColor: 'transparent' }} />
+                                        </View>
+                                    </CameraView>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
+
+                    {renderSweetAlert()}
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>

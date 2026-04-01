@@ -844,14 +844,15 @@ export default function SecurityDashboard({ navigation }) {
             } else if (response.data.status === 'invitation') {
                 const code = response.data.data?.code;
                 const visitorName = response.data.data?.visitor_name || "Visitor";
-                
+                const hostName = response.data.data?.host_name || "N/A";
+                const purposeText = response.data.data?.purpose || "N/A";
+
                 setScanModalVisible(false);
                 setScanned(false);
-                
-                // Show a nice confirmation before navigating to registration
+
                 showAlert(
                     'Pre-Approved Invitation',
-                    `Found a pre-approved invitation for ${visitorName}. Proceed with registration?`,
+                    `Found invitation for: ${visitorName}\n\nHost: ${hostName}\nPurpose: ${purposeText}\n\nProceed to register this visitor?`,
                     'success',
                     {
                         showCancel: true,

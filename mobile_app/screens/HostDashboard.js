@@ -28,6 +28,7 @@ import apiClient from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { checkOverlayPermission } from '../utils/notificationManager';
 import { usePermissions } from '../context/PermissionContext';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const { width, height } = Dimensions.get('window');
 
@@ -73,6 +74,9 @@ export default function HostDashboard({ navigation }) {
     const [detailsLoading, setDetailsLoading] = useState(false);
     const [settingsModalVisible, setSettingsModalVisible] = useState(false);
     const [mastersModalVisible, setMastersModalVisible] = useState(false);
+    const [scanModalVisible, setScanModalVisible] = useState(false);
+    const [scanned, setScanned] = useState(false);
+    const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
     // SweetAlert Modal State
     const [alertVisible, setAlertVisible] = useState(false);
@@ -290,6 +294,59 @@ export default function HostDashboard({ navigation }) {
             }
         } catch (error) {
             showAlert('Error', 'Action failed', 'error');
+        }
+    };
+
+    const handleBarCodeScanned = async ({ type, data }) => {
+        if (scanned) return;
+        setScanned(true);
+
+        try {
+            console.log("Scanned QR Code (Host):", data);
+
+            // Call API
+            const response = await apiClient.post('api/visit/status_action.php', {
+                action: 'qr_process',
+                code: data
+            });
+
+            console.log("API Response (Host):", response.data);
+
+            if (response.data.status === 'success') {
+                // Show detailed modal
+                setScanModalVisible(false);
+                setSelectedVisit(response.data.data);
+                setDetailModalVisible(true);
+                setScanned(false);
+                fetchData();
+            } else if (response.data.status === 'invitation') {
+                const code = response.data.data?.code;
+                const visitorName = response.data.data?.visitor_name || "Visitor";
+                const hostName = response.data.data?.host_name || "N/A";
+                const purposeText = response.data.data?.purpose || "N/A";
+                
+                setScanModalVisible(false);
+                setScanned(false);
+                
+                // Show more detailed alert
+                showAlert(
+                    'Pre-Approved Invitation',
+                    `Found invitation for: ${visitorName}\n\nHost: ${hostName}\nPurpose: ${purposeText}\n\nProceed to register this visitor?`,
+                    'success',
+                    {
+                        showCancel: true,
+                        confirmText: 'Register Now',
+                        onConfirm: () => navigation.navigate('RegisterVisitor', { code: code })
+                    }
+                );
+            } else {
+                showAlert('QR Scan Result', response.data.message || 'The scanned QR code is currently inactive or has an invalid status.', 'error');
+                setScanned(false);
+            }
+        } catch (error) {
+            console.error("Scan Error:", error);
+            showAlert('Network Error', 'Failed to process QR code. Please check your internet connection.', 'error');
+            setScanned(false);
         }
     };
 
@@ -1125,6 +1182,21 @@ export default function HostDashboard({ navigation }) {
 
                 <View style={[styles.fabContainer, { bottom: 100, right: 0, left: 0, alignItems: 'center' }]}>
                     <View style={styles.fabActions}>
+                        {hasPermission('security_scan') && (
+                            <TouchableOpacity
+                                style={styles.fabSubButton}
+                                onPress={() => {
+                                    setIsMenuOpen(false);
+                                    setScanned(false);
+                                    setScanModalVisible(true);
+                                }}
+                            >
+                                <Text style={styles.fabLabel}>Scan QR</Text>
+                                <View style={[styles.fabIconWrapper, { backgroundColor: '#ec4899' }]}>
+                                    <Icon name="qrcode-scan" size={20} color="#fff" />
+                                </View>
+                            </TouchableOpacity>
+                        )}
                         {hasPermission('host_invite') && (
                             <TouchableOpacity style={styles.fabSubButton} onPress={() => { setIsMenuOpen(false); navigation.navigate('InviteVisitor'); }}>
                                 <Text style={styles.fabLabel}>Invite</Text>
@@ -1154,6 +1226,57 @@ export default function HostDashboard({ navigation }) {
                 setDetailModalVisible(false);
             }}
         />
+    );
+
+    const renderScanModal = () => (
+        <Modal
+            animationType="slide"
+            transparent={true}
+            visible={scanModalVisible}
+            onRequestClose={() => setScanModalVisible(false)}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={[styles.mgmtModalContent, { height: '80%' }]}>
+                    <View style={styles.mgmtModalHeader}>
+                        <Text style={styles.mgmtModalTitle}>Scan Visitor Pass</Text>
+                        <TouchableOpacity onPress={() => setScanModalVisible(false)}>
+                            <Icon name="close" size={24} color="#1e293b" />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: '#000', borderRadius: 10, overflow: 'hidden' }}>
+                        {!cameraPermission ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color="#fff" />
+                            </View>
+                        ) : !cameraPermission.granted ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                                <Text style={{ color: '#fff', textAlign: 'center', marginBottom: 20 }}>Camera permission is required</Text>
+                                <TouchableOpacity
+                                    style={{ backgroundColor: '#2563eb', padding: 10, borderRadius: 5 }}
+                                    onPress={requestCameraPermission}
+                                >
+                                    <Text style={{ color: '#fff' }}>Grant Permission</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <CameraView
+                                style={{ flex: 1 }}
+                                facing="back"
+                                onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                                barcodeScannerSettings={{
+                                    barcodeTypes: ["qr"],
+                                }}
+                            >
+                                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                    <View style={{ width: 250, height: 250, borderWidth: 2, borderColor: '#00ff00', backgroundColor: 'transparent' }} />
+                                    <Text style={{ color: '#fff', marginTop: 20, backgroundColor: 'rgba(0,0,0,0.5)', padding: 5, borderRadius: 5 }}>Align QR Code within frame</Text>
+                                </View>
+                            </CameraView>
+                        )}
+                    </View>
+                </View>
+            </View>
+        </Modal>
     );
 
     if (loading && !refreshing) {
@@ -1207,7 +1330,7 @@ export default function HostDashboard({ navigation }) {
             {renderFloatingMenu()}
             {renderVisitDetailsModal()}
             {renderMastersModal()}
-            {renderSettingsModal()}
+            {renderScanModal()}
             {renderSweetAlert()}
         </SafeAreaView >
     );

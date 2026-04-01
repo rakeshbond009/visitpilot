@@ -45,7 +45,7 @@ if (empty($api_key)) {
 $schema = "
 Database Schema for Visitor Management System:
 1. Tables:
-   - visitors (id, name, mobile, email, address, identity_type, identity_number, created_at)
+   - visitors (id, name, mobile, email, address, id_proof_type, id_proof_number, created_at)
    - employees (id, name, department, email, mobile, status, employee_id)
    - visits (id, visitor_id, employee_id, purpose, access_area, visit_date, check_in_time, check_out_time, status, approval_status, visit_code)
    - departments (id, name)
@@ -176,7 +176,7 @@ $quick_stats = [
     'dept_visit_counts' => fetchSafeStat($pdo, "SELECT e.department, COUNT(v.id) as c FROM employees e JOIN visits v ON e.id = v.employee_id WHERE e.department IS NOT NULL AND e.department != '' AND $v_auth_filter GROUP BY e.department ORDER BY c DESC", 'pair'),
     'visitor_growth' => fetchSafeStat($pdo, "SELECT MONTHNAME(created_at) as m, COUNT(*) as c FROM visits WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) AND $auth_filter GROUP BY MONTH(created_at) ORDER BY MIN(created_at) ASC", 'pair'),
     'access_area_counts' => fetchSafeStat($pdo, "SELECT access_area, COUNT(*) as c FROM visits WHERE access_area IS NOT NULL AND access_area != '' AND $auth_filter GROUP BY access_area ORDER BY c DESC", 'pair'),
-    'visitor_types' => fetchSafeStat($pdo, "SELECT vis.identity_type, COUNT(*) as c FROM visitors vis JOIN visits v ON vis.id = v.visitor_id WHERE $v_auth_filter GROUP BY vis.identity_type", 'pair'),
+    'visitor_types' => fetchSafeStat($pdo, "SELECT vis.id_proof_type, COUNT(*) as c FROM visitors vis JOIN visits v ON vis.id = v.visitor_id WHERE $v_auth_filter GROUP BY vis.id_proof_type", 'pair'),
     'latest_visitors_detail' => fetchSafeStat($pdo, "SELECT vis.name, v.purpose, e.name as host FROM visits v JOIN visitors vis ON v.visitor_id = vis.id JOIN employees e ON v.employee_id = e.id WHERE $v_auth_filter ORDER BY v.id DESC LIMIT 5", 'assoc'),
     'repeat_visitors' => fetchSafeStat($pdo, "SELECT COUNT(*) FROM (SELECT visitor_id FROM visits WHERE $auth_filter GROUP BY visitor_id HAVING COUNT(id) > 1) as r"),
     'single_visit_visitors' => fetchSafeStat($pdo, "SELECT COUNT(*) FROM (SELECT visitor_id FROM visits WHERE $auth_filter GROUP BY visitor_id HAVING COUNT(id) = 1) as r"),
