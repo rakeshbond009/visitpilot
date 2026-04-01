@@ -131,15 +131,14 @@
             }).then((result) => {
                 if (result.isConfirmed) {
                     console.log("Manage Visit clicked for visit:", visit.id);
-                    // Standardized 500ms delay ensures SweetAlert cleans up its state 
-                    // and doesn't interfere with Bootstrap backdrop management.
+                    // Increased delay to ensure the AppDialog modal is fully hidden before opening the next modal
                     setTimeout(() => {
                         if (typeof window.viewVisitDetails === 'function') {
                             window.viewVisitDetails(visit.id);
                         } else {
-                            console.warn("viewVisitDetails not found globally.");
+                            window.location.href = (typeof HOME_URL !== 'undefined') ? HOME_URL : `dashboard.php`;
                         }
-                    }, 500);
+                    }, 400);
                 }
             });
         }

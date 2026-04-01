@@ -389,8 +389,4 @@
             alert('This visit has been rejected. Cannot print pass.');
         }
     }
-    
-    // Explicitly attach to window for global accessibility to prevent page refreshes
-    window.viewVisitDetails = viewVisitDetails;
-    window.viewPass = viewPass;
 </script>

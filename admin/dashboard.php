@@ -664,10 +664,7 @@ if ($time_saved_minutes > 60) {
     // Register as a global refresh function for external scripts (security_notifications.js)
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
-    async function refreshDashboardTable(force = false) {
-        // Prevent background polling from re-rendering the DOM while a modal is open
-        if (!force && document.querySelector('.modal.show')) return;
-        
+    async function refreshDashboardTable() {
         try {
             // Add cache buster to prevent stale data
             const response = await fetch('api/get_dashboard_data.php?t=' + new Date().getTime());
@@ -902,7 +899,7 @@ if ($time_saved_minutes > 60) {
     }
 
     // Check for updates every 2 seconds
-    setInterval(() => refreshDashboardTable(false), 2000);
+    setInterval(refreshDashboardTable, 2000);
 
     // Stats Modal Function
     async function showStatsModal(type) {

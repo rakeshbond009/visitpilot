@@ -636,10 +636,7 @@ if ($time_saved_min > 60) {
     }
 
     // --- REAL-TIME ENGINE ---
-    async function refreshDashboardTable(force = false) {
-        // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
-        if (!force && document.querySelector('.modal.show')) return;
-        
+    async function refreshDashboardTable() {
         try {
             const response = await fetch('api/get_dashboard_data.php');
             const data = await response.json();
@@ -813,7 +810,7 @@ if ($time_saved_min > 60) {
 
     // --- EVENT LISTENERS ---
     applySavedBGMode();
-    setInterval(() => refreshDashboardTable(false), 2000);
+    setInterval(refreshDashboardTable, 2000);
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
     <?php if (isset($_GET['new_visit_id'])):

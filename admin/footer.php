@@ -4,14 +4,14 @@
         <small>&copy; <?php echo date('Y'); ?> <a href="https://codepilotx.com/" target="_blank"
                 class="text-decoration-none fw-bold text-primary">Codepilotx by Rakesh Verma</a>. All Rights
             Reserved.</small>
-        <span class="badge bg-light text-secondary border rounded-pill mt-1" style="font-size: 0.65rem; padding: 4px 10px;">
+        <span class="badge bg-light text-secondary border rounded-pill mt-1"
+            style="font-size: 0.65rem; padding: 4px 10px;">
             VisitPilot v<?php echo defined('APP_VERSION') ? APP_VERSION : '2.0.0'; ?>
         </span>
     </div>
 </footer>
 <?php include_once '../includes/app_dialogs.php'; ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<?php include_once '../includes/visit_details_modal.php'; ?>
 <script src="../assets/js/security_notifications.js?v=3.1"></script>
 </body>
 
