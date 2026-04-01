@@ -13,6 +13,19 @@
     // Track notified visits to avoid duplicates across polls
     const notifiedVisits = new Set();
 
+    // Unlock audio on first user interaction to ensure notifications work after redirects
+    const unlockAudio = () => {
+        notificationSound.play().then(() => {
+            notificationSound.pause();
+            notificationSound.currentTime = 0;
+            console.log("Security Notification Audio Unlocked");
+        }).catch(e => { });
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+    };
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+
     async function checkStatusUpdates() {
         // --- Wake Lock for Background ---
         if (hbAudio && hbAudio.paused && localStorage.getItem('vms_security_bg_mode') === 'true') {
@@ -117,11 +130,15 @@
                 cancelButtonText: 'Dismiss'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    if (typeof window.viewVisitDetails === 'function') {
-                        window.viewVisitDetails(visit.id);
-                    } else {
-                        window.location.href = (typeof HOME_URL !== 'undefined') ? HOME_URL : `dashboard.php`;
-                    }
+                    console.log("Manage Visit clicked for visit:", visit.id);
+                    // Increased delay to ensure the AppDialog modal is fully hidden before opening the next modal
+                    setTimeout(() => {
+                        if (typeof window.viewVisitDetails === 'function') {
+                            window.viewVisitDetails(visit.id);
+                        } else {
+                            window.location.href = (typeof HOME_URL !== 'undefined') ? HOME_URL : `dashboard.php`;
+                        }
+                    }, 400);
                 }
             });
         }

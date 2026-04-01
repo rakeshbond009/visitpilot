@@ -20,6 +20,19 @@
     // Track notified visits to avoid duplicates across polls when using >= comparison
     const notifiedVisits = new Set();
 
+    // Unlock audio on first user interaction to ensure notifications work after redirects
+    const unlockAudio = () => {
+        notificationSound.play().then(() => {
+            notificationSound.pause();
+            notificationSound.currentTime = 0;
+            console.log("Host Notification Audio Unlocked");
+        }).catch(e => { });
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+    };
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('keydown', unlockAudio);
+
     // Sounds
     let hbAudio = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
     let notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');

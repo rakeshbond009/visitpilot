@@ -112,8 +112,8 @@
     async function viewVisitDetails(visitId) {
         if (!visitId) return;
 
-        // Hide other modals if open (e.g. summary list) to prevent overlapping issues
-        const validModals = ['detailsModal', 'detailsListModal'];
+        // Hide other modals if open (e.g. summary list, notifications) to prevent overlapping issues
+        const validModals = ['detailsModal', 'detailsListModal', 'notificationModal', 'deleteConfirmModal', 'inputModal'];
         validModals.forEach(id => {
             const el = document.getElementById(id);
             if (el) {

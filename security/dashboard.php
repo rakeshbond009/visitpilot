@@ -628,7 +628,7 @@ if ($time_saved_min > 60) {
                     if (typeof viewVisitDetails === 'function') {
                         viewVisitDetails(visit.id);
                     }
-                }, 350);
+                }, 400);
             }
         });
 
@@ -966,8 +966,8 @@ if ($time_saved_min > 60) {
                 const hostName = visit.host_name || 'Host';
                 const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                AppDialog.show({
-                    title: isCheckin ? 'Check-in Successful!' : 'Check-out Successful!',
+                Swal.fire({
+                    title: `<h3 class="fw-bold mb-1">${isCheckin ? 'Check-in Successful!' : 'Check-out Successful!'}</h3>`,
                     html: `
                         <div class="text-center p-2">
                             <div class="mb-3">
@@ -996,7 +996,12 @@ if ($time_saved_min > 60) {
                         </div>
                     `,
                     icon: 'success',
-                    confirmButtonText: 'Done'
+                    confirmButtonText: 'Done',
+                    confirmButtonColor: '#198754',
+                    customClass: {
+                        popup: 'rounded-4 border-0 shadow-lg',
+                        confirmButton: 'rounded-pill px-5 fw-bold btn-sm'
+                    }
                 }).then(() => {
                     const url = new URL(window.location);
                     url.searchParams.delete('action_success');

@@ -76,13 +76,13 @@ const AppDialog = {
 
         return new Promise((resolve) => {
             let confirmed = false;
-            
+
             const handleOk = (e) => {
                 if (e) e.preventDefault();
                 confirmed = true;
                 modal.hide();
             };
-            
+
             okBtn.addEventListener('click', handleOk);
 
             modalEl.addEventListener('hidden.bs.modal', function handler() {
