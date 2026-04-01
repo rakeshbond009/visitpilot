@@ -15,6 +15,7 @@ import {
     Image,
     Linking,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import CustomPicker from '../components/CustomPicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +31,7 @@ export default function InviteVisitor({ navigation }) {
     const [purpose, setPurpose] = useState('');
     const [hostId, setHostId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [loading, setLoading] = useState(false);
     const [purposes, setPurposes] = useState([]);
     const [user, setUser] = useState(null);
@@ -42,7 +44,14 @@ export default function InviteVisitor({ navigation }) {
         fetchInitialData();
     }, []);
 
-    // Auto-fill visitor lookup
+    const onDateChange = (event, selectedDate) => {
+        setShowDatePicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setDate(selectedDate.toISOString().split('T')[0]);
+        }
+    };
+
+    // Auto-fill visitor details on 10 digits
     useEffect(() => {
         if (mobile.length === 10) {
             lookupVisitor(mobile);
@@ -57,10 +66,11 @@ export default function InviteVisitor({ navigation }) {
                 setName(visitor.name || '');
                 setEmail(visitor.email || '');
             }
-        } catch (error) {
-            console.log('Lookup silent failure', error.message);
+        } catch (err) {
+            console.log('Lookup error:', err.message);
         }
     };
+
 
     const fetchInitialData = async () => {
         setLoading(true);
@@ -220,16 +230,27 @@ export default function InviteVisitor({ navigation }) {
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Expected Date</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity 
+                                style={styles.inputWrapper} 
+                                onPress={() => setShowDatePicker(true)}
+                                activeOpacity={0.7}
+                            >
                                 <Icon name="calendar-month-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    value={date}
-                                    onChangeText={setDate}
-                                    placeholder="YYYY-MM-DD"
-                                    placeholderTextColor="#94a3b8"
+                                    value={date.split('-').reverse().join('-')}
+                                    editable={false}
+                                    pointerEvents="none"
                                 />
-                            </View>
+                            </TouchableOpacity>
+                            {showDatePicker && (
+                                <DateTimePicker
+                                    value={new Date(date)}
+                                    mode="date"
+                                    display="default"
+                                    onChange={onDateChange}
+                                />
+                            )}
                         </View>
 
                         <TouchableOpacity
@@ -312,7 +333,7 @@ export default function InviteVisitor({ navigation }) {
                                         setName('');
                                         setMobile('');
                                         setEmail('');
-                                        setVisitDate(new Date());
+                                        setDate(new Date().toISOString().split('T')[0]);
                                     }}
                                 >
                                     <Icon name="plus" size={20} color="#475569" style={{ marginRight: 8 }} />
