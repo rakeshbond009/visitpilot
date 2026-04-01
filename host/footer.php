@@ -8,7 +8,8 @@
         <small>&copy; <?php echo date('Y'); ?> <a href="https://codepilotx.com/" target="_blank"
                 class="text-decoration-none fw-bold text-primary">Codepilotx by Rakesh Verma</a>. All Rights
             Reserved.</small>
-        <span class="badge bg-light text-secondary border rounded-pill mt-1" style="font-size: 0.65rem; padding: 4px 10px;">
+        <span class="badge bg-light text-secondary border rounded-pill mt-1"
+            style="font-size: 0.65rem; padding: 4px 10px;">
             VisitPilot v<?php echo defined('APP_VERSION') ? APP_VERSION : '2.1.0'; ?>
         </span>
     </div>

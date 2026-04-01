@@ -625,10 +625,10 @@ if ($time_saved_min > 60) {
             if (result.isConfirmed) {
                 // Short timeout to allow Swal to finish closing, avoiding Bootstrap modal backdrop overlaps
                 setTimeout(() => {
-                    if (typeof viewVisitDetails === 'function') {
-                        viewVisitDetails(visit.id);
+                    if (typeof window.viewVisitDetails === 'function') {
+                        window.viewVisitDetails(visit.id);
                     }
-                }, 400);
+                }, 500);
             }
         });
 
@@ -636,7 +636,10 @@ if ($time_saved_min > 60) {
     }
 
     // --- REAL-TIME ENGINE ---
-    async function refreshDashboardTable() {
+    async function refreshDashboardTable(force = false) {
+        // Skip updates if a modal is open to ensure stability
+        if (!force && document.querySelector('.modal.show')) return;
+        
         try {
             const response = await fetch('api/get_dashboard_data.php');
             const data = await response.json();
@@ -810,7 +813,7 @@ if ($time_saved_min > 60) {
 
     // --- EVENT LISTENERS ---
     applySavedBGMode();
-    setInterval(refreshDashboardTable, 2000);
+    setInterval(() => refreshDashboardTable(false), 2000);
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
     <?php if (isset($_GET['new_visit_id'])):

@@ -546,7 +546,10 @@ $scheduled_today = (int) $stmt->fetchColumn();
     // --- REAL-TIME ENGINE ---
 
 
-    async function syncHostDashboard() {
+    async function syncHostDashboard(force = false) {
+        // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
+        if (!force && document.querySelector('.modal.show')) return;
+        
         try {
             // Using BASE_URL for consistency if defined, else relative
             const apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL + 'host/api/get_dashboard_data.php' : 'api/get_dashboard_data.php';
@@ -616,7 +619,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
     }
 
     syncHostDashboard(); // Initial load
-    setInterval(syncHostDashboard, 2000);
+    setInterval(() => syncHostDashboard(false), 2000);
 
     // Initial State for dashboard refresh logic
     let lastPendingCount = <?php echo $pending_count; ?>;
@@ -779,14 +782,22 @@ $scheduled_today = (int) $stmt->fetchColumn();
         const visitor = currentDashboardData.pending_list.find(v => v.id == id);
         if (!visitor) return;
 
-        // SKIP CONFIRMATION (Per User Request)
-        // Close the details modal first if open
-        const detailsModal = bootstrap.Modal.getInstance(document.getElementById('detailsListModal'));
-        if (detailsModal) detailsModal.hide();
+        const result = await AppDialog.confirm({
+            title: 'Approve Visitor?',
+            text: `Send WhatsApp pass to ${visitor.visitor_name}?`,
+            icon: 'question',
+            confirmButtonText: 'Yes, Approve & Share'
+        });
 
-        // Trigger the main approval flow directly
-        triggerNewVisitorAlert(visitor);
-        approveAndPrepareShare();
+        if (result.isConfirmed) {
+            // Close the details modal first
+            const detailsModal = bootstrap.Modal.getInstance(document.getElementById('detailsListModal'));
+            if (detailsModal) detailsModal.hide();
+
+            // Trigger the main approval flow
+            triggerNewVisitorAlert(visitor);
+            approveAndPrepareShare();
+        }
     }
 
     async function rejectDirectly(id) {
@@ -810,6 +821,11 @@ $scheduled_today = (int) $stmt->fetchColumn();
                 if (!value) return 'You need to provide a reason!';
             }
         });
+
+        if (!result.isConfirmed && bootstrapDetailsModal) {
+            bootstrapDetailsModal.show();
+            return;
+        }
 
         if (result.isConfirmed && result.value) {
             try {
@@ -993,9 +1009,5 @@ $scheduled_today = (int) $stmt->fetchColumn();
         font-weight: 700;
         margin-bottom: 2px;
     }
-</style>
-
-</script>
-
 <?php require_once '../includes/visit_details_modal.php'; ?>
 <?php require_once 'footer.php'; ?>

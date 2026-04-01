@@ -525,7 +525,8 @@ if ($time_saved_minutes > 60) {
                     <div class="col-sm-6">
                         <div class="p-4 rounded-4 bg-light text-center h-100">
                             <h2 id="total-satisfaction-rate" class="fw-bold <?php echo $sat_text; ?> mb-0">
-                                <?php echo $satisfaction; ?>%</h2>
+                                <?php echo $satisfaction; ?>%
+                            </h2>
                             <small class="text-muted text-uppercase fw-bold">Fast Service Rate</small>
                             <div class="progress mt-3" style="height: 6px;">
                                 <div id="satisfaction-bar" class="progress-bar <?php echo $sat_color; ?>"
@@ -663,7 +664,10 @@ if ($time_saved_minutes > 60) {
     // Register as a global refresh function for external scripts (security_notifications.js)
     window.VMS_REFRESH_DASHBOARD = refreshDashboardTable;
 
-    async function refreshDashboardTable() {
+    async function refreshDashboardTable(force = false) {
+        // Halt automatic refresh if a modal is open to avoid unintended closures/flickers
+        if (!force && document.querySelector('.modal.show')) return;
+        
         try {
             // Add cache buster to prevent stale data
             const response = await fetch('api/get_dashboard_data.php?t=' + new Date().getTime());
@@ -821,8 +825,12 @@ if ($time_saved_minutes > 60) {
         const title = isApproved ? 'Approved' : 'Rejected';
         const color = isApproved ? '#198754' : '#dc3545';
 
-        // Sound is handled centrally by security_notifications.js poller
-
+        // Play sound if BG Mode is ON
+        const bgToggle = document.getElementById('backgroundToggle');
+        if (bgToggle && bgToggle.checked) {
+            const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            sound.play().catch(e => console.log("Sound blocked"));
+        }
 
         Swal.fire({
             title: `<span class="fw-bold text-dark mt-2" style="font-size: 1.1rem; letter-spacing: -0.5px;">Arrival Status Update</span>`,
@@ -849,13 +857,12 @@ if ($time_saved_minutes > 60) {
             }
         }).then((result) => {
             if (result.isConfirmed) {
-                // IMPORTANT: 350ms delay ensures SweetAlert cleans up its backdrop 
-                // BEFORE Bootstrap attempts to launch the visitDetailsModal.
+                // Ensure SweetAlert cleans up and doesn't interfere with the Bootstrap modal
                 setTimeout(() => {
-                    if (typeof viewVisitDetails === 'function') {
-                        viewVisitDetails(visit.id);
+                    if (typeof window.viewVisitDetails === 'function') {
+                        window.viewVisitDetails(visit.id);
                     }
-                }, 350);
+                }, 500);
             }
         });
     }
@@ -894,7 +901,7 @@ if ($time_saved_minutes > 60) {
     }
 
     // Check for updates every 2 seconds
-    setInterval(refreshDashboardTable, 2000);
+    setInterval(() => refreshDashboardTable(false), 2000);
 
     // Stats Modal Function
     async function showStatsModal(type) {

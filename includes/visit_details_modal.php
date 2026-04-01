@@ -110,16 +110,9 @@
     }
 
     async function viewVisitDetails(visitId) {
-        // Explicitly set to window to ensure cross-module availability
-        window.viewVisitDetails = viewVisitDetails;
-        
         if (!visitId) return;
 
-        // Proactive backdrop cleanup
-        document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
-        document.body.classList.remove('modal-open');
-        document.body.style.paddingRight = '';
-
+        // Hide other modals if open (e.g. summary list, notifications) to prevent overlapping issues
         const validModals = ['detailsModal', 'detailsListModal', 'notificationModal', 'deleteConfirmModal', 'inputModal'];
         validModals.forEach(id => {
             const el = document.getElementById(id);
@@ -396,4 +389,8 @@
             alert('This visit has been rejected. Cannot print pass.');
         }
     }
+    
+    // Explicitly attach to window for global accessibility
+    window.viewVisitDetails = viewVisitDetails;
+    window.viewPass = viewPass;
 </script>

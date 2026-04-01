@@ -130,24 +130,16 @@
                 cancelButtonText: 'Dismiss'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Debug to see if visit.id exists
-                    console.log("[VMS DEBUG] Notification Result:", result);
-                    console.log("[VMS DEBUG] Visit ID:", visit.id);
-
+                    console.log("Manage Visit clicked for visit:", visit.id);
+                    // Standardized 500ms delay ensures SweetAlert cleans up its state 
+                    // and doesn't interfere with Bootstrap backdrop management.
                     setTimeout(() => {
                         if (typeof window.viewVisitDetails === 'function') {
                             window.viewVisitDetails(visit.id);
                         } else {
-                            // If on dashboard and function missing, something is wrong with script loading
-                            const isOnDashboard = window.location.pathname.endsWith('dashboard.php');
-                            if (isOnDashboard) {
-                                alert("System Error: View Details module not found on dashboard. Please refresh manually.");
-                                console.error("viewVisitDetails missing from dashboard scope.");
-                            } else {
-                                window.location.href = (typeof HOME_URL !== 'undefined') ? HOME_URL : `dashboard.php`;
-                            }
+                            console.warn("viewVisitDetails not found globally. Skipping modal launch.");
                         }
-                    }, 400);
+                    }, 500);
                 }
             });
         }
