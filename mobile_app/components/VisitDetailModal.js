@@ -165,8 +165,16 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                             <Text style={[styles.modalActionText, { fontSize: 16, letterSpacing: 1 }]}>VIEW DIGITAL PASS</Text>
                                         </TouchableOpacity>
                                     )}
-
                                     <View style={styles.actionsContainer}>
+                                        {visit.is_invited == 1 && visit.status !== 'checked_out' && visit.status !== 'rejected' && (
+                                            <TouchableOpacity
+                                                style={[styles.modalActionBtn, { backgroundColor: '#25D366' }]}
+                                                onPress={() => onAction(visit.id, 'whatsapp', visit.mobile, visit.visitor_name)}
+                                            >
+                                                <Text style={styles.modalActionText}>Whatsapp Share</Text>
+                                            </TouchableOpacity>
+                                        )}
+
                                         {visit.status === 'pending' && userRole === 'host' && (
                                             <>
                                                 <TouchableOpacity
@@ -183,6 +191,16 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                                 </TouchableOpacity>
                                             </>
                                         )}
+
+                                        {visit.status === 'approved' && visit.is_invited == 1 && userRole === 'host' && (
+                                            <TouchableOpacity
+                                                style={[styles.modalActionBtn, styles.rejectBtn]}
+                                                onPress={() => onAction(visit.id, 'cancel')}
+                                            >
+                                                <Text style={styles.modalActionText}>Cancel Invite</Text>
+                                            </TouchableOpacity>
+                                        )}
+
                                         {visit.status === 'approved' && (
                                             <TouchableOpacity
                                                 style={[styles.modalActionBtn, styles.checkInBtn]}

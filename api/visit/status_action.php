@@ -92,6 +92,44 @@ try {
         }
         sendResponse('success', 'Visit Approved', $responseData);
 
+    } elseif ($action === 'cancel') {
+        // Fetch visitor details before canceling for notification
+        $stmt = $pdo->prepare("SELECT vis.name, vis.mobile, e.name as host_name 
+                              FROM visits v 
+                              JOIN visitors vis ON v.visitor_id = vis.id
+                              LEFT JOIN employees e ON v.employee_id = e.id
+                              WHERE v.id = ?");
+        $stmt->execute([$id]);
+        $visitor_info = $stmt->fetch();
+
+        // Update status
+        $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW() WHERE id=? AND is_invited=1");
+        $stmt->execute([$id]);
+
+        if ($visitor_info && !empty($visitor_info['mobile'])) {
+            try {
+                require_once '../../includes/whatsapp_helper.php';
+                sendWhatsAppNotification(
+                    $visitor_info['mobile'],
+                    "Your meeting has been cancelled.",
+                    'invite_cancelled',
+                    [$visitor_info['name'] ?? 'Visitor', $visitor_info['host_name'] ?? 'your host']
+                );
+            } catch (Throwable $waErr) {
+                error_log("invite_cancelled WA error: " . $waErr->getMessage());
+            }
+
+            try {
+                require_once '../../includes/push_helper.php';
+                sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
+                    'visit_id' => (string) $id,
+                    'type' => 'approval_status'
+                ]);
+            } catch (Throwable $pushErr) {}
+        }
+
+        sendResponse('success', 'Invitation has been cancelled and visitor notified.');
+
     } elseif ($action === 'reject') {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW() WHERE id=?");
         $stmt->execute([$id]);

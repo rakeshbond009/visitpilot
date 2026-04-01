@@ -265,12 +265,47 @@ export default function HostDashboard({ navigation }) {
     };
 
     const handleAction = async (visitId, action, mobile, name) => {
-        const label = action === 'approve' ? 'Approve' : (action === 'reject' ? 'Reject' : action);
-        
+        let label = '';
+        let msg = '';
+        let type = 'warning';
+
+        switch (action) {
+            case 'approve':
+                label = 'Approve Visit';
+                msg = `Are you sure you want to APPROVE ${name || 'this visitor'}?`;
+                break;
+            case 'reject':
+                label = 'Reject Visit';
+                msg = `Are you sure you want to REJECT ${name || 'this visitor'}?`;
+                type = 'error';
+                break;
+            case 'cancel':
+                label = 'Cancel Invitation';
+                msg = `Are you sure you want to CANCEL the invitation for ${name || 'this visitor'}?`;
+                type = 'error';
+                break;
+            case 'whatsapp':
+                label = 'Share WhatsApp';
+                msg = `Resend the invitation pass to ${name || 'visitor'} via WhatsApp?`;
+                type = 'success';
+                break;
+            case 'checkin':
+                label = 'Check-In';
+                msg = `Mark ${name || 'visitor'} as checked-in?`;
+                break;
+            case 'checkout':
+                label = 'Check-Out';
+                msg = `Mark ${name || 'visitor'} as checked-out?`;
+                break;
+            default:
+                label = 'Confirm';
+                msg = 'Proceed with this action?';
+        }
+
         showAlert(
-            'Confirm ' + label,
-            `Are you sure you want to proceed with ${label} for this visit?`,
-            'warning',
+            label,
+            msg,
+            type,
             {
                 showCancel: true,
                 confirmText: 'Yes, Proceed',
@@ -281,19 +316,34 @@ export default function HostDashboard({ navigation }) {
 
     const executeAction = async (visitId, action) => {
         try {
-            const response = await apiClient.post('api/visit/status_action.php', {
-                action: action,
-                visit_id: visitId,
-            });
+            setDetailsLoading(true);
+            let response;
+            
+            if (action === 'whatsapp') {
+                response = await apiClient.get('api/visit/resend_whatsapp.php', {
+                    params: { visit_id: visitId, type: 'invitation' }
+                });
+            } else {
+                response = await apiClient.post('api/visit/status_action.php', {
+                    action: action,
+                    visit_id: visitId,
+                });
+            }
 
-            if (response.data.status === 'success') {
-                showAlert('Success', response.data.message, 'success');
+            const data = response.data.status === 'success' || response.data.success ? response.data : null;
+
+            if (data) {
+                showAlert('Success', data.message || 'Action completed successfully', 'success');
+                setDetailModalVisible(false);
                 fetchData();
             } else {
                 showAlert('Error', response.data.message || 'Action failed', 'error');
             }
         } catch (error) {
-            showAlert('Error', 'Action failed', 'error');
+            console.error('Action execution error:', error);
+            showAlert('Error', 'Action failed. Please check your connection.', 'error');
+        } finally {
+            setDetailsLoading(false);
         }
     };
 
@@ -334,10 +384,10 @@ export default function HostDashboard({ navigation }) {
                 const visitorName = response.data.data?.visitor_name || "Visitor";
                 const hostName = response.data.data?.host_name || "N/A";
                 const purposeText = response.data.data?.purpose || "N/A";
-                
+
                 setScanModalVisible(false);
                 setScanned(false);
-                
+
                 if (hasPermission('security_register')) {
                     // Show more detailed alert with action
                     showAlert(
@@ -876,7 +926,7 @@ export default function HostDashboard({ navigation }) {
                     </View>
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
-                        
+
                         {alertConfig.showCancel ? (
                             <View style={styles.alertActionRow}>
                                 <TouchableOpacity
