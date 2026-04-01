@@ -148,38 +148,59 @@ try {
 
     } elseif ($action === 'qr_process') {
         $code = $data['code'];
-        $stmt = $pdo->prepare("SELECT id, status, approval_status, is_invited FROM visits WHERE visit_code = ?");
+        $stmt = $pdo->prepare("
+            SELECT v.id, v.status, v.approval_status, v.is_invited, v.visit_code, v.purpose, v.visit_photo,
+                   vis.name as visitor_name, vis.mobile as visitor_mobile, vis.company as visitor_company,
+                   e.name as host_name, d.name as department
+            FROM visits v 
+            JOIN visitors vis ON v.visitor_id = vis.id 
+            LEFT JOIN employees e ON v.employee_id = e.id 
+            LEFT JOIN departments d ON e.department_id = d.id
+            WHERE v.visit_code = ?
+        ");
         $stmt->execute([$code]);
-        $visit = $stmt->fetch();
+        $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($visit) {
+            $responseData = [
+                'id' => $visit['id'],
+                'visitor_name' => $visit['visitor_name'],
+                'visitor_mobile' => $visit['visitor_mobile'],
+                'visitor_company' => $visit['visitor_company'],
+                'host_name' => $visit['host_name'],
+                'department' => $visit['department'],
+                'purpose' => $visit['purpose'],
+                'visit_photo' => $visit['visit_photo'],
+                'visit_code' => $visit['visit_code']
+            ];
+
             // Condition 1: Check-in if in approved state
             if ($visit['status'] == 'approved') {
                 if ($visit['approval_status'] == 'approved') {
                     $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW() WHERE id=?");
                     $stmt->execute([$visit['id']]);
-                    sendResponse('success', 'Check-in Successful via QR');
+                    sendResponse('success', 'Check-in Successful for ' . $visit['visitor_name'], $responseData);
                 } else {
-                    sendResponse('error', 'Visit not yet approved by host');
+                    sendResponse('error', 'Visit not yet approved by host', $responseData);
                 }
             }
             // Condition 2: Check-out if in checked-in state
             elseif ($visit['status'] == 'checked_in') {
                 $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW() WHERE id=?");
                 $stmt->execute([$visit['id']]);
-                sendResponse('success', 'Check-out Successful via QR');
+                sendResponse('success', 'Check-out Successful for ' . $visit['visitor_name'], $responseData);
             }
             // Condition 4: If it's a pending invitation, tell app to pre-fill
             elseif ($visit['is_invited'] == 1 && $visit['status'] == 'pending') {
-                sendResponse('invitation', 'Pre-Approved Invitation Found', ['code' => $code]);
+                sendResponse('invitation', 'Pre-Approved Invitation Found', array_merge(['code' => $code], $responseData));
             }
             // Condition 3: Error for other conditions
             elseif ($visit['status'] == 'checked_out') {
-                sendResponse('error', 'Visitor already checked out');
+                sendResponse('error', 'Visitor ' . $visit['visitor_name'] . ' already checked out', $responseData);
             } elseif ($visit['status'] == 'registered') {
-                sendResponse('error', 'Visit request is pending host approval');
+                sendResponse('error', 'Visit request for ' . $visit['visitor_name'] . ' is pending host approval', $responseData);
             } else {
-                sendResponse('error', 'Invalid visit status: ' . str_replace('_', ' ', $visit['status']));
+                sendResponse('error', 'Invalid visit status: ' . str_replace('_', ' ', $visit['status']), $responseData);
             }
         } else {
             sendResponse('error', 'Invalid QR Code');

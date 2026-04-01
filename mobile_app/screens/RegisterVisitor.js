@@ -62,6 +62,10 @@ export default function RegisterVisitor({ navigation, route }) {
     const [showSuccess, setShowSuccess] = useState(false);
     const [registerResult, setRegisterResult] = useState(null);
 
+    // Custom Alert State
+    const [alertVisible, setAlertVisible] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' });
+
     // Camera states
     const [permission, requestPermission] = useCameraPermissions();
     const [showCamera, setShowCamera] = useState(false);
@@ -97,7 +101,7 @@ export default function RegisterVisitor({ navigation, route }) {
         if (!permission.granted) {
             const result = await requestPermission();
             if (!result.granted) {
-                Alert.alert('Permission Required', 'Camera access is needed to capture visitor photo');
+                showAlert('Permission Required', 'Camera access is needed to capture visitor photo', 'error');
                 return;
             }
         }
@@ -117,7 +121,7 @@ export default function RegisterVisitor({ navigation, route }) {
                 setShowCamera(false);
             } catch (error) {
                 console.error('Take Picture Error:', error);
-                Alert.alert('Error', 'Failed to capture photo');
+                showAlert('Error', 'Failed to capture photo', 'error');
             }
         }
     };
@@ -125,7 +129,7 @@ export default function RegisterVisitor({ navigation, route }) {
     const sendOTP = async () => {
         const cleanMobile = mobile.trim();
         if (!cleanMobile || cleanMobile.length < 10) {
-            Alert.alert('Error', 'Please enter a valid 10-digit mobile number first');
+            showAlert('Error', 'Please enter a valid 10-digit mobile number first', 'error');
             return;
         }
         setSendingOtp(true);
@@ -142,20 +146,25 @@ export default function RegisterVisitor({ navigation, route }) {
 
                 }
             } else {
-                Alert.alert('Error', response.data.message || 'Failed to send OTP');
+                showAlert('Error', response.data.message || 'Failed to send OTP', 'error');
             }
         } catch (error) {
             console.error('Send OTP Error:', error);
-            Alert.alert('Error', 'Failed to connect to server');
+            showAlert('Error', 'Failed to connect to server', 'error');
         } finally {
             setSendingOtp(false);
         }
     };
 
+    const showAlert = (title, message, type = 'success', options = {}) => {
+        setAlertConfig({ title, message, type, ...options });
+        setAlertVisible(true);
+    };
+
     const verifyOTP = async () => {
         const cleanMobile = mobile.trim();
         if (otpValue.length < 6) {
-            Alert.alert('Error', 'Please enter 6-digit OTP');
+            showAlert('Error', 'Please enter 6-digit OTP', 'error');
             return;
         }
 
@@ -171,17 +180,17 @@ export default function RegisterVisitor({ navigation, route }) {
             if (response.data.status === 'success') {
                 setIsOtpVerified(true);
                 setShowOtpModal(false);
-                Alert.alert('Success', 'Mobile number verified successfully!');
+                showAlert('Success', 'Mobile number verified successfully!');
                 // Wait briefly for states to potentially settle then proceed
                 setTimeout(() => {
                     handleRegister(true);
                 }, 500);
             } else {
-                Alert.alert('Error', response.data.message || 'Invalid OTP');
+                showAlert('Error', response.data.message || 'Invalid OTP', 'error');
             }
         } catch (error) {
             console.error('Verify OTP Error:', error);
-            Alert.alert('Error', 'Failed to verify OTP');
+            showAlert('Error', 'Failed to verify OTP', 'error');
         } finally {
             setLoading(false);
         }
@@ -206,13 +215,15 @@ export default function RegisterVisitor({ navigation, route }) {
                 setPurpose(inv.purpose || '');
                 setInvitationId(inv.id || null);
                 setIsPreApproved(true);
-                Alert.alert('Success', 'Invitation found and details pre-filled!');
+                
+                const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}`;
+                showAlert('Success', `Invitation found and details pre-filled!\n\n${details}`, 'success');
             } else {
-                Alert.alert('Not Found', response.data.message || 'No active invitation found.');
+                showAlert('Not Found', response.data.message || 'No active invitation found.', 'error');
             }
         } catch (error) {
             console.error('Lookup Error:', error);
-            Alert.alert('Error', 'Failed to search invitation');
+            showAlert('Error', 'Failed to search invitation', 'error');
         } finally {
             setSearching(false);
         }
@@ -305,27 +316,22 @@ export default function RegisterVisitor({ navigation, route }) {
         setOtpEnabled(value);
         if (value) {
             if (!mobile || mobile.length < 10) {
-                Alert.alert('Caution', 'Please enter a valid 10-digit mobile number first.');
+                showAlert('Caution', 'Please enter a valid 10-digit mobile number first.', 'warning');
                 setOtpEnabled(false);
                 return;
             }
 
-            Alert.alert(
+            showAlert(
                 'Ready for Verification?',
                 'Have you filled all details and clicked the photo?',
-                [
-                    {
-                        text: 'No, let me check',
-                        onPress: () => setOtpEnabled(false),
-                        style: 'cancel'
-                    },
-                    {
-                        text: 'Yes, All filled!',
-                        onPress: () => {
-                            sendOTP();
-                        }
+                'warning',
+                {
+                    showCancel: true,
+                    confirmText: 'Yes, All filled!',
+                    onConfirm: () => {
+                        sendOTP();
                     }
-                ]
+                }
             );
         } else {
             setIsOtpVerified(false);
@@ -335,7 +341,7 @@ export default function RegisterVisitor({ navigation, route }) {
     const handleRegister = async (otpForcePassed = false) => {
         const cleanMobile = mobile.trim();
         if (!name || !cleanMobile || !purpose) {
-            Alert.alert('Error', 'Please fill in all required fields (Name, Mobile, Purpose)');
+            showAlert('Error', 'Please fill in all required fields (Name, Mobile, Purpose)', 'error');
             return;
         }
 
@@ -345,7 +351,7 @@ export default function RegisterVisitor({ navigation, route }) {
         }
 
         if (!hostId) {
-            Alert.alert('Error', 'Host employee identification missing. Please contact administrator.');
+            showAlert('Error', 'Host employee identification missing. Please contact administrator.', 'error');
             return;
         }
 
@@ -396,15 +402,68 @@ export default function RegisterVisitor({ navigation, route }) {
                 }
                 */
             } else {
-                Alert.alert('Error', result.message || 'Registration failed');
+                showAlert('Error', result.message || 'Registration failed', 'error');
             }
         } catch (error) {
             console.error('Registration Error:', error);
-            Alert.alert('Error', 'Failed to connect to server');
+            showAlert('Error', 'Failed to connect to server', 'error');
         } finally {
             setLoading(false);
         }
     };
+
+    const renderSweetAlert = () => (
+        <Modal
+            animationType="fade"
+            transparent={true}
+            visible={alertVisible}
+            onRequestClose={() => setAlertVisible(false)}
+        >
+            <View style={alertStyles.alertOverlay}>
+                <View style={alertStyles.alertContent}>
+                    <View style={[alertStyles.alertHeader, { backgroundColor: alertConfig.type === 'success' ? '#15803d' : (alertConfig.type === 'warning' ? '#f59e0b' : '#ef4444') }]}>
+                        <Icon
+                            name={alertConfig.type === 'success' ? 'check-circle' : (alertConfig.type === 'warning' ? 'help-circle' : 'alert-circle')}
+                            size={32}
+                            color="#fff"
+                            style={{ marginRight: 10 }}
+                        />
+                        <Text style={alertStyles.alertHeaderTitle}>{alertConfig.title || (alertConfig.type === 'success' ? 'Success!' : (alertConfig.type === 'warning' ? 'Confirm' : 'Error'))}</Text>
+                    </View>
+                    <View style={alertStyles.alertBody}>
+                        <Text style={alertStyles.alertMessage}>{alertConfig.message}</Text>
+
+                        {alertConfig.showCancel ? (
+                            <View style={alertStyles.alertActionRow}>
+                                <TouchableOpacity
+                                    style={[alertStyles.alertButton, alertStyles.alertCancelButton]}
+                                    onPress={() => setAlertVisible(false)}
+                                >
+                                    <Text style={alertStyles.alertCancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[alertStyles.alertButton, alertStyles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
+                                    onPress={() => {
+                                        setAlertVisible(false);
+                                        if (alertConfig.onConfirm) alertConfig.onConfirm();
+                                    }}
+                                >
+                                    <Text style={alertStyles.alertConfirmButtonText}>{alertConfig.confirmText || 'Yes'}</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                style={[alertStyles.alertButton, { borderColor: alertConfig.type === 'success' ? '#15803d' : '#ef4444', width: '100%', alignItems: 'center' }]}
+                                onPress={() => setAlertVisible(false)}
+                            >
+                                <Text style={[alertStyles.alertButtonText, { color: alertConfig.type === 'success' ? '#15803d' : '#ef4444' }]}>OK</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
 
     return (
         <SafeAreaView style={styles.container}>
@@ -696,6 +755,7 @@ export default function RegisterVisitor({ navigation, route }) {
                 </ScrollView>
             </KeyboardAvoidingView>
 
+            {renderSweetAlert()}
             {/* Camera Modal */}
             <Modal
                 visible={showCamera}
@@ -1418,5 +1478,71 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         flex: 1,
         fontWeight: '500',
+    },
+});
+
+const alertStyles = StyleSheet.create({
+    alertOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    alertContent: {
+        width: '85%',
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        overflow: 'hidden',
+        elevation: 10,
+    },
+    alertHeader: {
+        flexDirection: 'row',
+        padding: 15,
+        alignItems: 'center',
+    },
+    alertHeaderTitle: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    alertBody: {
+        padding: 20,
+    },
+    alertMessage: {
+        fontSize: 15,
+        color: '#334155',
+        lineHeight: 22,
+        marginBottom: 20,
+    },
+    alertActionRow: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 10,
+    },
+    alertButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#0d6efd',
+    },
+    alertCancelButton: {
+        borderColor: '#cbd5e1',
+        backgroundColor: '#f8fafc',
+    },
+    alertCancelButtonText: {
+        color: '#64748b',
+        fontWeight: '600',
+    },
+    alertConfirmButton: {
+        borderColor: 'transparent',
+    },
+    alertConfirmButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    alertButtonText: {
+        fontWeight: 'bold',
+        color: '#0d6efd',
     },
 });

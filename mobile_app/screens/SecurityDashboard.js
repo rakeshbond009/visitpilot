@@ -835,15 +835,30 @@ export default function SecurityDashboard({ navigation }) {
             console.log("API Response:", response.data);
 
             if (response.data.status === 'success') {
-                showAlert('Success', response.data.message, 'success');
+                // Show detailed modal instead of simple alert
                 setScanModalVisible(false);
+                setSelectedVisit(response.data.data);
+                setDetailsVisible(true);
                 setScanned(false);
                 fetchData();
             } else if (response.data.status === 'invitation') {
                 const code = response.data.data?.code;
+                const visitorName = response.data.data?.visitor_name || "Visitor";
+                
                 setScanModalVisible(false);
                 setScanned(false);
-                navigation.navigate('RegisterVisitor', { code: code });
+                
+                // Show a nice confirmation before navigating to registration
+                showAlert(
+                    'Pre-Approved Invitation',
+                    `Found a pre-approved invitation for ${visitorName}. Proceed with registration?`,
+                    'success',
+                    {
+                        showCancel: true,
+                        confirmText: 'Register Now',
+                        onConfirm: () => navigation.navigate('RegisterVisitor', { code: code })
+                    }
+                );
             } else {
                 showAlert('QR Scan Result', response.data.message || 'The scanned QR code is currently inactive or has an invalid status.', 'error');
                 setScanned(false);
