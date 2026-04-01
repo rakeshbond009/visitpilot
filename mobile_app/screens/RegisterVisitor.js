@@ -131,12 +131,36 @@ export default function RegisterVisitor({ navigation, route }) {
         }
     };
 
+    const validateForm = () => {
+        const cleanMobile = mobile ? mobile.trim() : '';
+        let errors = [];
+        if (isMandatory('visitor_name') && !name) errors.push('Visitor Name');
+        if (isMandatory('mobile_number') && (!cleanMobile || cleanMobile.length < 10)) errors.push('Mobile Number');
+        if (isMandatory('email') && !email) errors.push('Email Address');
+        if (isMandatory('company_address') && !address) errors.push('Company / Address');
+        if (isMandatory('id_proof') && (!idProofEnabled || !idNumber)) errors.push('ID Proof Type & Number');
+        if (isMandatory('purpose') && !purpose) errors.push('Purpose of Visit');
+        if (isMandatory('meeting_host') && !hostId) errors.push('Host (Who to Meet)');
+        if (isMandatory('access_area') && !accessArea) errors.push('Access Area');
+        if (isMandatory('assets_carried') && !assets) errors.push('Assets Carried');
+        if (isMandatory('photo') && !photo) errors.push('Visitor Photo');
+        
+        if (isMandatory('members')) {
+            const hasMember = members.some(m => m.trim() !== '');
+            if (!hasMember) errors.push('Accompanying Visitor List');
+        }
+        return errors;
+    };
+
     const sendOTP = async () => {
-        const cleanMobile = mobile.trim();
-        if (!cleanMobile || cleanMobile.length < 10) {
-            showAlert('Error', 'Please enter a valid 10-digit mobile number first', 'error');
+        // Validation FIRST
+        const formErrors = validateForm();
+        if (formErrors.length > 0) {
+            showAlert('Complete Form First', `Please fill these mandatory fields before sending OTP:\n\n• ${formErrors.join('\n• ')}`, 'warning');
             return;
         }
+
+        const cleanMobile = mobile.trim();
         setSendingOtp(true);
         try {
             const response = await apiClient.get('api/visit/send_otp.php', {
@@ -382,24 +406,7 @@ export default function RegisterVisitor({ navigation, route }) {
     const handleRegister = async (otpForcePassed = false) => {
         const cleanMobile = mobile.trim();
         
-        // Dynamic Validation based on mandatoryFields
-        let errors = [];
-        if (isMandatory('visitor_name') && !name) errors.push('Visitor Name');
-        if (isMandatory('mobile_number') && (!cleanMobile || cleanMobile.length < 10)) errors.push('Mobile Number');
-        if (isMandatory('email') && !email) errors.push('Email Address');
-        if (isMandatory('company_address') && !address) errors.push('Company / Address');
-        if (isMandatory('id_proof') && (!idProofEnabled || !idNumber)) errors.push('ID Proof Type & Number');
-        if (isMandatory('purpose') && !purpose) errors.push('Purpose of Visit');
-        if (isMandatory('meeting_host') && !hostId) errors.push('Host (Who to Meet)');
-        if (isMandatory('access_area') && !accessArea) errors.push('Access Area');
-        if (isMandatory('assets_carried') && !assets) errors.push('Assets Carried');
-        if (isMandatory('photo') && !photo) errors.push('Visitor Photo');
-        
-        // Special check for members if listed as mandatory
-        if (isMandatory('members')) {
-            const hasMember = members.some(m => m.trim() !== '');
-            if (!hasMember) errors.push('Accompanying Visitor List');
-        }
+        const errors = validateForm();
 
         if (errors.length > 0) {
             showAlert('Missing Information', `The following fields are mandatory:\n\n• ${errors.join('\n• ')}`, 'error');
