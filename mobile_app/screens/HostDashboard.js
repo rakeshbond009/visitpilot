@@ -313,12 +313,22 @@ export default function HostDashboard({ navigation }) {
             console.log("API Response (Host):", response.data);
 
             if (response.data.status === 'success') {
-                // Show detailed modal
+                // Action already performed (fallback)
                 setScanModalVisible(false);
                 setSelectedVisit(response.data.data);
                 setDetailModalVisible(true);
                 setScanned(false);
                 fetchData();
+            } else if (response.data.status === 'check_in') {
+                // Confirmation required for Check-in
+                setScanModalVisible(false);
+                setScanned(false);
+                handleAction(response.data.data.id, 'checkin');
+            } else if (response.data.status === 'check_out') {
+                // Confirmation required for Check-out
+                setScanModalVisible(false);
+                setScanned(false);
+                handleAction(response.data.data.id, 'checkout');
             } else if (response.data.status === 'invitation') {
                 const code = response.data.data?.code;
                 const visitorName = response.data.data?.visitor_name || "Visitor";

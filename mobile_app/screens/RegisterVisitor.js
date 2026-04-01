@@ -527,7 +527,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={styles.lookupBtn}
-                                    onPress={lookupInvitation}
+                                    onPress={() => lookupInvitation()}
                                     disabled={searching}
                                 >
                                     {searching ? (

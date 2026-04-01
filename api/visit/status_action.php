@@ -173,22 +173,18 @@ try {
                 'visit_code' => $visit['visit_code']
             ];
 
-            // 1. Check-out is the highest priority if currently checked-in
+            // 1. If currently checked-in, ask to Check Out
             if ($visit['status'] == 'checked_in') {
-                $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW() WHERE id=?");
-                $stmt->execute([$visit['id']]);
-                sendResponse('success', 'Check-out Successful for ' . $visit['visitor_name'], $responseData);
+                sendResponse('check_out', 'Visitor ' . $visit['visitor_name'] . ' is currently inside. Do you want to Mark Check Out?', $responseData);
             }
             // 2. Invitation Flow: Always return invitation status for any non-checked-in invitation
             // This ensures the mobile app always shows the registration prompt as per the user's requirement
             elseif ($visit['is_invited'] == 1 && $visit['status'] !== 'checked_out') {
-                sendResponse('invitation', 'Pre-Approved Invitation Found', array_merge(['code' => $code], $responseData));
+                sendResponse('invitation', 'Pre-Approved Invitation Found for ' . $visit['visitor_name'], array_merge(['code' => $code], $responseData));
             }
-            // 3. Normal Flow - Check-in for approved or registered visitors
+            // 3. Normal Flow - Ask to Check In if approved or registered
             elseif ($visit['status'] == 'approved' || $visit['status'] == 'registered') {
-                $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW() WHERE id=?");
-                $stmt->execute([$visit['id']]);
-                sendResponse('success', 'Check-in Successful for ' . $visit['visitor_name'], $responseData);
+                sendResponse('check_in', 'Visit request for ' . $visit['visitor_name'] . ' is approved. Do you want to Mark Check In?', $responseData);
             }
             // 4. Other states
             elseif ($visit['status'] == 'checked_out') {

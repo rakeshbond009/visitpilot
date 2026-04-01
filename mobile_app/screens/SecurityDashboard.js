@@ -835,12 +835,22 @@ export default function SecurityDashboard({ navigation }) {
             console.log("API Response:", response.data);
 
             if (response.data.status === 'success') {
-                // Show detailed modal instead of simple alert
+                // Action was already performed (fallback if API logic changes)
                 setScanModalVisible(false);
                 setSelectedVisit(response.data.data);
                 setDetailsVisible(true);
                 setScanned(false);
                 fetchData();
+            } else if (response.data.status === 'check_in') {
+                // Ask for confirmation before Check-in
+                setScanModalVisible(false);
+                setScanned(false);
+                handleAction(response.data.data.id, 'checkin');
+            } else if (response.data.status === 'check_out') {
+                // Ask for confirmation before Check-out
+                setScanModalVisible(false);
+                setScanned(false);
+                handleAction(response.data.data.id, 'checkout');
             } else if (response.data.status === 'invitation') {
                 const code = response.data.data?.code;
                 const visitorName = response.data.data?.visitor_name || "Visitor";
