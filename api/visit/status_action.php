@@ -173,8 +173,14 @@ try {
                 'visit_code' => $visit['visit_code']
             ];
 
-            // Condition 1: Check-in if in approved state
-            if ($visit['status'] == 'approved') {
+            // 1. Invitation Flow (Highest Priority if not yet completed)
+            // If it's an invitation AND it hasn't been registered/submitted (no photo) AND not yet checked-in
+            if ($visit['is_invited'] == 1 && empty($visit['visit_photo']) && $visit['status'] !== 'checked_in' && $visit['status'] !== 'checked_out') {
+                sendResponse('invitation', 'Pre-Approved Invitation Found', array_merge(['code' => $code], $responseData));
+            }
+            
+            // 2. Normal Flow - Check-in
+            if ($visit['status'] == 'approved' || $visit['status'] == 'registered') {
                 if ($visit['approval_status'] == 'approved') {
                     $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW() WHERE id=?");
                     $stmt->execute([$visit['id']]);
@@ -183,20 +189,16 @@ try {
                     sendResponse('error', 'Visit not yet approved by host', $responseData);
                 }
             }
-            // Condition 2: Check-out if in checked-in state
+            // 3. Normal Flow - Check-out
             elseif ($visit['status'] == 'checked_in') {
                 $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW() WHERE id=?");
                 $stmt->execute([$visit['id']]);
                 sendResponse('success', 'Check-out Successful for ' . $visit['visitor_name'], $responseData);
             }
-            // Condition 4: If it's a pending invitation, tell app to pre-fill
-            elseif ($visit['is_invited'] == 1 && $visit['status'] == 'pending') {
-                sendResponse('invitation', 'Pre-Approved Invitation Found', array_merge(['code' => $code], $responseData));
-            }
-            // Condition 3: Error for other conditions
+            // 4. Other states
             elseif ($visit['status'] == 'checked_out') {
                 sendResponse('error', 'Visitor ' . $visit['visitor_name'] . ' already checked out', $responseData);
-            } elseif ($visit['status'] == 'registered') {
+            } elseif ($visit['status'] == 'pending') {
                 sendResponse('error', 'Visit request for ' . $visit['visitor_name'] . ' is pending host approval', $responseData);
             } else {
                 sendResponse('error', 'Invalid visit status: ' . str_replace('_', ' ', $visit['status']), $responseData);
