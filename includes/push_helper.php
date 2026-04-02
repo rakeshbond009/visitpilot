@@ -57,6 +57,16 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                 ], $data),
                 'android' => [
                     'priority' => 'high',
+                    'ttl' => '0s',
+                    'notification' => [
+                        'channel_id' => 'vms_arrivals',
+                        'sticky' => true,
+                        'visibility' => 'public',
+                        'notification_priority' => 'priority_max',
+                        'default_vibrate_timings' => true,
+                        'default_sound' => true,
+                        'bypass_dnd' => true,
+                    ]
                 ]
             ]
         ];
