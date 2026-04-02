@@ -94,25 +94,19 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
                 // KEY FIX: When app is killed, getCurrentActivity() is null so window flags
                 // never run. We must wake the screen BEFORE launching by using PowerManager.
                 try {
-                    android.os.PowerManager pm = (android.os.PowerManager) reactContext.getSystemService(android.content.Context.POWER_SERVICE);
-                    if (pm != null) {
-                        // More aggressive flags for modern Android
+                    android.os.PowerManager pm = (android.os.PowerManager) reactContext
+                            .getSystemService(android.content.Context.POWER_SERVICE);
+                    if (pm != null && !pm.isInteractive()) {
+                        // Screen is OFF - force it on
                         android.os.PowerManager.WakeLock wl = pm.newWakeLock(
-                            android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK |
-                            android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP |
-                            android.os.PowerManager.ON_AFTER_RELEASE,
-                            "VMS:ScreenWake"
-                        );
-                        wl.acquire(10000); // 10 seconds to ensure JS engine starts
+                                android.os.PowerManager.FULL_WAKE_LOCK |
+                                        android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                                        android.os.PowerManager.ON_AFTER_RELEASE,
+                                "VMS:ScreenWake");
+                        wl.acquire(5000); // 5 seconds - enough to show the UI
                     }
-                    
-                    // Attempt to dismiss keyguard if possible from background
-                    android.app.KeyguardManager km = (android.app.KeyguardManager) reactContext.getSystemService(android.content.Context.KEYGUARD_SERVICE);
-                    if (km != null && km.isKeyguardLocked()) {
-                       // Note: For Android 10+ this works best if overlay permission is granted
-                    }
-                } catch (Exception ignored) {}
-                
+                } catch (Exception ignored) {
+                }
                 reactContext.startActivity(intent);
             }
         } catch (Exception e) {

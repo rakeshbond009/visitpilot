@@ -33,19 +33,8 @@ import { checkOverlayPermission } from '../utils/notificationManager';
 
 const { width, height } = Dimensions.get('window');
 
-export default function AdminDashboard({ navigation, route }) {
+export default function AdminDashboard({ navigation }) {
     const { refreshPermissions } = usePermissions();
-
-    // Deep Link Visit Auto-Open
-    useEffect(() => {
-        const ovid = route.params?.openVisitId;
-        if (ovid) {
-            console.log("[AdminDashboard] Deep link triggered for Visit:", ovid);
-            fetchVisitDetails(ovid);
-            // Clear params to avoid loop
-            navigation.setParams({ openVisitId: null });
-        }
-    }, [route.params?.openVisitId]);
     const [userData, setUserData] = useState(null);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'visitors'
     const [visitorView, setVisitorView] = useState('log'); // 'log', 'invites', 'pending'
