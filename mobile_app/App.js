@@ -251,8 +251,13 @@ function AppContent() {
         // 3. LISTEN FOR APP STATE CHANGES (CRITICAL for background -> foreground)
         const appStateListener = AppState.addEventListener('change', nextAppState => {
             if (nextAppState === 'active') {
-                console.log("[App.js] App became active - re-scanning for arrivals");
+                console.log("[App.js] App became active - refreshing token and checking arrivals");
                 checkNotifications("appstate_active");
+                
+                // Refresh token on each wake to ensure it's not 'UNREGISTERED' on server
+                registerForPushNotificationsAsync(1, 1000).then(token => {
+                    if (token) updateTokenOnServer(token);
+                });
             }
         });
 

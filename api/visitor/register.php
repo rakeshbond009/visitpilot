@@ -217,7 +217,12 @@ try {
 
     // 5. SEND PUSH NOTIFICATION & WHATSAPP
     try {
-        require_once '../../includes/push_helper.php';
+        $push_log = __DIR__ . '/register_push_trace.log';
+        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Starting push flow for Visitor ID: $visitor_id\n", FILE_APPEND);
+        
+        require_once dirname(__DIR__, 2) . '/includes/push_helper.php';
+        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Push helper loaded.\n", FILE_APPEND);
+
         $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?");
         $stmt->execute([$visitor_id]);
         $visitor = $stmt->fetch(PDO::FETCH_ASSOC);

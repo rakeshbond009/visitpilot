@@ -110,6 +110,10 @@ export async function registerForPushNotificationsAsync(retryCount = 3, retryDel
     return null;
   }
 
+  // Always clear cached token on first init to ensure it's not stale/unregistered
+  await AsyncStorage.removeItem('cached_fcm_token');
+  await AsyncStorage.removeItem('last_fcm_token');
+
   for (let attempt = 1; attempt <= retryCount; attempt++) {
     try {
       const result = await Notifications.getDevicePushTokenAsync();

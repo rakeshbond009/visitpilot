@@ -72,7 +72,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         }
 
         $payloadJson = json_encode($message);
-        $log("Sending to $platform: $payloadJson");
+        $log("Sending to $platform (Token: " . substr($user['fcm_token'], 0, 15) . "...): $payloadJson");
 
         $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -85,9 +85,10 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
-        $log("FCM Response [HTTP $httpCode]: $response");
+        $log("FCM Response [HTTP $httpCode]: $response" . ($curlError ? " | CURL ERROR: $curlError" : ""));
     }
     return true;
 }
