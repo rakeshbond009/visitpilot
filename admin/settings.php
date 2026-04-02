@@ -480,7 +480,7 @@ $tabs = [
     'settings_whatsapp' => ['id' => 'whatsapp', 'title' => 'WhatsApp Config', 'icon' => 'bi-whatsapp'],
     'settings_ai' => ['id' => 'ai', 'title' => 'AI Integration', 'icon' => 'bi-robot'],
     'settings_registration' => ['id' => 'registration', 'title' => 'Visitor Form Config', 'icon' => 'bi-ui-checks'],
-    'settings_build' => ['id' => 'build', 'title' => 'Build App', 'icon' => 'bi-cpu'],
+    'super_admin_build' => ['id' => 'build', 'title' => 'Build App', 'icon' => 'bi-cpu'],
     'admin_audit' => ['id' => 'info', 'title' => 'System Info', 'icon' => 'bi-info-circle'],
 ];
 
@@ -1710,7 +1710,7 @@ $active_tab_id = false;
     <?php endif; ?>
 
     <!-- Tab: Build Mobile App -->
-    <?php if (canView('settings_build')): ?>
+    <?php if (canView('super_admin_build') || !empty($_SESSION['is_super'])): ?>
         <div class="tab-pane fade <?php echo ($active_tab_id === 'build') ? 'show active' : ''; ?>" id="build" role="tabpanel">
             <div class="row g-4">
                 <div class="col-lg-6">
@@ -1763,14 +1763,15 @@ $active_tab_id = false;
             const progressSection = document.getElementById('buildProgressSection');
             const logContainer = document.getElementById('buildLogs');
             const logStatus = document.getElementById('logStatus');
-            let pollInterval = null;
+            let lastMessage = "";
 
             function triggerUpdate() {
                  fetch('api/build_status.php')
                     .then(res => res.json())
                     .then(data => {
-                        if (data.last_message) {
-                            logContainer.innerHTML += `<div class="mb-1">> ${data.last_message}</div>`;
+                        if (data.last_message && data.last_message !== lastMessage) {
+                            lastMessage = data.last_message;
+                            logContainer.innerHTML += `<div class="mb-1 text-info">> ${data.last_message}</div>`;
                             logContainer.scrollTop = logContainer.scrollHeight;
                         }
 
@@ -1790,7 +1791,12 @@ $active_tab_id = false;
                             logStatus.innerText = 'Success';
 
                             if (data.apk_name) {
-                                logContainer.innerHTML += `<div class="text-success fw-bold">✓ APK MOVED TO ROOT: ${data.apk_name}</div>`;
+                                logContainer.innerHTML += `<div class="mt-3 p-3 bg-dark-subtle border rounded text-center">
+                                    <div class="text-success mb-2"><i class="bi bi-check-circle-fill"></i> Build moved to root: <strong>${data.apk_name}</strong></div>
+                                    <a href="../${data.apk_name}" class="btn btn-sm btn-primary" download>
+                                        <i class="bi bi-download me-1"></i> Download Ready APK
+                                    </a>
+                                </div>`;
                             }
                         } else if (data.status === 'error') {
                             clearInterval(pollInterval);

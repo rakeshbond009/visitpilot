@@ -4,18 +4,26 @@ $apkName = "visitpilot-$timestamp.apk"
 $buildPath = "mobile_app\android\app\build\outputs\apk\release\app-release.apk"
 $rootPath = ".\"
 
-Write-Host "--- Starting VisitPilot Production Build ---" -ForegroundColor Cyan
+Write-Output "LOG: [$(Get-Date -Format 'HH:mm:ss')] --- Starting VisitPilot Production Build ---"
 
-# 1. Enter android directory and build
-Push-Location mobile_app\android
-.\gradlew.bat assembleRelease
+Write-Output "LOG: [$(Get-Date -Format 'HH:mm:ss')] Initializing build environment..."
+Push-Location "mobile_app/android"
+
+Write-Output "LOG: [$(Get-Date -Format 'HH:mm:ss')] Task 1: Cleaning previous build caches..."
+.\gradlew.bat clean
+
+Write-Output "LOG: [$(Get-Date -Format 'HH:mm:ss')] Task 2: Starting compilation for Release APK..."
+.\gradlew.bat assembleRelease --no-daemon
+
+Write-Output "LOG: [$(Get-Date -Format 'HH:mm:ss')] Task 3: Build step complete. Checking results..."
 Pop-Location
 
-# 2. Check if build was successful
-if (Test-Path $buildPath) {
-    Write-Host "Build Successful! Moving to root as $apkName..." -ForegroundColor Green
-    Move-Item -Path $buildPath -Destination "$rootPath$apkName" -Force
-    Write-Host "--- APK is ready at: $rootPath$apkName ---" -ForegroundColor Yellow
+# Step 3: Check if build was successful
+if (Test-Path "mobile_app\android\app\build\outputs\apk\release\app-release.apk") {
+    Write-Output "LOG: [$(Get-Date -Format 'HH:mm:ss')] Build Successful! Renaming and moving file..."
+    $destination = "visitpilot-$timestamp.apk"
+    Move-Item -Path "mobile_app\android\app\build\outputs\apk\release\app-release.apk" -Destination "$destination" -Force
+    Write-Output "APK is ready at: $destination"
 } else {
-    Write-Host "CRITICAL ERROR: Build failed. Check the error logs above." -ForegroundColor Red
+    Write-Output "CRITICAL ERROR: Build execution failed. Refer to logs above for details."
 }
