@@ -177,6 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'purpose' => (string) $purpose,
                 'company' => (string) ($visitorObj['company'] ?? 'General Visitor'),
                 'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
+                'assets_carried' => (string) ($assets_carried ?? 'None'),
                 'type' => 'visitor_arrival'
             ];
 

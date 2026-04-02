@@ -401,10 +401,11 @@ function AppContent() {
                 <IncomingCallScreen
                     visible={showOverlay}
                     visitorData={{
-                        name: arrivalData.visitor_name,
+                        name: arrivalData.name,
                         company: arrivalData.company,
                         purpose: arrivalData.purpose,
-                        photo: arrivalData.visitor_photo,
+                        photo: arrivalData.photo,
+                        assets_carried: arrivalData.assets_carried,
                         visit_id: arrivalData.visit_id
                     }}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
