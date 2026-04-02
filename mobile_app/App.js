@@ -216,10 +216,10 @@ function AppContent() {
                     console.log("[App.js] Found pending arrival in storage");
                     const payload = JSON.parse(stored);
                     const data = standardizeArrivalData(payload);
-                    
+
                     // Immediately clear storage to avoid double-processing
                     await AsyncStorage.removeItem('pending_arrival_call');
-                    
+
                     if (data) {
                         setArrivalData(data);
                         setShowOverlay(true);
@@ -401,10 +401,10 @@ function AppContent() {
                 <IncomingCallScreen
                     visible={showOverlay}
                     visitorData={{
-                        name: arrivalData.visitor_name,
+                        name: arrivalData.name,
                         company: arrivalData.company,
                         purpose: arrivalData.purpose,
-                        photo: arrivalData.visitor_photo,
+                        photo: arrivalData.photo,
                         visit_id: arrivalData.visit_id
                     }}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}

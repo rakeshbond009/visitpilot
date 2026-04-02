@@ -43,7 +43,8 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
     foreach ($users as $user) {
         $platform = strtolower($user['platform'] ?? 'android');
         $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken) continue;
+        if (!$accessToken)
+            continue;
 
         $message = [
             'message' => [
@@ -59,25 +60,17 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                     'priority' => 'high',
                     'ttl' => '0s',
                     'notification' => [
-                        'channel_id' => 'vms_arrivals',
-                        'sticky' => true,
-                        'visibility' => 'public',
-                        'notification_priority' => 'priority_max',
-                        'default_vibrate_timings' => true,
-                        'default_sound' => true,
-                        'bypass_dnd' => true,
+                        'channel_id' => 'vms_urgent_alerts_v2',
+                        'priority' => 'max',
+                        'sound' => 'default',
                     ]
+                ],
+                'notification' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body,
                 ]
             ]
         ];
-
-        // ANDROID KILLED STATE FIX: Omit notification block for Android
-        if ($platform !== 'android') {
-            $message['message']['notification'] = [
-                'title' => (string) $title,
-                'body' => (string) $body,
-            ];
-        }
 
         $payloadJson = json_encode($message);
         $log("Sending to $platform: $payloadJson");
