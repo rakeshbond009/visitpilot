@@ -61,7 +61,25 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void wakeUpApp() {
-        // If the app is in foreground, just ensure screen is on
+        // 1. Hardware Wake (PowerManager) - Force screen on
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) reactContext.getSystemService(android.content.Context.POWER_SERVICE);
+            if (pm != null) {
+                // PARTIAL_WAKE_LOCK keeps CPU on, but we want the SCREEN on
+                // ACQUIRE_CAUSES_WAKEUP + ON_AFTER_RELEASE forces screen on
+                android.os.PowerManager.WakeLock wakeLock = pm.newWakeLock(
+                    android.os.PowerManager.FULL_WAKE_LOCK |
+                    android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP |
+                    android.os.PowerManager.ON_AFTER_RELEASE,
+                    "VMS:WakeUpLock"
+                );
+                wakeLock.acquire(3000); // Hold for 3 seconds
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 2. Activity Wake (If app is foreground-ish)
         if (getCurrentActivity() != null) {
             final Activity activity = getCurrentActivity();
             activity.runOnUiThread(new Runnable() {
@@ -70,7 +88,9 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                         activity.setShowWhenLocked(true);
                         activity.setTurnScreenOn(true);
-                        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                        activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON |
+                                                       WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON |
+                                                       WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
                     } else {
                         activity.getWindow().addFlags(
                                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED |
@@ -82,7 +102,7 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
             });
         }
 
-        // ALWAYS try to bring to front/launch if called, to handle background/killed states
+        // 3. Launch/Bring to Front
         try {
             String packageName = reactContext.getPackageName();
             Intent intent = reactContext.getPackageManager().getLaunchIntentForPackage(packageName);
