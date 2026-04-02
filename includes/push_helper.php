@@ -13,9 +13,9 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
     $log("Attempting push for Employee ID: $employee_id. Title: $title");
 
-    // Modified to fetch from user_devices table for multi-device support
+    // Fetch from user_devices table for multi-device and platform-specific support
     $stmt = $pdo->prepare("
-        SELECT u.id as user_id, ud.fcm_token, u.role 
+        SELECT u.id as user_id, ud.fcm_token, u.role, ud.platform 
         FROM users u 
         JOIN user_devices ud ON u.id = ud.user_id 
         WHERE u.employee_id = ? 
@@ -24,7 +24,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
     $stmt->execute([$employee_id]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Fallback to legacy single token if no devices found (Backward Compatibility)
+    // Fallback to legacy single token
     if (empty($users)) {
         $stmt = $pdo->prepare("SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.employee_id = ? AND u.fcm_token IS NOT NULL");
         $stmt->execute([$employee_id]);
@@ -36,79 +36,43 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         return false;
     }
 
-    // Filter out users with empty or suspiciously short tokens
-    $users = array_filter($users, function ($u) {
-        return !empty(trim($u['fcm_token'])) && strlen($u['fcm_token']) > 20;
-    });
-
-    if (empty($users)) {
-        $log("Filtered out all tokens (too short or empty) for Employee ID: $employee_id");
-        return false;
-    }
-
     $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
-    if (!file_exists($certPath)) {
-        $log("CRITICAL ERROR: Firebase Service Account JSON not found at: $certPath");
-        return false;
-    }
-
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
     foreach ($users as $user) {
-        $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']}) with Token: " . substr($user['fcm_token'], 0, 15) . "...");
-
+        $platform = strtolower($user['platform'] ?? 'android');
         $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken) {
-            $log("ERROR: Failed to obtain Google Access Token for User ID: {$user['user_id']}");
-            continue;
-        }
-
-        // Platform-Specific Payload Strategy
-        // Android: Data-only to trigger onMessageReceived -> Background Task -> Local Notification -> Full Screen Intent
-        // iOS: Standard Notification via APNs to ensure banner visibility
+        if (!$accessToken) continue;
 
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
-                'notification' => [
-                    'title' => (string) $title,
-                    'body' => (string) $body,
-                ],
                 'data' => array_merge([
                     'title' => (string) $title,
                     'body' => (string) $body,
                     'type' => 'visitor_arrival',
                     'is_call_priority' => 'true',
-                    'visitId' => (string) ($data['visit_id'] ?? ''),
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
-                    'click_action' => 'visitor_arrival_action'
                 ], $data),
                 'android' => [
                     'priority' => 'high',
-                    'ttl' => '0s',
-                ],
-                'apns' => [
-                    'payload' => [
-                        'aps' => [
-                            'alert' => [
-                                'title' => (string) $title,
-                                'body' => (string) $body,
-                            ],
-                            'sound' => 'default',
-                            'category' => 'visitor_arrival',
-                            'content-available' => 1,
-                            'mutable-content' => 1
-                        ]
-                    ]
                 ]
             ]
         ];
 
-        $payloadJson = json_encode($message);
-        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+        // ANDROID KILLED STATE FIX: Omit notification block for Android
+        if ($platform !== 'android') {
+            $message['message']['notification'] = [
+                'title' => (string) $title,
+                'body' => (string) $body,
+            ];
+        }
 
-        $ch = curl_init($url);
+        $payloadJson = json_encode($message);
+        $log("Sending to $platform: $payloadJson");
+
+        $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -117,19 +81,11 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
 
-        // Log the outgoing payload (sensitive data masked)
-        $log("Sending Payload: " . $payloadJson);
-
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
         curl_close($ch);
 
-        if ($curlError) {
-            $log("CURL ERROR for User ID {$user['user_id']}: $curlError");
-        } else {
-            $log("FCM RESPONSE for User ID {$user['user_id']} [HTTP $httpCode]: $response");
-        }
+        $log("FCM Response [HTTP $httpCode]: $response");
     }
     return true;
 }

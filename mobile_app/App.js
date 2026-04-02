@@ -16,39 +16,54 @@ const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 import { NativeModules } from 'react-native';
 const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
     if (error) {
         console.error("[BG Task] Error:", error);
         return;
     }
-    if (data && data.notification) {
-        const payload = data.notification.data || data.notification;
-        console.log("[BG Task] Received Payload:", JSON.stringify(payload));
 
-        const isArrival = payload.type === 'visitor_arrival' || payload.is_call_priority === 'true';
-        const isApprovalUpdate = payload.type === 'approval_status';
+    console.log("[BG Task] Triggered with data:", JSON.stringify(data));
 
-        if (isArrival) {
-            // WAKE UP DEVICE IMMEDIATELY
-            if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-                console.log("[BG Task] Waking up device for visitor arrival...");
-                OverlayPermissionModule.wakeUpApp();
-            }
-
-            await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: payload.title || "Visitor Arrival",
-                    body: payload.body || "A visitor is waiting at the gate",
-                    data: { ...payload, fullScreenIntent: 'true' },
-                    categoryIdentifier: 'visitor_arrival',
-                    sound: true,
-                    priority: Notifications.AndroidNotificationPriority.MAX,
-                    vibrate: [0, 250, 250, 250],
-                },
-                trigger: null,
-                channelId: 'vms_urgent_alerts_v2',
-            });
+    // Support both 'data-only' (Android background) and 'notification+data' (foreground/others)
+    let payload = null;
+    if (data) {
+        if (data.notification) {
+            payload = data.notification.data || data.notification;
+        } else {
+            payload = data;
         }
+    }
+
+    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
+        console.log("[BG Task] Valid arrival detected. Waking up...");
+
+        // 1. PERSIST FOR MAIN UI (to handle cases where app wakes up but listener isn't ready)
+        try {
+            await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
+        } catch (storageErr) {
+            console.error("[BG Task] Storage Error:", storageErr.message);
+        }
+
+        // 2. WAKE UP DEVICE IMMEDIATELY (Native Module)
+        if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
+            OverlayPermissionModule.wakeUpApp();
+        }
+
+        // 3. SCHEDULE LOCAL NOTIFICATION (Fallback/Heads-up)
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: payload.title || "Visitor Arrival",
+                body: payload.body || "A visitor is waiting at the gate",
+                data: payload,
+                categoryIdentifier: 'visitor_arrival',
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.MAX,
+            },
+            trigger: null,
+            channelId: 'vms_urgent_alerts_v2',
+        });
     }
 });
 
@@ -194,7 +209,24 @@ function AppContent() {
                     }
                 }
 
-                // 2. Check for presented notifications
+                // 2. CHECK PERSISTENT STORAGE (Set by BG Task)
+                const stored = await AsyncStorage.getItem('pending_arrival_call');
+                if (stored) {
+                    console.log("[App.js] Found pending arrival in storage");
+                    const payload = JSON.parse(stored);
+                    const data = standardizeArrivalData(payload);
+                    
+                    // Immediately clear storage to avoid double-processing
+                    await AsyncStorage.removeItem('pending_arrival_call');
+                    
+                    if (data) {
+                        setArrivalData(data);
+                        setShowOverlay(true);
+                        return true;
+                    }
+                }
+
+                // 3. Check for presented notifications
                 const presented = await Notifications.getPresentedNotificationsAsync();
                 const arrivalNotif = presented.find(n => {
                     const d = n.request.content.data;
@@ -217,13 +249,13 @@ function AppContent() {
 
         // Initial check
         checkNotifications();
-        
+
         // Polling check for 10 seconds (useful for background -> foreground wakeups)
         const pollInterval = setInterval(async () => {
-             const found = await checkNotifications();
-             if (found) clearInterval(pollInterval);
+            const found = await checkNotifications();
+            if (found) clearInterval(pollInterval);
         }, 1000);
-        
+
         const pollTimeout = setTimeout(() => {
             clearInterval(pollInterval);
         }, 10000);
