@@ -58,19 +58,17 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                 ], $data),
                 'android' => [
                     'priority' => 'high',
-                    'ttl' => '0s',
-                    'notification' => [
-                        'channel_id' => 'vms_urgent_alerts_v2',
-                        'priority' => 'max',
-                        'sound' => 'default',
-                    ]
-                ],
-                'notification' => [
-                    'title' => (string) $title,
-                    'body' => (string) $body,
                 ]
             ]
         ];
+
+        // ANDROID KILLED STATE FIX: Omit notification block for Android
+        if ($platform !== 'android') {
+            $message['message']['notification'] = [
+                'title' => (string) $title,
+                'body' => (string) $body,
+            ];
+        }
 
         $payloadJson = json_encode($message);
         $log("Sending to $platform: $payloadJson");
