@@ -15,7 +15,7 @@ def rnVersion = 740500
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
-    entryFile = file("../../App.js")
+    entryFile = file("../../index.js")
     reactNativeDir = file("../../node_modules/react-native")
     codegenDir = file("../../node_modules/@react-native/codegen")
 
