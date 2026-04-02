@@ -61,7 +61,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
                 priority: Notifications.AndroidNotificationPriority.MAX,
             },
             trigger: null,
-            channelId: 'vms_urgent_alerts_v2',
+            channelId: 'vms_urgent_alerts_v3',
         });
     }
 });
@@ -175,16 +175,20 @@ function AppContent() {
 
     useEffect(() => {
         // --- 1. Overlay Permission Check (Android Only) ---
+        // We use a flag to prevent multiple alerts if the component re-renders
+        let isChecking = false;
         const checkOverlayPermission = async () => {
+            if (isChecking) return;
+            isChecking = true;
             if (Platform.OS === 'android' && OverlayPermissionModule) {
                 try {
                     const hasPermission = await OverlayPermissionModule.hasOverlayPermission();
                     if (!hasPermission) {
                         Alert.alert(
-                            "Overlay Permission Required",
-                            "VisitPilot needs permission to 'Display over other apps' to wake your screen for visitor arrivals. Please enable it in the next screen.",
+                            "Wake Screen Permission",
+                            "To show visitor arrivals while your screen is locked, please enable 'Display over other apps' in the next screen.",
                             [
-                                { text: "Cancel", style: "cancel" },
+                                { text: "Later", style: "cancel" },
                                 { text: "Open Settings", onPress: () => OverlayPermissionModule.openOverlaySettings() }
                             ]
                         );

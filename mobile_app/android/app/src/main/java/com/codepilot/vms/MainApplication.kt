@@ -56,13 +56,10 @@ class MainApplication : Application(), ReactApplication {
 
   private fun createNotificationChannel() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val channelId = "vms_urgent_alerts_v2"
-      val name = "VMS Visitor Alerts (Urgent V2)"
+      val channelId = "vms_urgent_alerts_v3"
+      val name = "VMS Visitor Alerts (Urgent V3)"
       val descriptionText = "Urgent alerts for visitor arrivals"
-      val importance = NotificationManager.IMPORTANCE_HIGH
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-          // Some Android versions need high-level definitions
-      }
+      val importance = NotificationManager.IMPORTANCE_MAX
       val channel = NotificationChannel(channelId, name, importance).apply {
         description = descriptionText
         enableLights(true)
