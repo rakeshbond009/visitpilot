@@ -97,18 +97,18 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
                         </Animated.View>
 
                         <View style={styles.nameContainer}>
-                            <Text style={styles.visitorName}>{visitorData?.name || 'Unknown Visitor'}</Text>
+                            <Text style={styles.visitorName}>{visitorData?.visitor_name || visitorData?.name || visitorData?.username || 'Unknown Visitor'}</Text>
                             <Text style={styles.visitorInfo}>{visitorData?.company || 'Organization Not Disclosed'}</Text>
                         </View>
 
-                        <View style={[styles.detailsGlass, { marginTop: 15 }]}>
+                        <View style={[styles.detailsGlass, { marginTop: 10 }]}>
                             <View style={styles.detailItem}>
-                                <Ionicons name="enter-outline" size={20} color="#60a5fa" />
+                                <Ionicons name="enter-outline" size={18} color="#60a5fa" />
                                 <Text style={styles.detailText}>{visitorData?.purpose || 'General Visit'}</Text>
                             </View>
-                            <View style={[styles.detailItem, { marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 10 }]}>
-                                <Ionicons name="briefcase-outline" size={20} color="#fbbf24" />
-                                <Text style={styles.detailText}>{visitorData?.assets_carried || 'No items carried'}</Text>
+                            <View style={[styles.detailItem, { marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8 }]}>
+                                <Ionicons name="briefcase-outline" size={18} color="#fbbf24" />
+                                <Text style={styles.detailText}>{visitorData?.assets_carried || visitorData?.assets || 'No items carried'}</Text>
                             </View>
                         </View>
                     </View>
@@ -215,10 +215,10 @@ const styles = StyleSheet.create({
         width: '100%',
         flex: 1,
         justifyContent: 'flex-start',
-        marginTop: 40,
+        marginTop: 20,
     },
     avatarWrapper: {
-        marginBottom: 30,
+        marginBottom: 15,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 20 },
         shadowOpacity: 0.5,
@@ -226,9 +226,9 @@ const styles = StyleSheet.create({
         elevation: 20,
     },
     avatarBorder: {
-        width: 220,
-        height: 220,
-        borderRadius: 110,
+        width: 180,
+        height: 180,
+        borderRadius: 90,
         backgroundColor: 'rgba(255,255,255,0.05)',
         padding: 8,
         borderWidth: 1,
@@ -237,12 +237,12 @@ const styles = StyleSheet.create({
     avatar: {
         width: '100%',
         height: '100%',
-        borderRadius: 102,
+        borderRadius: 82,
     },
     placeholderAvatar: {
         width: '100%',
         height: '100%',
-        borderRadius: 102,
+        borderRadius: 82,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'rgba(255,255,255,0.1)',
