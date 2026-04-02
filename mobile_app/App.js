@@ -46,19 +46,12 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
             console.error("[BG Task] Storage Error:", storageErr.message);
         }
 
-        // 2. WAKE UP DEVICE IMMEDIATELY (Native Module + Deep Link)
-        try {
-            if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-                OverlayPermissionModule.wakeUpApp();
-            }
-            
-            // SECONDARY WAKE: Use deep link as fallback
-            Linking.openURL('com.codepilot.vms://arrival').catch(() => {});
-        } catch (wakeErr) {
-            console.log("[BG Task] Wake error:", wakeErr);
+        // 2. WAKE UP DEVICE IMMEDIATELY (Native Module)
+        if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
+            OverlayPermissionModule.wakeUpApp();
         }
 
-        // 3. SCHEDULE LOCAL NOTIFICATION (Heads-up)
+        // 3. SCHEDULE LOCAL NOTIFICATION (Fallback/Heads-up)
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: payload.title || "Visitor Arrival",
@@ -71,11 +64,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
             trigger: null,
             channelId: 'vms_urgent_alerts_v2',
         });
-
-        return Notifications.BackgroundNotificationResult.NEW_DATA;
     }
-    
-    return Notifications.BackgroundNotificationResult.NO_DATA;
 });
 
 // Utils
@@ -412,10 +401,10 @@ function AppContent() {
                 <IncomingCallScreen
                     visible={showOverlay}
                     visitorData={{
-                        name: arrivalData.name,
+                        name: arrivalData.visitor_name,
                         company: arrivalData.company,
                         purpose: arrivalData.purpose,
-                        photo: arrivalData.photo,
+                        photo: arrivalData.visitor_photo,
                         visit_id: arrivalData.visit_id
                     }}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
