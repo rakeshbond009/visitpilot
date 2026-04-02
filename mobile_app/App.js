@@ -174,10 +174,31 @@ function AppContent() {
     };
 
     useEffect(() => {
-        // Register background task first
+        // --- 1. Overlay Permission Check (Android Only) ---
+        const checkOverlayPermission = async () => {
+            if (Platform.OS === 'android' && OverlayPermissionModule) {
+                try {
+                    const hasPermission = await OverlayPermissionModule.hasOverlayPermission();
+                    if (!hasPermission) {
+                        Alert.alert(
+                            "Overlay Permission Required",
+                            "VisitPilot needs permission to 'Display over other apps' to wake your screen for visitor arrivals. Please enable it in the next screen.",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { text: "Open Settings", onPress: () => OverlayPermissionModule.openOverlaySettings() }
+                            ]
+                        );
+                    }
+                } catch (e) {
+                    console.log("Overlay Check Error:", e);
+                }
+            }
+        };
+        checkOverlayPermission();
+
+        // --- 2. Register background task ---
         try {
             if (Platform.OS === 'android') {
-                // Check if task is already registered to avoid errors
                 TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK).then(registered => {
                     if (!registered) Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
                 });
@@ -186,8 +207,7 @@ function AppContent() {
             console.log("Task Manager Error:", e);
         }
 
-        // Defer token registration by 5s so auto-login (checkExistingSession) has time to
-        // populate 'userData' in AsyncStorage before updateTokenOnServer checks it.
+        // --- 3. Token & Session handling ---
         setTimeout(() => {
             registerForPushNotificationsAsync(3, 2000).then(token => {
                 console.log('[App.js] Token Obtained:', token ? token.substring(0, 20) + '...' : 'null');
@@ -195,10 +215,9 @@ function AppContent() {
             });
         }, 5000);
 
-        // Check for notifications on start, and poll for a few seconds in case of background launch
+        // --- 4. Notification listeners ---
         const checkNotifications = async () => {
             try {
-                // 1. Check for last response (if user tapped)
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
                     const data = standardizeArrivalData(response.notification.request.content.data);
@@ -209,32 +228,13 @@ function AppContent() {
                     }
                 }
 
-                // 2. CHECK PERSISTENT STORAGE (Set by BG Task)
                 const stored = await AsyncStorage.getItem('pending_arrival_call');
                 if (stored) {
                     console.log("[App.js] Found pending arrival in storage");
                     const payload = JSON.parse(stored);
                     const data = standardizeArrivalData(payload);
-
-                    // Immediately clear storage to avoid double-processing
                     await AsyncStorage.removeItem('pending_arrival_call');
 
-                    if (data) {
-                        setArrivalData(data);
-                        setShowOverlay(true);
-                        return true;
-                    }
-                }
-
-                // 3. Check for presented notifications
-                const presented = await Notifications.getPresentedNotificationsAsync();
-                const arrivalNotif = presented.find(n => {
-                    const d = n.request.content.data;
-                    return d?.type === 'visitor_arrival' || d?.is_call_priority === 'true';
-                });
-
-                if (arrivalNotif) {
-                    const data = standardizeArrivalData(arrivalNotif.request.content.data);
                     if (data) {
                         setArrivalData(data);
                         setShowOverlay(true);
@@ -247,26 +247,12 @@ function AppContent() {
             return false;
         };
 
-        // Initial check
         checkNotifications();
 
-        // Polling check for 10 seconds (useful for background -> foreground wakeups)
-        const pollInterval = setInterval(async () => {
-            const found = await checkNotifications();
-            if (found) clearInterval(pollInterval);
-        }, 1000);
-
-        const pollTimeout = setTimeout(() => {
-            clearInterval(pollInterval);
-        }, 10000);
-
         notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            console.log(" [App.js] Notification Received (Foreground):", JSON.stringify(notification));
+            console.log(" [App.js] Notification Received:", JSON.stringify(notification));
             const data = standardizeArrivalData(notification.request.content.data);
-
-            // Only show overlay for actual visitor arrivals
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                console.log(" [App.js] Visitor Arrival Detected - Showing Overlay");
                 setArrivalData(data);
                 setShowOverlay(true);
             }
@@ -274,7 +260,6 @@ function AppContent() {
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
             const data = standardizeArrivalData(response.notification.request.content.data);
-            // Only show overlay for actual visitor arrivals
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data);
                 setShowOverlay(true);
@@ -284,8 +269,6 @@ function AppContent() {
         return () => {
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
-            clearInterval(pollInterval);
-            clearTimeout(pollTimeout);
         };
     }, []);
 
