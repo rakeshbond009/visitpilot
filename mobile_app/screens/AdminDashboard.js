@@ -46,7 +46,6 @@ export default function AdminDashboard({ navigation, route }) {
             navigation.setParams({ openVisitId: null });
         }
     }, [route.params?.openVisitId]);
-
     const [userData, setUserData] = useState(null);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'visitors'
     const [visitorView, setVisitorView] = useState('log'); // 'log', 'invites', 'pending'

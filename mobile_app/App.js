@@ -161,6 +161,7 @@ function AppContent() {
         }
 
         const standardized = {
+            ...data,
             visit_id: visit_id,
             name: data.visitor_name || data.name || data.title || "Unknown Visitor",
             mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
@@ -284,7 +285,6 @@ function AppContent() {
             }
 
             // 2. VISIT UPDATE (for employee/admin when visit is approved/rejected)
-            // Payload from push_helper.php uses 'visitId'
             const visitId = data?.visitId || data?.visit_id;
             if (data && data.type === 'visit_update' && visitId) {
                 console.log("[App.js] Visit Update notification clicked. ID:", visitId);
