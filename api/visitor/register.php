@@ -230,7 +230,8 @@ try {
             'purpose' => (string) $data['purpose'],
             'company' => (string) ($visitor['address'] ?? ($visitor['company'] ?? 'General Visitor')),
             'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
-            'type' => 'visitor_arrival'
+            'type' => 'visitor_arrival',
+            'assets_carried' => (string) $assets
         ];
 
         // Send to Role/Employee

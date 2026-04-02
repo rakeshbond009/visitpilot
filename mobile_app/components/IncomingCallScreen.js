@@ -101,10 +101,14 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
                             <Text style={styles.visitorInfo}>{visitorData?.company || 'Organization Not Disclosed'}</Text>
                         </View>
 
-                        <View style={styles.detailsGlass}>
+                        <View style={[styles.detailsGlass, { marginTop: 15 }]}>
                             <View style={styles.detailItem}>
                                 <Ionicons name="enter-outline" size={20} color="#60a5fa" />
                                 <Text style={styles.detailText}>{visitorData?.purpose || 'General Visit'}</Text>
+                            </View>
+                            <View style={[styles.detailItem, { marginTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 10 }]}>
+                                <Ionicons name="briefcase-outline" size={20} color="#fbbf24" />
+                                <Text style={styles.detailText}>{visitorData?.assets_carried || 'No items carried'}</Text>
                             </View>
                         </View>
                     </View>
@@ -210,7 +214,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        marginTop: 40,
     },
     avatarWrapper: {
         marginBottom: 30,

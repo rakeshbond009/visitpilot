@@ -161,11 +161,12 @@ function AppContent() {
 
         const standardized = {
             visit_id: visit_id,
-            visitor_name: data.visitor_name || data.name || data.title || "Unknown Visitor",
-            visitor_mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
-            visitor_photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
+            name: data.visitor_name || data.name || data.title || "Unknown Visitor",
+            mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
+            photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
+            assets_carried: data.assets_carried || data.asset || "None",
             type: data.type || "visitor_arrival"
         };
 

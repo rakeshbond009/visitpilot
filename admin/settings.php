@@ -480,6 +480,7 @@ $tabs = [
     'settings_whatsapp' => ['id' => 'whatsapp', 'title' => 'WhatsApp Config', 'icon' => 'bi-whatsapp'],
     'settings_ai' => ['id' => 'ai', 'title' => 'AI Integration', 'icon' => 'bi-robot'],
     'settings_registration' => ['id' => 'registration', 'title' => 'Visitor Form Config', 'icon' => 'bi-ui-checks'],
+    'settings_build' => ['id' => 'build', 'title' => 'Build App', 'icon' => 'bi-cpu'],
     'admin_audit' => ['id' => 'info', 'title' => 'System Info', 'icon' => 'bi-info-circle'],
 ];
 
@@ -1706,6 +1707,121 @@ $active_tab_id = false;
                 </div>
             </div>
         </div>
+    <?php endif; ?>
+
+    <!-- Tab: Build Mobile App -->
+    <?php if (canView('settings_build')): ?>
+        <div class="tab-pane fade <?php echo ($active_tab_id === 'build') ? 'show active' : ''; ?>" id="build" role="tabpanel">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card shadow-sm rounded-4 border-0 hover-shadow transition-all">
+                        <div class="card-header bg-dark text-white py-3 border-0 rounded-top-4">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-cpu-fill me-2"></i> Build Production APK</h5>
+                        </div>
+                        <div class="card-body p-5 text-center">
+                            <div class="mb-4">
+                                <i class="bi bi-android display-1 text-success opacity-25"></i>
+                            </div>
+                            <h4 class="fw-bold mb-3">Rebuild Mobile Application</h4>
+                            <p class="text-muted mb-5">Clicking the button below will trigger a new production build of the VisitPilot Android app. This process takes 5-10 minutes and runs in the background. The final APK will be moved to the project root.</p>
+
+                            <button id="startBuildBtn" class="btn btn-dark btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm mb-3">
+                                <i class="bi bi-play-fill me-2"></i> Start Build Process
+                            </button>
+
+                            <div id="buildProgressSection" class="mt-4 d-none">
+                                <div class="d-flex align-items-center justify-content-center mb-3">
+                                    <div class="spinner-border text-primary me-3" role="status"></div>
+                                    <span class="fw-bold text-primary">Build in progress...</span>
+                                </div>
+                                <div class="progress rounded-pill mb-3" style="height: 10px;">
+                                    <div id="buildProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card shadow-sm rounded-4 border-0 h-100">
+                        <div class="card-header bg-light py-3 border-0 rounded-top-4 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i> Build Logs</h6>
+                            <span id="logStatus" class="badge bg-secondary rounded-pill">Idle</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="buildLogs" class="p-4 font-monospace small bg-dark text-light overflow-auto" style="height: 400px; line-height: 1.6;">
+                                <div class="text-muted italic">// Click 'Start Build' to see live output here...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('startBuildBtn');
+            const progressSection = document.getElementById('buildProgressSection');
+            const logContainer = document.getElementById('buildLogs');
+            const logStatus = document.getElementById('logStatus');
+            let pollInterval = null;
+
+            function triggerUpdate() {
+                 fetch('api/build_status.php')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.last_message) {
+                            logContainer.innerHTML += `<div class="mb-1">> ${data.last_message}</div>`;
+                            logContainer.scrollTop = logContainer.scrollHeight;
+                        }
+
+                        if (data.status === 'processing') {
+                            startBtn.disabled = true;
+                            startBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Building...';
+                            progressSection.classList.remove('d-none');
+                            logStatus.className = 'badge bg-primary rounded-pill';
+                            logStatus.innerText = 'Building';
+                        } else if (data.status === 'complete') {
+                            clearInterval(pollInterval);
+                            startBtn.disabled = false;
+                            startBtn.classList.replace('btn-dark', 'btn-success');
+                            startBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Build Complete!';
+                            progressSection.classList.add('d-none');
+                            logStatus.className = 'badge bg-success rounded-pill';
+                            logStatus.innerText = 'Success';
+
+                            if (data.apk_name) {
+                                logContainer.innerHTML += `<div class="text-success fw-bold">✓ APK MOVED TO ROOT: ${data.apk_name}</div>`;
+                            }
+                        } else if (data.status === 'error') {
+                            clearInterval(pollInterval);
+                            startBtn.disabled = false;
+                            startBtn.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Build Failed';
+                            progressSection.classList.add('d-none');
+                            logStatus.className = 'badge bg-danger rounded-pill';
+                            logStatus.innerText = 'Error';
+                        }
+                    });
+            }
+
+            startBtn.addEventListener('click', function() {
+                this.disabled = true;
+                this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Initializing...';
+                logContainer.innerHTML = '<div class="text-info">> Triggering build script...</div>';
+
+                fetch('api/trigger_build.php')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            progressSection.classList.remove('d-none');
+                            pollInterval = setInterval(triggerUpdate, 3000);
+                        } else {
+                            alert(data.message);
+                            this.disabled = false;
+                        }
+                    });
+            });
+        });
+        </script>
     <?php endif; ?>
 
     <!-- Tab 4: Info (SUPER ADMIN ONLY) -->
