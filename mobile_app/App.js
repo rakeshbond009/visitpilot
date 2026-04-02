@@ -2,7 +2,7 @@ import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Alert, Linking, Platform, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -96,6 +96,7 @@ Notifications.setNotificationHandler({
 });
 
 const Stack = createStackNavigator();
+const navigationRef = createNavigationContainerRef();
 
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
@@ -275,10 +276,30 @@ function AppContent() {
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
             const data = standardizeArrivalData(response.notification.request.content.data);
-            // Only show overlay for actual visitor arrivals
+            
+            // 1. ARRIVAL OVERLAY (for Security/Host on visitor arrival)
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data);
                 setShowOverlay(true);
+            }
+
+            // 2. VISIT UPDATE (for employee/admin when visit is approved/rejected)
+            // Payload from push_helper.php uses 'visitId'
+            const visitId = data?.visitId || data?.visit_id;
+            if (data && data.type === 'visit_update' && visitId) {
+                console.log("[App.js] Visit Update notification clicked. ID:", visitId);
+                
+                // Determine target dashboard based on current role
+                let target = 'HostDashboard'; 
+                if (role === 'admin') target = 'AdminDashboard';
+                else if (role === 'security') target = 'SecurityDashboard';
+
+                if (navigationRef.isReady()) {
+                    navigationRef.navigate(target, { 
+                        openVisitId: visitId,
+                        timestamp: Date.now() // Force update even if already on the screen
+                    });
+                }
             }
         });
 
@@ -336,7 +357,7 @@ function AppContent() {
 
     return (
         <View style={{ flex: 1 }}>
-            <NavigationContainer linking={linking}>
+            <NavigationContainer linking={linking} ref={navigationRef}>
                 <Stack.Navigator
                     initialRouteName="Login"
                     screenOptions={{

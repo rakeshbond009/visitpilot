@@ -31,7 +31,7 @@ import { checkOverlayPermission } from '../utils/notificationManager';
 
 const { width, height } = Dimensions.get('window');
 
-export default function SecurityDashboard({ navigation }) {
+export default function SecurityDashboard({ navigation, route }) {
     const { hasPermission, permissions, refreshPermissions } = usePermissions();
     const [userData, setUserData] = useState(null);
     const [stats, setStats] = useState({
@@ -41,6 +41,17 @@ export default function SecurityDashboard({ navigation }) {
         checkin_pending: 0,
         time_saved_fmt: '0 mins'
     });
+
+    // Deep Link Visit Auto-Open
+    useEffect(() => {
+        const ovid = route.params?.openVisitId;
+        if (ovid) {
+            console.log("[SecurityDashboard] Deep link triggered for Visit:", ovid);
+            fetchVisitDetails(ovid);
+            // Clear params to avoid loop
+            navigation.setParams({ openVisitId: null });
+        }
+    }, [route.params?.openVisitId]);
     const [aiMetrics, setAiMetrics] = useState({
         crowd_density: 0,
         avg_checkin_time: '0s',
