@@ -56,10 +56,10 @@ class MainApplication : Application(), ReactApplication {
 
   private fun createNotificationChannel() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      val channelId = "vms_urgent_alerts_v3"
-      val name = "VMS Visitor Alerts (Urgent V3)"
+      val channelId = "vms_urgent_alerts_v2"
+      val name = "VMS Visitor Alerts (Urgent V2)"
       val descriptionText = "Urgent alerts for visitor arrivals"
-      val importance = NotificationManager.IMPORTANCE_MAX
+      val importance = NotificationManager.IMPORTANCE_HIGH
       val channel = NotificationChannel(channelId, name, importance).apply {
         description = descriptionText
         enableLights(true)
@@ -71,7 +71,7 @@ class MainApplication : Application(), ReactApplication {
         val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
         val audioAttributes = AudioAttributes.Builder()
           .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-          .setUsage(AudioAttributes.USAGE_ALARM) // Alarm usage allows louder sound and DND bypass
+          .setUsage(AudioAttributes.USAGE_ALARM)
           .build()
         setSound(soundUri, audioAttributes)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
