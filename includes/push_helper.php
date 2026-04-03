@@ -46,28 +46,58 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         if (!$accessToken)
             continue;
 
+        // Build base data payload — all values MUST be strings for FCM data messages
+        $dataPayload = array_merge([
+            'title'           => (string) $title,
+            'body'            => (string) $body,
+            'type'            => 'visitor_arrival',
+            'is_call_priority'=> 'true',
+            'visit_id'        => (string) ($data['visit_id'] ?? ''),
+            'visitor_name'    => (string) ($data['visitor_name'] ?? $data['name'] ?? ''),
+            'visitor_mobile'  => (string) ($data['visitor_mobile'] ?? $data['mobile'] ?? ''),
+            'visitor_photo'   => (string) ($data['visitor_photo'] ?? $data['photo_url'] ?? ''),
+            'company'         => (string) ($data['company'] ?? ''),
+            'purpose'         => (string) ($data['purpose'] ?? ''),
+            'assets_carried'  => (string) ($data['assets_carried'] ?? 'None'),
+        ], array_map('strval', $data));
+
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
-                'data' => array_merge([
-                    'title' => (string) $title,
-                    'body' => (string) $body,
-                    'type' => 'visitor_arrival',
-                    'is_call_priority' => 'true',
-                    'visit_id' => (string) ($data['visit_id'] ?? ''),
-                ], $data),
+                'data'  => $dataPayload,
                 'android' => [
                     'priority' => 'high',
-                    'ttl' => '0s',
+                    'ttl'      => '0s',
+                    // notification block causes FCM to wake device & triggers our native service
+                    'notification' => [
+                        'title'                => (string) $title,
+                        'body'                 => (string) $body,
+                        'channel_id'           => 'vms_call_channel',   // matches MyFirebaseMessagingService
+                        'notification_priority'=> 'PRIORITY_MAX',
+                        'visibility'           => 'PUBLIC',
+                        'sound'                => 'default',
+                        'default_sound'        => true,
+                        'default_vibrate_timings' => true,
+                    ]
                 ]
             ]
         ];
 
-        // ANDROID KILLED STATE FIX: Omit notification block for Android
-        if ($platform !== 'android') {
+        // iOS: keep notification block for APNs
+        if ($platform === 'ios') {
             $message['message']['notification'] = [
                 'title' => (string) $title,
-                'body' => (string) $body,
+                'body'  => (string) $body,
+            ];
+            $message['message']['apns'] = [
+                'headers' => ['apns-priority' => '10'],
+                'payload' => [
+                    'aps' => [
+                        'alert'            => ['title' => (string)$title, 'body' => (string)$body],
+                        'sound'            => 'default',
+                        'content-available'=> 1,
+                    ]
+                ]
             ];
         }
 
