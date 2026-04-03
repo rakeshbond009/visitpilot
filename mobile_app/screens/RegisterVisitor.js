@@ -89,10 +89,10 @@ export default function RegisterVisitor({ navigation, route }) {
     useEffect(() => {
         if (route.params?.code) {
             setLookupValue(route.params.code);
-            // We use setTimeout to ensure states are initialized before calling lookup
-            // We pass false to skip the redundant alert when redirected from scan
+            // We pass true to show the confirmation alert even when redirected from scan
+            // as requested by the user.
             setTimeout(() => {
-                lookupInvitation(route.params.code, false);
+                lookupInvitation(route.params.code, true);
             }, 500);
         }
     }, [route.params?.code]);
