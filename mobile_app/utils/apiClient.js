@@ -15,12 +15,12 @@ apiClient.interceptors.request.use(
             const storedUser = await AsyncStorage.getItem('userData');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
-                
+
                 // Add Session ID to headers
                 if (user.session_id) {
                     config.headers['X-Session-ID'] = user.session_id;
                 }
-                
+
                 // Add tenant to params if not present
                 if (user.tenant && !config.params?.tenant) {
                     config.params = {

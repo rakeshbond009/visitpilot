@@ -157,49 +157,6 @@ try {
             error_log("QR Generation Error: " . $curl_error);
         }
     }
-
-    // --- DAHUA INTEGRATION (Sync on Check-in/Entry) ---
-    try {
-        $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-
-        // Safety Check: Only sync if visitor is approved AND either checked-in or manually approved
-        $checkStatusStmt = $pdo->prepare("SELECT status, approval_status FROM visits WHERE id = ?");
-        $checkStatusStmt->execute([$visit_id]);
-        $vStatus = $checkStatusStmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($vStatus && $vStatus['approval_status'] === 'approved' && in_array($vStatus['status'], ['checked_in', 'approved'])) {
-            if ($photo_path && !empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
-                $startTime = date('Y-m-d H:i:s');
-                $endTime = date('Y-m-d 23:59:59');
-
-                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns'] ?? '');
-                $deviceSnsList = array_map('trim', array_filter($deviceSnsList));
-
-                $visitorData = [
-                    'visitor_id' => $visitor_id,
-                    'name' => $data['name'],
-                    'face_path' => realpath('../../' . $photo_path),
-                    'qr_code' => $visit_code,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSnsList
-                ];
-
-                $syncResult = $dahua->syncVisitor($visitorData);
-
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed (Register) for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success (Register/Entry) for Visit $visit_id");
-                }
-            }
-        }
-    } catch (Exception $e) {
-        error_log("Dahua Integration Error in Register: " . $e->getMessage());
-    }
-
     // 4. Handle Accompanying Members
     if (!empty($members)) {
         // Clear existing members if any (for invited visits)
@@ -215,63 +172,89 @@ try {
 
     $pdo->commit();
 
-    // 5. SEND PUSH NOTIFICATION & WHATSAPP
-    try {
-        $push_log = __DIR__ . '/register_push_trace.log';
-        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Starting push flow for Visitor ID: $visitor_id\n", FILE_APPEND);
-        
-        require_once dirname(__DIR__, 2) . '/includes/push_helper.php';
-        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Push helper loaded.\n", FILE_APPEND);
-
-        $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?");
-        $stmt->execute([$visitor_id]);
-        $visitor = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $pushData = [
-            'visitor_id' => (string) $visitor_id,
-            'visit_id' => (string) $visit_id,
-            'visitor_name' => (string) $visitor['name'],
-            'visitor_mobile' => (string) $visitor['mobile'],
-            'purpose' => (string) $data['purpose'],
-            'company' => (string) ($visitor['address'] ?? ($visitor['company'] ?? 'General Visitor')),
-            'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
-            'type' => 'visitor_arrival',
-            'assets_carried' => (string) $assets
-        ];
-
-        // Send to Role/Employee
-        sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$visitor['name']} is waiting for your approval.", $pushData);
-
-        // WhatsApp Automation
-        require_once '../../includes/whatsapp_helper.php';
-        $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
-        $hStmt->execute([$data['employee_id']]);
-        $host = $hStmt->fetch(PDO::FETCH_ASSOC);
-        if ($host && !empty($host['mobile'])) {
-            $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Found host {$host['name']} with mobile {$host['mobile']} for visitor {$visitor['name']} using visitor_arrival_host_alert\n";
-            file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
-
-            sendWhatsAppNotification(
-                $host['mobile'],
-                "Visitor {$visitor['name']} has arrived to meet you.",
-                'visitor_arrival_host_alert',
-                ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]
-            );
-        } else {
-            $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Host NOT found or mobile empty for ID: " . ($data['employee_id'] ?? 'NONE') . "\n";
-            file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
-        }
-    } catch (Exception $e) {
-        error_log("Notification System Error: " . $e->getMessage());
-    }
-
-    sendResponse('success', 'Visitor registered successfully', [
+    // Send response immediately to allow visitor flow to continue
+    sendBackgroundResponse('success', 'Visitor registered successfully', [
         'visit_id' => $visit_id,
         'visit_code' => $visit_code,
-        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
+        'qr_code_url' => isset($qr_code_path) ? $qr_code_path : null,
         'status' => $invitation_id ? 'approved' : 'pending',
         'approval_status' => $invitation_id ? 'approved' : 'pending'
     ]);
+
+    // --- BACKGROUND TASKS START HERE ---
+
+    // 1. DAHUA INTEGRATION (Sync on Check-in/Entry)
+    try {
+        $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        $checkStatusStmt = $pdo->prepare("SELECT status, approval_status FROM visits WHERE id = ?");
+        $checkStatusStmt->execute([$visit_id]);
+        $vStatus = $checkStatusStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($vStatus && $vStatus['approval_status'] === 'approved' && in_array($vStatus['status'], ['checked_in', 'approved'])) {
+            if ($photo_path && !empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
+                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
+                $startTime = date('Y-m-d H:i:s');
+                $endTime = date('Y-m-d 23:59:59');
+                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns'] ?? '');
+                $deviceSnsList = array_map('trim', array_filter($deviceSnsList));
+
+                $visitorData = [
+                    'visitor_id' => $visitor_id,
+                    'name' => $data['name'],
+                    'face_path' => realpath('../../' . $photo_path),
+                    'qr_code' => $visit_code,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'device_sns' => $deviceSnsList
+                ];
+                $dahua->syncVisitor($visitorData);
+            }
+        }
+    } catch (Throwable $e) {
+        error_log("Dahua Background Error: " . $e->getMessage());
+    }
+
+    // 2. SEND PUSH NOTIFICATION & WHATSAPP
+    try {
+        require_once dirname(__DIR__, 2) . '/includes/push_helper.php';
+        require_once '../../includes/whatsapp_helper.php';
+
+        $stmt = $pdo->prepare("SELECT v.*, vis.name, vis.mobile, vis.address, vis.company FROM visits v JOIN visitors vis ON v.visitor_id = vis.id WHERE v.id = ?");
+        $stmt->execute([$visit_id]);
+        $visitorInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($visitorInfo) {
+            $pushData = [
+                'visitor_id' => (string) $visitorInfo['visitor_id'],
+                'visit_id' => (string) $visit_id,
+                'visitor_name' => (string) $visitorInfo['name'],
+                'visitor_mobile' => (string) $visitorInfo['mobile'],
+                'purpose' => (string) $visitorInfo['purpose'],
+                'company' => (string) ($visitorInfo['address'] ?? ($visitorInfo['company'] ?? 'General Visitor')),
+                'photo_url' => $visitorInfo['visit_photo'] ? BASE_URL . $visitorInfo['visit_photo'] : '',
+                'type' => 'visitor_arrival',
+                'assets_carried' => (string) ($visitorInfo['assets_carried'] ?? 'None')
+            ];
+
+            sendPushNotification($pdo, $visitorInfo['employee_id'], "New Visitor Arrival", "{$visitorInfo['name']} is waiting for your approval.", $pushData);
+
+            // WhatsApp Automation
+            $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
+            $hStmt->execute([$visitorInfo['employee_id']]);
+            $host = $hStmt->fetch(PDO::FETCH_ASSOC);
+            if ($host && !empty($host['mobile'])) {
+                sendWhatsAppNotification(
+                    $host['mobile'],
+                    "Visitor {$visitorInfo['name']} has arrived to meet you.",
+                    'visitor_arrival_host_alert',
+                    ["*{$host['name']}*", "*{$visitorInfo['name']}*", "*{$visitorInfo['purpose']}*"]
+                );
+            }
+        }
+    } catch (Throwable $e) {
+        error_log("Notification Background Error: " . $e->getMessage());
+    }
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
