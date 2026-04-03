@@ -5,7 +5,7 @@ import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 
-const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
+const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismiss }) => {
     const [actionLoading, setActionLoading] = useState(false);
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const slideAnim = useRef(new Animated.Value(height)).current;
@@ -81,6 +81,14 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject }) => {
                             <Text style={styles.incomingText}>Incoming Arrival</Text>
                         </View>
                         <Text style={styles.timeText}>Visitor at Gate</Text>
+                        
+                        {/* Manual Dismiss Button */}
+                        <TouchableOpacity 
+                            onPress={onDismiss} 
+                            style={{ position: 'absolute', right: 20, top: 10, padding: 10 }}
+                        >
+                            <Ionicons name="close-circle-outline" size={32} color="rgba(255,255,255,0.5)" />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.visitorProfile}>

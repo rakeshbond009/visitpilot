@@ -3,13 +3,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration, DeviceEventEmitter } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
-
 import { APP_VERSION } from './constants';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
@@ -17,57 +18,6 @@ const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 // For Overlay permission (Appear on top)
 import { NativeModules } from 'react-native';
 const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
-    if (error) {
-        console.error("[BG Task] Error:", error);
-        return;
-    }
-
-    console.log("[BG Task] Triggered with data:", JSON.stringify(data));
-
-    // Support both 'data-only' (Android background) and 'notification+data' (foreground/others)
-    let payload = null;
-    if (data) {
-        if (data.notification) {
-            payload = data.notification.data || data.notification;
-        } else {
-            payload = data;
-        }
-    }
-
-    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
-        console.log("[BG Task] Valid arrival detected. Waking up...");
-
-        // 1. PERSIST FOR MAIN UI (to handle cases where app wakes up but listener isn't ready)
-        try {
-            await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
-        } catch (storageErr) {
-            console.error("[BG Task] Storage Error:", storageErr.message);
-        }
-
-        // 2. WAKE UP DEVICE IMMEDIATELY (Native Module)
-        if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-            OverlayPermissionModule.wakeUpApp();
-        }
-
-        // 3. SCHEDULE LOCAL NOTIFICATION (Fallback/Heads-up)
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title: payload.title || "Visitor Arrival",
-                body: payload.body || "A visitor is waiting at the gate",
-                data: payload,
-                categoryIdentifier: 'visitor_arrival',
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority.MAX,
-            },
-            trigger: null,
-            channelId: 'vms_urgent_alerts_v2',
-        });
-    }
-});
 
 // Utils
 import apiClient from './utils/apiClient';
@@ -95,6 +45,46 @@ Notifications.setNotificationHandler({
         shouldPlaySound: true,
         shouldSetBadge: true,
     }),
+});
+
+const BACKGROUND_TASK_TIMEOUT = 10000;
+
+TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
+    if (error) {
+        console.error("[BG Task] Error:", error);
+        return;
+    }
+
+    console.log("[BG Task] Triggered with data:", JSON.stringify(data));
+
+    let payload = data?.notification?.data || data;
+
+    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
+        console.log("[BG Task] Valid arrival detected. Waking up...");
+
+        try {
+            await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
+        } catch (storageErr) {
+            console.error("[BG Task] Storage Error:", storageErr.message);
+        }
+
+        if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
+            OverlayPermissionModule.wakeUpApp();
+        }
+
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: payload.title || "Visitor Arrival",
+                body: payload.body || "A visitor is waiting at the gate",
+                data: payload,
+                categoryIdentifier: 'visitor_arrival',
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.MAX,
+            },
+            trigger: null,
+            channelId: 'vms_urgent_alerts_v2',
+        });
+    }
 });
 
 const Stack = createStackNavigator();
@@ -126,39 +116,78 @@ function AppContent() {
     const [arrivalData, setArrivalData] = useState(null);
     const [sound, setSound] = useState(null);
 
-    // --- RINGING & VIBRATION LOGIC ---
+    const { role, hasPermission, loading } = usePermissions();
+
+    const standardizeArrivalData = (raw) => {
+        if (!raw) return null;
+        let data = raw.data || raw.params || raw;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) { }
+        }
+
+        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
+        
+        if (!visit_id && data.body) {
+            try {
+                const parsedBody = JSON.parse(data.body);
+                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
+                data = { ...data, ...parsedBody };
+            } catch (e) { }
+        }
+
+        return {
+            visit_id: visit_id,
+            name: data.visitor_name || data.name || data.title || "Unknown Visitor",
+            mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
+            photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
+            company: data.company || data.organization || data.visitor_company || "General Visitor",
+            purpose: data.purpose || data.reason || data.body || "General Visit",
+            assets_carried: data.assets_carried || data.assets || data.asset || "None",
+            type: data.type || "visitor_arrival"
+        };
+    };
+
+    // --- RINGING & VIBRATION ---
     useEffect(() => {
         let isLooping = true;
         
         async function startRinging() {
             if (showOverlay) {
-                // 1. Play Sound
                 try {
-                    const ringtoneUrl = 'https://www.soundjay.com/phone/telephone-ring-03a.mp3';
-                    const { sound: newSound } = await Audio.Sound.createAsync(
-                        { uri: ringtoneUrl },
-                        { shouldPlay: true, isLooping: true, volume: 1.0 }
-                    ).catch(err => {
-                        console.log("Creation error, trying fallback...");
-                        return Audio.Sound.createAsync(
-                            { uri: 'https://www.soundjay.com/phone/phone-calling-1.mp3' },
-                            { shouldPlay: true, isLooping: true }
-                        );
+                    await Audio.setAudioModeAsync({
+                        allowsRecordingIOS: false,
+                        staysActiveInBackground: true,
+                        interruptionModeIOS: 1,
+                        playsInSilentModeIOS: true,
+                        shouldDuckAndroid: true,
+                        interruptionModeAndroid: 1,
+                        playThroughEarpieceAndroid: false
                     });
-                    setSound(newSound);
-                } catch (e) {
-                    console.log("Audio Error:", e);
-                }
 
-                // 2. Continuous Vibration
-                const startVibrate = () => {
-                    if (isLooping) {
-                        Vibration.vibrate([1000, 1000, 1000], true);
+                    const urls = [
+                        'https://www.soundjay.com/phone/telephone-ring-03a.mp3',
+                        'https://www.soundjay.com/phone/phone-calling-1.mp3',
+                        'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sample.mp3'
+                    ];
+
+                    for (const url of urls) {
+                        try {
+                            const { sound: newSound } = await Audio.Sound.createAsync(
+                                { uri: url },
+                                { shouldPlay: true, isLooping: true, volume: 1.0 }
+                            );
+                            if (isLooping) {
+                                setSound(newSound);
+                                break;
+                            } else {
+                                newSound.unloadAsync();
+                            }
+                        } catch (e) { }
                     }
-                };
-                startVibrate();
+                } catch (e) { }
+                
+                if (isLooping) Vibration.vibrate([1000, 1000, 1000], true);
             } else {
-                // Stop everything
                 isLooping = false;
                 if (sound) {
                     sound.stopAsync().catch(() => {});
@@ -170,80 +199,24 @@ function AppContent() {
         }
 
         startRinging();
-
         return () => {
             isLooping = false;
             Vibration.cancel();
         };
     }, [showOverlay]);
 
-    // Permission context
-    const { role, hasPermission, loading } = usePermissions();
-
-    const standardizeArrivalData = (raw) => {
-        if (!raw) return null;
-
-        console.log("[DEBUG] Raw Notification Data:", JSON.stringify(raw));
-
-        // Deep extract: some systems wrap our payload under a 'data' or 'body' key
-        let data = raw.data || raw.params || raw;
-
-        // Handle case where 'data' might be a JSON string itself
-        if (typeof data === 'string') {
-            try {
-                const parsed = JSON.parse(data);
-                data = parsed;
-            } catch (e) {
-                console.log("[DEBUG] Failed to parse data string:", e);
-            }
-        }
-
-        // 1. Direct access
-        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
-
-        // 2. Nested body parsing (common with some FCM setups)
-        if (!visit_id && data.body) {
-            try {
-                const parsedBody = JSON.parse(data.body);
-                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
-                // Merge parsed body into data for other fields
-                data = { ...data, ...parsedBody };
-            } catch (e) {
-                // It's just a string body, not JSON
-            }
-        }
-
-        const standardized = {
-            visit_id: visit_id,
-            name: data.visitor_name || data.name || data.title || "Unknown Visitor",
-            mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
-            photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
-            company: data.company || data.organization || data.visitor_company || "General Visitor",
-            purpose: data.purpose || data.reason || data.body || "General Visit",
-            assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival"
-        };
-
-        console.log("[DEBUG] Standardized Notification Object:", JSON.stringify(standardized));
-        return standardized;
-    };
-
+    // --- AUTO DISMISS ---
     useEffect(() => {
-        // Register background task first
-        try {
-            if (Platform.OS === 'android') {
-                // Check if task is already registered to avoid errors
-                TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK).then(registered => {
-                    if (!registered) Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
-                });
-            }
-        } catch (e) {
-            console.log("Task Manager Error:", e);
+        let timer;
+        if (showOverlay) {
+            timer = setTimeout(() => setShowOverlay(false), 60000);
         }
+        return () => clearTimeout(timer);
+    }, [showOverlay]);
 
-        // Listen for native showArrivalOverlay event (from MainActivity / MyFirebaseMessagingService)
+    // --- NOTIFICATION LISTENERS ---
+    useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('showArrivalOverlay', (data) => {
-            console.log("[App.js] Event Listener - Native Signal Received:", JSON.stringify(data));
             const standardized = standardizeArrivalData(data);
             if (standardized) {
                 setArrivalData(standardized);
@@ -251,140 +224,79 @@ function AppContent() {
             }
         });
 
-        // Defer token registration by 5s so auto-login (checkExistingSession) has time to
-        // populate 'userData' in AsyncStorage before updateTokenOnServer checks it.
         setTimeout(() => {
             registerForPushNotificationsAsync(3, 2000).then(token => {
-                console.log('[App.js] Token Obtained:', token ? token.substring(0, 20) + '...' : 'null');
                 if (token) updateTokenOnServer(token);
             });
         }, 5000);
 
-        // Check for notifications on start, and poll for a few seconds in case of background launch
         const checkNotifications = async () => {
             try {
-                // 1. Check for last response (if user tapped)
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
                     const data = standardizeArrivalData(response.notification.request.content.data);
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                        setArrivalData(data);
-                        setShowOverlay(true);
-                        return true;
+                        setArrivalData(data); setShowOverlay(true); return true;
                     }
                 }
 
-                // 2. CHECK PERSISTENT STORAGE (Set by BG Task)
                 const stored = await AsyncStorage.getItem('pending_arrival_call');
                 if (stored) {
-                    console.log("[App.js] Found pending arrival in storage");
-                    const payload = JSON.parse(stored);
-                    const data = standardizeArrivalData(payload);
-
-                    // Immediately clear storage to avoid double-processing
+                    const data = standardizeArrivalData(JSON.parse(stored));
                     await AsyncStorage.removeItem('pending_arrival_call');
-
                     if (data) {
-                        setArrivalData(data);
-                        setShowOverlay(true);
-                        return true;
+                        setArrivalData(data); setShowOverlay(true); return true;
                     }
                 }
-
-                // 3. Check for presented notifications
-                const presented = await Notifications.getPresentedNotificationsAsync();
-                const arrivalNotif = presented.find(n => {
-                    const d = n.request.content.data;
-                    return d?.type === 'visitor_arrival' || d?.is_call_priority === 'true';
-                });
-
-                if (arrivalNotif) {
-                    const data = standardizeArrivalData(arrivalNotif.request.content.data);
-                    if (data) {
-                        setArrivalData(data);
-                        setShowOverlay(true);
-                        return true;
-                    }
-                }
-            } catch (err) {
-                console.log("Check Notifications Error:", err);
-            }
+            } catch (e) { }
             return false;
         };
 
-        // Initial check
         checkNotifications();
+        const poll = setInterval(async () => {
+            if (await checkNotifications()) clearInterval(poll);
+        }, 2000);
+        setTimeout(() => clearInterval(poll), 10000);
 
-        // Polling check for 10 seconds (useful for background -> foreground wakeups)
-        const pollInterval = setInterval(async () => {
-            const found = await checkNotifications();
-            if (found) clearInterval(pollInterval);
-        }, 1000);
-
-        const pollTimeout = setTimeout(() => {
-            clearInterval(pollInterval);
-        }, 10000);
-
-        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-            console.log(" [App.js] Notification Received (Foreground):", JSON.stringify(notification));
-            const data = standardizeArrivalData(notification.request.content.data);
-
-            // Only show overlay for actual visitor arrivals
+        notificationListener.current = Notifications.addNotificationReceivedListener(n => {
+            const data = standardizeArrivalData(n.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                console.log(" [App.js] Visitor Arrival Detected - Showing Overlay");
-                setArrivalData(data);
-                setShowOverlay(true);
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            const data = standardizeArrivalData(response.notification.request.content.data);
-            // Only show overlay for actual visitor arrivals
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
+            const data = standardizeArrivalData(r.notification.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data);
-                setShowOverlay(true);
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
         return () => {
+            subscription.remove();
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
-            subscription.remove();
-            clearInterval(pollInterval);
-            clearTimeout(pollTimeout);
         };
     }, []);
 
     const handleAction = async (visitId, action) => {
-        if (!visitId) {
-            Alert.alert('Error', 'Missing visit ID. Cannot perform action.');
-            return;
+        setShowOverlay(false);
+        setArrivalData(null);
+        Vibration.cancel();
+        if (sound) {
+            sound.stopAsync().catch(() => {});
+            sound.unloadAsync().catch(() => {});
+            setSound(null);
         }
 
         try {
-            console.log(`[DEBUG] Handling Visit Action: ${action} for ID: ${visitId}`);
-
-            await Notifications.dismissAllNotificationsAsync();
-            await Notifications.cancelAllScheduledNotificationsAsync();
-
-            const idToDismiss = visitId ? visitId.toString() : '1337';
-            await Notifications.dismissNotificationAsync(`visitor_arrival:${idToDismiss}`).catch(() => { });
-            await Notifications.dismissNotificationAsync(idToDismiss).catch(() => { });
-
-            const response = await apiClient.post('api/visit/status_action.php', {
-                action: action,
-                visit_id: visitId,
-            });
-
-            if (response.data.status === 'success') {
-                setShowOverlay(false);
-                setArrivalData(null);
-            } else {
+            await Notifications.dismissAllNotificationsAsync().catch(() => {});
+            const response = await apiClient.post('api/visit/status_action.php', { action, visit_id: visitId });
+            if (response.data.status !== 'success') {
                 Alert.alert('Error', response.data.message || 'Action failed');
             }
         } catch (error) {
-            console.error("Action API Error:", error);
-            Alert.alert('Error', 'Communication error with server');
+            Alert.alert('Network Error', 'The action failed to reach the server.');
         }
     };
 
@@ -398,62 +310,18 @@ function AppContent() {
 
     return (
         <View style={{ flex: 1 }}>
+            <StatusBar style="light" />
             <NavigationContainer linking={linking}>
-                <Stack.Navigator
-                    initialRouteName="Login"
-                    screenOptions={{
-                        headerShown: false,
-                        cardStyle: { backgroundColor: '#f8f9fa' }
-                    }}
-                >
+                <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
-
-                    {/* Role-Based Dashboards */}
-                    {(role === 'host' || role === 'employee' || role === 'admin') && (
-                        <Stack.Screen name="HostDashboard" component={HostDashboard} />
-                    )}
-                    {(role === 'security' || role === 'admin') && (
-                        <Stack.Screen name="SecurityDashboard" component={SecurityDashboard} />
-                    )}
-                    {role === 'admin' && (
-                        <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
-                    )}
-
-                    {/* Permission-Based Screens */}
-                    {(hasPermission('security_register') || hasPermission('host_invite') || role === 'admin') && (
-                        <Stack.Screen name="RegisterVisitor" component={RegisterVisitor} />
-                    )}
-                    {(hasPermission('host_invite') || role === 'admin') && (
-                        <Stack.Screen name="InviteVisitor" component={InviteVisitor} />
-                    )}
-                    {(hasPermission('view_employee_report') || hasPermission('host_reports') || hasPermission('admin_reports') || hasPermission('security_reports') || role === 'admin') && (
-                        <Stack.Screen name="Reports" component={VisitorReports} />
-                    )}
-
-                    {(hasPermission('view_employee_report') || hasPermission('admin_reports') || hasPermission('security_reports') || role === 'admin') && (
-                        <Stack.Screen name="EmployeeReport" component={EmployeeReport} />
-                    )}
-
-                    {(hasPermission('host_history') || role === 'admin') && (
-                        <Stack.Screen name="MyVisitorsHistory" component={MyVisitorsHistory} />
-                    )}
-
-                    {(hasPermission('admin_employees') || role === 'admin') && (
-                        <Stack.Screen name="Employees" component={ComingSoon} initialParams={{ screenName: 'Employees' }} />
-                    )}
-
-                    {(hasPermission('admin_users') || role === 'admin') && (
-                        <Stack.Screen name="Permissions" component={ComingSoon} initialParams={{ screenName: 'Permissions' }} />
-                    )}
-
-                    {(hasPermission(['settings_profile', 'settings_company', 'settings_general', 'settings_departments', 'settings_access', 'settings_email']) || role === 'admin') && (
-                        <Stack.Screen name="Settings" component={ComingSoon} initialParams={{ screenName: 'Settings' }} />
-                    )}
-
-                    {(hasPermission('admin_audit') || role === 'admin') && (
-                        <Stack.Screen name="AuditLogs" component={ComingSoon} initialParams={{ screenName: 'Audit Logs' }} />
-                    )}
-
+                    <Stack.Screen name="HostDashboard" component={HostDashboard} />
+                    <Stack.Screen name="SecurityDashboard" component={SecurityDashboard} />
+                    <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+                    <Stack.Screen name="InviteVisitor" component={InviteVisitor} />
+                    <Stack.Screen name="RegisterVisitor" component={RegisterVisitor} />
+                    <Stack.Screen name="Reports" component={VisitorReports} />
+                    <Stack.Screen name="EmployeeReport" component={EmployeeReport} />
+                    <Stack.Screen name="MyVisitorsHistory" component={MyVisitorsHistory} />
                     <Stack.Screen name="Departments" component={ComingSoon} initialParams={{ screenName: 'Departments' }} />
                     <Stack.Screen name="Tenants" component={ComingSoon} initialParams={{ screenName: 'Tenants' }} />
                 </Stack.Navigator>
@@ -465,6 +333,16 @@ function AppContent() {
                     visitorData={arrivalData}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
                     onReject={() => handleAction(arrivalData.visit_id, 'reject')}
+                    onDismiss={() => {
+                        setShowOverlay(false);
+                        setArrivalData(null);
+                        Vibration.cancel();
+                        if (sound) {
+                           sound.stopAsync().catch(() => {});
+                           sound.unloadAsync().catch(() => {});
+                           setSound(null);
+                        }
+                    }}
                 />
             )}
         </View>

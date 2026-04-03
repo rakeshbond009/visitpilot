@@ -84,6 +84,7 @@ class MainActivity : ReactActivity() {
             WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
         )
     }
+    window.addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
     // Ensure screen stays on for the call
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
   }
