@@ -283,6 +283,12 @@ function AppContent() {
         setShowOverlay(false);
         setArrivalData(null);
         Vibration.cancel();
+        
+        // STOP NATIVE Alert
+        if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
+            OverlayPermissionModule.stopRinging();
+        }
+
         if (sound) {
             sound.stopAsync().catch(() => {});
             sound.unloadAsync().catch(() => {});
@@ -337,6 +343,9 @@ function AppContent() {
                         setShowOverlay(false);
                         setArrivalData(null);
                         Vibration.cancel();
+                        if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
+                           OverlayPermissionModule.stopRinging();
+                        }
                         if (sound) {
                            sound.stopAsync().catch(() => {});
                            sound.unloadAsync().catch(() => {});

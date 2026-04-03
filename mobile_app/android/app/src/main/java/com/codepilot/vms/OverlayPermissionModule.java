@@ -113,4 +113,15 @@ public class OverlayPermissionModule extends ReactContextBaseJavaModule {
             e.printStackTrace();
         }
     }
+    @ReactMethod
+    public void stopRinging() {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity instanceof MainActivity) {
+                ((MainActivity) currentActivity).stopNativeAlert();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
