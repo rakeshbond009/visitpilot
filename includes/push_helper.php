@@ -100,9 +100,6 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
 function getGoogleAccessToken($serviceAccount)
 {
-    static $cachedToken = null;
-    if ($cachedToken) return $cachedToken;
-
     try {
         $now = time();
         $expiry = $now + 3600;
@@ -134,12 +131,9 @@ function getGoogleAccessToken($serviceAccount)
             'assertion' => $jwt
         ]));
 
-        $output = curl_exec($ch);
-        $tokenData = json_decode($output, true);
+        $tokenData = json_decode(curl_exec($ch), true);
         curl_close($ch);
-        
-        $cachedToken = $tokenData['access_token'] ?? '';
-        return $cachedToken;
+        return $tokenData['access_token'] ?? '';
     } catch (Exception $e) {
         return '';
     }

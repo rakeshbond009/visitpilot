@@ -42,11 +42,11 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 PowerManager.ON_AFTER_RELEASE, "VisitPilot:CallWakeLock");
         wakeLock.acquire(10000);
 
-        // 2. Prepare Intent for IncomingCallActivity (NATIVE CALL SCREEN)
-        Intent intent = new Intent(this, IncomingCallActivity.class);
+        // 2. Prepare Intent for MainActivity
+        Intent intent = new Intent(this, MainActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | 
-                       Intent.FLAG_ACTIVITY_NO_USER_ACTION | 
-                       Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+                       Intent.FLAG_ACTIVITY_REORDER_TO_FRONT |
+                       Intent.FLAG_ACTIVITY_SINGLE_TOP);
         
         for (Map.Entry<String, String> entry : data.entrySet()) {
             intent.putExtra(entry.getKey(), entry.getValue());

@@ -4,7 +4,7 @@ import { CONFIG } from './config';
 
 const apiClient = axios.create({
     baseURL: CONFIG.API_BASE_URL,
-    timeout: 30000,
+    timeout: 15000,
     withCredentials: true,
 });
 
