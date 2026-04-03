@@ -22,7 +22,7 @@ if ($action == 'checkin') {
         $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id WHERE v.id = ?");
         $stmt->execute([$id]);
         $visit = $stmt->fetch();
-        
+
         echo "Swal.fire({
             title: 'Confirm Check-In',
             text: 'Do you want to check in " . addslashes($visit['visitor_name']) . "?',
@@ -39,22 +39,19 @@ if ($action == 'checkin') {
             }
         });";
     }
-}
-elseif ($action == 'do_checkin') {
+} elseif ($action == 'do_checkin') {
     $current_time = current_datetime();
     $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=? WHERE id=?");
     $stmt->execute([$current_time, $id]);
     logAction($pdo, $_SESSION['user_id'], "Checked in visitor ID: $id (Process Visit)");
     echo "Swal.fire('Success', 'Visitor checked in successfully', 'success').then(() => { window.location.href='$home_url'; });";
-}
-elseif ($action == 'checkout') {
+} elseif ($action == 'checkout') {
     $current_time = current_datetime();
     $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=? WHERE id=?");
     $stmt->execute([$current_time, $id]);
     logAction($pdo, $_SESSION['user_id'], "Checked out visitor ID: $id (Process Visit)");
     echo "Swal.fire('Success', 'Visitor checked out successfully', 'success').then(() => { window.location.href='$home_url'; });";
-}
-elseif ($action == 'checkin_by_code') {
+} elseif ($action == 'checkin_by_code') {
     $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id WHERE v.visit_code = ?");
     $stmt->execute([$code]);
     $visit = $stmt->fetch();
@@ -107,22 +104,17 @@ elseif ($action == 'checkin_by_code') {
                     window.location.href='$home_url';
                 }
             });";
-        }
-        elseif ($visit['status'] == 'pending') {
+        } elseif ($visit['status'] == 'pending') {
             echo "Swal.fire('Approval Pending', 'This visit is pending host approval.', 'warning').then(() => { window.location.href='$home_url'; });";
-        }
-        elseif ($visit['status'] == 'checked_out') {
+        } elseif ($visit['status'] == 'checked_out') {
             echo "Swal.fire('Completed Visit', 'This visitor has already checked out.', 'error').then(() => { window.location.href='$home_url'; });";
-        }
-        else {
+        } else {
             echo "Swal.fire('Error', 'Invalid visit status: " . $visit['status'] . "', 'error').then(() => { window.location.href='$home_url'; });";
         }
-    }
-    else {
+    } else {
         echo "Swal.fire('Invalid Code', 'The scanned QR code was not found in our records', 'error').then(() => { window.location.href='scan_qr.php'; });";
     }
-}
-else {
+} else {
     echo "window.location.href='$home_url';";
 }
 echo "});

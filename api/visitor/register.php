@@ -89,15 +89,14 @@ try {
 
     if ($invitation_id) {
         $visit_id = $invitation_id;
-        // Fetch visit code for QR generation if needed
+        // Fetch visit code
         $vStmt = $pdo->prepare("SELECT visit_code FROM visits WHERE id = ?");
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        // Update existing Invitation - Set both status and approval_status to 'approved'
-        // Since it's an invitation, the host has already pre-approved it.
-        // We set visit_date=CURDATE() so it appears in today's pending check-in list.
-        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='approved', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=? WHERE id=?");
+        // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
+        // matching the web flow for invitations as requested.
+        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=? WHERE id=?");
         $stmt->execute([
             $assets,
             $data['id_proof_type'] ?? '',
@@ -166,7 +165,7 @@ try {
             }
             file_put_contents('../../' . $qr_filename, $qr_image);
             $qr_code_path = $qr_filename;
-            
+
             // Re-open PDO for quick update (since we committed)
             $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
         }

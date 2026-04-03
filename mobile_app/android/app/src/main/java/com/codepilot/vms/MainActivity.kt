@@ -74,12 +74,19 @@ class MainActivity : ReactActivity() {
         // Stop any previous ring
         stopNativeAlert()
         
-        val notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+        var notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+        if (notification == null) {
+            notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        }
+        if (notification == null) {
+            notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+        }
+
         mediaPlayer = MediaPlayer().apply {
             setDataSource(this@MainActivity, notification)
             setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setUsage(AudioAttributes.USAGE_ALARM)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .build()
             )

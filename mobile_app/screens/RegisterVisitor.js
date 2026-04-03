@@ -60,7 +60,7 @@ export default function RegisterVisitor({ navigation, route }) {
     const [loading, setLoading] = useState(false);
     const [searching, setSearching] = useState(false);
     const [user, setUser] = useState(null);
-    const [mandatoryFields, setMandatoryFields] = useState(["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"]);
+    const [mandatoryFields, setMandatoryFields] = useState(["visitor_name", "mobile_number", "id_proof", "purpose", "meeting_host", "otp_check"]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [registerResult, setRegisterResult] = useState(null);
     const [scanned, setScanned] = useState(false);
@@ -144,7 +144,7 @@ export default function RegisterVisitor({ navigation, route }) {
         if (isMandatory('access_area') && !accessArea) errors.push('Access Area');
         if (isMandatory('assets_carried') && !assets) errors.push('Assets Carried');
         if (isMandatory('photo') && !photo) errors.push('Visitor Photo');
-        
+
         if (isMandatory('members')) {
             const hasMember = members.some(m => m.trim() !== '');
             if (!hasMember) errors.push('Accompanying Visitor List');
@@ -243,11 +243,12 @@ export default function RegisterVisitor({ navigation, route }) {
                 setHostId(inv.host_id?.toString() || '');
                 setPurpose(inv.purpose || '');
                 setInvitationId(inv.id || null);
+                setAssets(inv.assets_carried || ''); // Restore the assets pre-fill fix
                 setIsPreApproved(true);
                 setPhoto(null); // Force new photo for every visit
-                
+
                 if (showSuccessAlert) {
-                    const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}`;
+                    const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}\nAssets: ${inv.assets_carried || 'None'}`;
                     showAlert('Success', `Invitation found and details pre-filled!\n\n${details}`, 'success');
                 }
             } else {
@@ -269,8 +270,8 @@ export default function RegisterVisitor({ navigation, route }) {
             if (userData) {
                 const parsedUser = JSON.parse(userData);
                 setUser(parsedUser);
-                setMandatoryFields(parsedUser.mandatory_fields || ["visitor_name","mobile_number","id_proof","purpose","meeting_host"]);
-                
+                setMandatoryFields(parsedUser.mandatory_fields || ["visitor_name", "mobile_number", "id_proof", "purpose", "meeting_host"]);
+
                 if (parsedUser.mandatory_fields?.includes('id_proof')) {
                     setIdProofEnabled(true);
                 }
@@ -290,7 +291,7 @@ export default function RegisterVisitor({ navigation, route }) {
                 const meta = metaResponse.data.data;
                 setPurposes(meta.purposes || []);
                 setAreas(meta.areas || []);
-                
+
                 if (meta.mandatory_fields) {
                     setMandatoryFields(meta.mandatory_fields);
                     if (meta.mandatory_fields.includes('id_proof')) setIdProofEnabled(true);
@@ -405,7 +406,7 @@ export default function RegisterVisitor({ navigation, route }) {
 
     const handleRegister = async (otpForcePassed = false) => {
         const cleanMobile = mobile.trim();
-        
+
         const errors = validateForm();
 
         if (errors.length > 0) {
@@ -813,16 +814,16 @@ export default function RegisterVisitor({ navigation, route }) {
                                     />
                                     <Text style={[styles.toggleLabel, { fontWeight: '800', fontSize: 12 }]}>ENABLE OTP CHECK{isMandatory('otp_check') ? ' *' : ''}</Text>
                                 </View>
-                                
+
                                 {otpEnabled && !isOtpVerified && mobile.length === 10 && (
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={[styles.sendOtpBtnInline, { marginTop: 12 }]}
                                         onPress={sendOTP}
                                     >
                                         <Text style={styles.sendOtpBtnTextInline}>SEND OTP FOR VERIFICATION</Text>
                                     </TouchableOpacity>
                                 )}
-                                
+
                                 {isOtpVerified && (
                                     <View style={[styles.verifiedBadgeInline, { marginTop: 12 }]}>
                                         <Icon name="check-decagram" size={16} color="#059669" />
@@ -1021,9 +1022,9 @@ export default function RegisterVisitor({ navigation, route }) {
                                         )}
                                         <Text style={styles.visitCode}>{registerResult?.visit_code}</Text>
                                         <Text style={styles.visitCodeLabel}>VISITOR PASS CODE</Text>
-                                        <View style={[styles.scheduledTag, { backgroundColor: '#dcfce7' }]}>
-                                            <Text style={[styles.scheduledText, { color: '#166534' }]}>
-                                                Status: Checked-in / Approved
+                                        <View style={[styles.scheduledTag, { backgroundColor: registerResult?.approval_status === 'pending' ? '#fff7ed' : '#dcfce7' }]}>
+                                            <Text style={[styles.scheduledText, { color: registerResult?.approval_status === 'pending' ? '#c2410c' : '#166534' }]}>
+                                                Status: {registerResult?.approval_status === 'pending' ? 'Awaiting Host Acknowledgment' : 'Checked-in / Approved'}
                                             </Text>
                                         </View>
                                     </>

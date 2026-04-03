@@ -297,12 +297,23 @@ function AppContent() {
 
         try {
             await Notifications.dismissAllNotificationsAsync().catch(() => {});
-            const response = await apiClient.post('api/visit/status_action.php', { action, visit_id: visitId });
-            if (response.data.status !== 'success') {
-                Alert.alert('Error', response.data.message || 'Action failed');
+            // Set a local timeout for the response so we don't hang if server is slow
+            const response = await apiClient.post('api/visit/status_action.php', { 
+                action, 
+                visit_id: visitId 
+            }, { timeout: 10000 }); // 10s local override
+            
+            if (response.data.status === 'success') {
+                // Success toast or nothing (standardized)
+            } else {
+                Alert.alert('Error', response.data.message || `Failed to ${action}`);
             }
         } catch (error) {
-            Alert.alert('Network Error', 'The action failed to reach the server.');
+            console.error('Action Failed:', error);
+            // Don't alert if it's just a timeout but the action likely completed on server
+            if (error.code !== 'ECONNABORTED') {
+                Alert.alert('Error', 'Connection failed while processing action.');
+            }
         }
     };
 

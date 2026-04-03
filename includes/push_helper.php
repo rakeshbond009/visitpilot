@@ -53,7 +53,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
     foreach ($users as $user) {
         $platform = strtolower($user['platform'] ?? 'android');
-        
+
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],

@@ -862,20 +862,11 @@ export default function SecurityDashboard({ navigation }) {
                 setScanned(false);
 
                 if (hasPermission('security_register')) {
-                    showAlert(
-                        'Pre-Approved Invitation',
-                        `Found invitation for: ${visitorName}\n\nHost: ${hostName}\nPurpose: ${purposeText}\n\nProceed to register this visitor?`,
-                        'success',
-                        {
-                            showCancel: true,
-                            confirmText: 'Register Now',
-                            onConfirm: () => navigation.navigate('RegisterVisitor', { code: code })
-                        }
-                    );
+                    navigation.navigate('RegisterVisitor', { code: code });
                 } else {
                     showAlert(
                         'Invitation Found',
-                        `An invitation for ${visitorName} was found.\n\nPlease ask a senior security officer or admin to complete the registration.`,
+                        `An invitation for ${visitorName} was found.\n\nPlease ask a senior security officer or admin to complete the registration at the gate.`,
                         'success'
                     );
                 }
