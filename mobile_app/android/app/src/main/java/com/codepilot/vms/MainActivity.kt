@@ -11,6 +11,8 @@ import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
 
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import android.app.KeyguardManager
 import android.content.Context
 
@@ -20,11 +22,51 @@ class MainActivity : ReactActivity() {
     setTheme(R.style.AppTheme);
     super.onCreate(null)
     setupWakeUp()
+    handleIntent(intent)
   }
 
   override fun onNewIntent(intent: android.content.Intent?) {
     super.onNewIntent(intent)
     setupWakeUp()
+    handleIntent(intent)
+  }
+
+  private fun handleIntent(intent: android.content.Intent?) {
+    if (intent == null) return
+    
+    // Extract extras from our specific notification flow
+    if (intent.hasExtra("visit_id") || intent.hasExtra("visitor_name") || intent.hasExtra("type")) {
+        val bundle = Bundle()
+        val extras = intent.extras
+        if (extras != null) {
+            for (key in extras.keySet()) {
+                val value = extras.get(key)
+                if (value != null) {
+                    bundle.putString(key, value.toString())
+                }
+            }
+        }
+        
+        // Ensure "assets" is populated if "assets_carried" is present
+        if (extras?.containsKey("assets_carried") == true && !extras.containsKey("assets")) {
+            bundle.putString("assets", extras.getString("assets_carried"))
+        }
+
+        emitToReactNative("showArrivalOverlay", bundle)
+    }
+  }
+
+  private fun emitToReactNative(eventName: String, params: Bundle) {
+    try {
+        val reactContext = reactNativeHost.reactInstanceManager.currentReactContext
+        if (reactContext != null) {
+            val map = Arguments.fromBundle(params)
+            reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                .emit(eventName, map)
+        }
+    } catch (e: Exception) {
+        // Silently fail if bridge isn't ready
+    }
   }
 
   private fun setupWakeUp() {

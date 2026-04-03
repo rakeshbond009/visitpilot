@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration } from 'react-native';
+import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration, DeviceEventEmitter } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Notifications from 'expo-notifications';
@@ -134,10 +134,17 @@ function AppContent() {
             if (showOverlay) {
                 // 1. Play Sound
                 try {
+                    const ringtoneUrl = 'https://www.soundjay.com/phone/telephone-ring-03a.mp3';
                     const { sound: newSound } = await Audio.Sound.createAsync(
-                        { uri: 'https://visitor.codepilotx.com/assets/sounds/iphone_ringtone.mp3' },
+                        { uri: ringtoneUrl },
                         { shouldPlay: true, isLooping: true, volume: 1.0 }
-                    );
+                    ).catch(err => {
+                        console.log("Creation error, trying fallback...");
+                        return Audio.Sound.createAsync(
+                            { uri: 'https://www.soundjay.com/phone/phone-calling-1.mp3' },
+                            { shouldPlay: true, isLooping: true }
+                        );
+                    });
                     setSound(newSound);
                 } catch (e) {
                     console.log("Audio Error:", e);
@@ -213,7 +220,7 @@ function AppContent() {
             photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
-            assets_carried: data.assets_carried || data.asset || "None",
+            assets_carried: data.assets_carried || data.assets || data.asset || "None",
             type: data.type || "visitor_arrival"
         };
 
@@ -233,6 +240,16 @@ function AppContent() {
         } catch (e) {
             console.log("Task Manager Error:", e);
         }
+
+        // Listen for native showArrivalOverlay event (from MainActivity / MyFirebaseMessagingService)
+        const subscription = DeviceEventEmitter.addListener('showArrivalOverlay', (data) => {
+            console.log("[App.js] Event Listener - Native Signal Received:", JSON.stringify(data));
+            const standardized = standardizeArrivalData(data);
+            if (standardized) {
+                setArrivalData(standardized);
+                setShowOverlay(true);
+            }
+        });
 
         // Defer token registration by 5s so auto-login (checkExistingSession) has time to
         // populate 'userData' in AsyncStorage before updateTokenOnServer checks it.
@@ -332,6 +349,7 @@ function AppContent() {
         return () => {
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+            subscription.remove();
             clearInterval(pollInterval);
             clearTimeout(pollTimeout);
         };
@@ -359,17 +377,14 @@ function AppContent() {
             });
 
             if (response.data.status === 'success') {
-
                 setShowOverlay(false);
                 setArrivalData(null);
             } else {
                 Alert.alert('Error', response.data.message || 'Action failed');
-                setShowOverlay(false);
             }
         } catch (error) {
             console.error("Action API Error:", error);
             Alert.alert('Error', 'Communication error with server');
-            setShowOverlay(false);
         }
     };
 
@@ -448,8 +463,8 @@ function AppContent() {
                 <IncomingCallScreen
                     visible={showOverlay}
                     visitorData={arrivalData}
-                    onAccept={() => handleArrivalAction('approved')}
-                    onReject={() => handleArrivalAction('rejected')}
+                    onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
+                    onReject={() => handleAction(arrivalData.visit_id, 'reject')}
                 />
             )}
         </View>
