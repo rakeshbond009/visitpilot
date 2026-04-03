@@ -61,7 +61,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
                 priority: Notifications.AndroidNotificationPriority.MAX,
             },
             trigger: null,
-            channelId: 'vms_urgent_alerts_v4',
+            channelId: 'vms_urgent_alerts_v2',
         });
     }
 });
@@ -174,40 +174,10 @@ function AppContent() {
     };
 
     useEffect(() => {
-        // --- 1. One-time Overlay Permission Check ---
-        const checkPermissions = async () => {
-            if (Platform.OS !== 'android' || !OverlayPermissionModule) return;
-            
-            const alreadySeen = await AsyncStorage.getItem('overlay_perm_checked');
-            if (alreadySeen) return;
-
-            try {
-                const hasPerm = await OverlayPermissionModule.hasOverlayPermission();
-                if (!hasPerm) {
-                    Alert.alert(
-                        "Critical Permission",
-                        "To wake your screen for visitors, please enable 'Display over other apps' in the next screen.",
-                        [
-                            { text: "Later", onPress: () => AsyncStorage.setItem('overlay_perm_checked', 'true') },
-                            { 
-                                text: "Enable", 
-                                onPress: () => {
-                                    OverlayPermissionModule.openOverlaySettings();
-                                    AsyncStorage.setItem('overlay_perm_checked', 'true');
-                                } 
-                            }
-                        ]
-                    );
-                }
-            } catch (e) {
-                console.log("Permission Check Error:", e);
-            }
-        };
-        checkPermissions();
-
-        // --- 2. Register background task ---
+        // Register background task first
         try {
             if (Platform.OS === 'android') {
+                // Check if task is already registered to avoid errors
                 TaskManager.isTaskRegisteredAsync(BACKGROUND_NOTIFICATION_TASK).then(registered => {
                     if (!registered) Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
                 });
