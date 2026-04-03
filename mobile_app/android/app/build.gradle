@@ -199,6 +199,7 @@ dependencies {
         }
     }
 
+    implementation("com.google.firebase:firebase-messaging")
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

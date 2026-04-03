@@ -5,12 +5,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
-import notifee, { AndroidCategory, AndroidVisibility, AndroidImportance } from '@notifee/react-native';
 
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
+const APP_VERSION = "VisitPilot v2026.04.03.1315";
 
 // For Overlay permission (Appear on top)
 import { NativeModules } from 'react-native';
@@ -37,62 +37,33 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
     }
 
     if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
-        console.log("[BG Task] Valid arrival detected. Showing full-screen notification...");
+        console.log("[BG Task] Valid arrival detected. Waking up...");
 
-        // 1. PERSIST FOR MAIN UI
+        // 1. PERSIST FOR MAIN UI (to handle cases where app wakes up but listener isn't ready)
         try {
             await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
         } catch (storageErr) {
             console.error("[BG Task] Storage Error:", storageErr.message);
         }
 
-        // 2. SHOW FULL-SCREEN CALL-STYLE NOTIFICATION via notifee
-        //    This is the ONLY JS-level API that supports fullScreenAction (lock-screen wake)
-        try {
-            // Create channel first (idempotent — safe to call every time)
-            const channelId = await notifee.createChannel({
-                id: 'vms_calls_v1',
-                name: 'Visitor Arrival Calls',
-                importance: AndroidImportance.HIGH,
-                sound: 'default',
-                vibration: true,
-                vibrationPattern: [300, 500, 300, 500],
-                visibility: AndroidVisibility.PUBLIC,
-                bypassDnd: true,
-            });
-
-            await notifee.displayNotification({
-                id: 'visitor_call_notif',
-                title: payload.title || '\uD83D\uDD14 Visitor Arrival',
-                body: payload.body || 'A visitor is waiting at the gate',
-                android: {
-                    channelId,
-                    category: AndroidCategory.CALL,
-                    importance: AndroidImportance.HIGH,
-                    visibility: AndroidVisibility.PUBLIC,
-                    sound: 'default',
-                    vibrationPattern: [300, 500, 300, 500],
-                    // THE KEY: fullScreenAction wakes the lock screen like an incoming call
-                    fullScreenAction: {
-                        id: 'default',
-                        launchActivity: 'default',
-                    },
-                    pressAction: {
-                        id: 'default',
-                        launchActivity: 'default',
-                    },
-                    ongoing: false,
-                    autoCancel: true,
-                    lights: [{ color: '#FF0000', onMs: 500, offMs: 500 }],
-                },
-            });
-        } catch (notifeeErr) {
-            console.error("[BG Task] Notifee error:", notifeeErr.message);
-            // Fallback: still try wakeUpApp so app at least comes to foreground
-            if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-                OverlayPermissionModule.wakeUpApp();
-            }
+        // 2. WAKE UP DEVICE IMMEDIATELY (Native Module)
+        if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
+            OverlayPermissionModule.wakeUpApp();
         }
+
+        // 3. SCHEDULE LOCAL NOTIFICATION (Fallback/Heads-up)
+        await Notifications.scheduleNotificationAsync({
+            content: {
+                title: payload.title || "Visitor Arrival",
+                body: payload.body || "A visitor is waiting at the gate",
+                data: payload,
+                categoryIdentifier: 'visitor_arrival',
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.MAX,
+            },
+            trigger: null,
+            channelId: 'vms_urgent_alerts_v2',
+        });
     }
 });
 
@@ -441,6 +412,29 @@ function AppContent() {
                     onReject={() => handleAction(arrivalData.visit_id, 'reject')}
                 />
             )}
+
+            {/* Global Version Display Overlay */}
+            <View style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 24,
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 9999,
+                pointerEvents: 'none'
+            }}>
+                <Text style={{
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 'bold',
+                    letterSpacing: 0.5
+                }}>
+                    {APP_VERSION}
+                </Text>
+            </View>
         </View>
     );
 }

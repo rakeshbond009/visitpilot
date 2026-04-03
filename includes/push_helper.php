@@ -60,7 +60,6 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                     'visitor_photo'   => (string) ($data['visitor_photo'] ?? $data['photo_url'] ?? ''),
                     'company'         => (string) ($data['company'] ?? ''),
                     'purpose'         => (string) ($data['purpose'] ?? ''),
-                    'assets_carried'  => (string) ($data['assets_carried'] ?? 'None'),
                 ],
                 'android' => [
                     'priority' => 'high',
