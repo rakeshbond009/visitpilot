@@ -29,6 +29,7 @@ import { CONFIG } from '../utils/config';
 import { checkOverlayPermission } from '../utils/notificationManager';
 import { usePermissions } from '../context/PermissionContext';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { APP_VERSION } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -1364,6 +1365,7 @@ export default function HostDashboard({ navigation }) {
                 <View style={{ flex: 1 }}>
                     <Text style={styles.greeting}>Host Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
+                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('userData'); navigation.replace('Login'); }}>
                     <Text style={styles.logoutText}>Logout</Text>

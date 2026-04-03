@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../utils/apiClient';
 import { usePermissions } from '../context/PermissionContext';
 import { registerForPushNotificationsAsync, updateTokenOnServer, checkOverlayPermission } from '../utils/notificationManager';
+import { APP_VERSION } from '../constants';
 
 export default function LoginScreen({ navigation }) {
     const [username, setUsername] = useState('');
@@ -187,6 +188,7 @@ export default function LoginScreen({ navigation }) {
         >
             <View style={styles.innerContainer}>
                 <View style={styles.header}>
+                    <Text style={{ fontSize: 10, color: '#adb5bd', fontWeight: 'bold', marginBottom: 5 }}>{APP_VERSION}</Text>
                     <Text style={styles.title}>VisitPilot</Text>
                     <Text style={styles.subtitle}>Visitor Management System</Text>
                 </View>

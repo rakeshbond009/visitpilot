@@ -1,16 +1,18 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Alert, Linking, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
+import { Audio } from 'expo-av';
 
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
 
+import { APP_VERSION } from './constants';
+
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
-const APP_VERSION = "VisitPilot v2026.04.03.1315";
 
 // For Overlay permission (Appear on top)
 import { NativeModules } from 'react-native';
@@ -120,8 +122,53 @@ export default function App() {
 function AppContent() {
     const notificationListener = useRef();
     const responseListener = useRef();
-    const [arrivalData, setArrivalData] = useState(null);
     const [showOverlay, setShowOverlay] = useState(false);
+    const [arrivalData, setArrivalData] = useState(null);
+    const [sound, setSound] = useState(null);
+
+    // --- RINGING & VIBRATION LOGIC ---
+    useEffect(() => {
+        let isLooping = true;
+        
+        async function startRinging() {
+            if (showOverlay) {
+                // 1. Play Sound
+                try {
+                    const { sound: newSound } = await Audio.Sound.createAsync(
+                        { uri: 'https://visitor.codepilotx.com/assets/sounds/iphone_ringtone.mp3' },
+                        { shouldPlay: true, isLooping: true, volume: 1.0 }
+                    );
+                    setSound(newSound);
+                } catch (e) {
+                    console.log("Audio Error:", e);
+                }
+
+                // 2. Continuous Vibration
+                const startVibrate = () => {
+                    if (isLooping) {
+                        Vibration.vibrate([1000, 1000, 1000], true);
+                    }
+                };
+                startVibrate();
+            } else {
+                // Stop everything
+                isLooping = false;
+                if (sound) {
+                    sound.stopAsync().catch(() => {});
+                    sound.unloadAsync().catch(() => {});
+                    setSound(null);
+                }
+                Vibration.cancel();
+            }
+        }
+
+        startRinging();
+
+        return () => {
+            isLooping = false;
+            Vibration.cancel();
+        };
+    }, [showOverlay]);
 
     // Permission context
     const { role, hasPermission, loading } = usePermissions();
@@ -400,41 +447,11 @@ function AppContent() {
             {showOverlay && arrivalData && (
                 <IncomingCallScreen
                     visible={showOverlay}
-                    visitorData={{
-                        name: arrivalData.name,
-                        company: arrivalData.company,
-                        purpose: arrivalData.purpose,
-                        photo: arrivalData.photo,
-                        assets_carried: arrivalData.assets_carried,
-                        visit_id: arrivalData.visit_id
-                    }}
-                    onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
-                    onReject={() => handleAction(arrivalData.visit_id, 'reject')}
+                    visitorData={arrivalData}
+                    onAccept={() => handleArrivalAction('approved')}
+                    onReject={() => handleArrivalAction('rejected')}
                 />
             )}
-
-            {/* Global Version Display Overlay */}
-            <View style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 24,
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 9999,
-                pointerEvents: 'none'
-            }}>
-                <Text style={{
-                    color: '#fff',
-                    fontSize: 10,
-                    fontWeight: 'bold',
-                    letterSpacing: 0.5
-                }}>
-                    {APP_VERSION}
-                </Text>
-            </View>
         </View>
     );
 }
