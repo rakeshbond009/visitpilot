@@ -224,6 +224,17 @@ function AppContent() {
             }
         });
 
+        // Listen for actions from IncomingCallActivity (NATIVE CALL SCREEN)
+        const actionSubscription = DeviceEventEmitter.addListener('onVisitorArrival', (data) => {
+            const visit_id = data.visit_id || data.visitId;
+            const action = data.action;
+            if (visit_id && action) {
+                handleAction(visit_id, action);
+                setShowOverlay(false);
+                setArrivalData(null);
+            }
+        });
+
         setTimeout(() => {
             registerForPushNotificationsAsync(3, 2000).then(token => {
                 if (token) updateTokenOnServer(token);
