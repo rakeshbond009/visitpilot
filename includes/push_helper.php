@@ -37,15 +37,23 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
     }
 
     $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase JSON not found");
+        return false;
+    }
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
+    // Fetch token ONCE per batch
+    $accessToken = getGoogleAccessToken($serviceAccount);
+    if (!$accessToken) {
+        $log("CRITICAL ERROR: Failed to fetch Google Access Token");
+        return false;
+    }
+
     foreach ($users as $user) {
         $platform = strtolower($user['platform'] ?? 'android');
-        $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken)
-            continue;
-
+        
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
@@ -83,6 +91,8 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json'

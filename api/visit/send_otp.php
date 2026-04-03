@@ -32,19 +32,24 @@ try {
     $stmt = $pdo->prepare("INSERT INTO visit_otps (mobile, otp, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))");
     $stmt->execute([$target_mobile, $otp]);
 
-    // Send response immediately to allow UI flow to continue
-    sendBackgroundResponse('success', 'OTP sent to: ' . $target_mobile, [
-        'debug_otp' => $otp,
-        'target_mobile' => $target_mobile
-    ]);
-
-    // --- BACKGROUND WHATSAPP ---
+    // --- WHATSAPP AUTOMATION ---
+    // Must be called BEFORE sendResponse() because sendResponse calls exit().
+    // The 5-second cURL timeout in whatsapp_helper prevents this from hanging users.
     try {
         require_once '../../includes/whatsapp_helper.php';
-        sendWhatsAppNotification($target_mobile, "Your verification code is $otp", 'visitor_otp_verification', [$otp]);
-    } catch (Throwable $e) {
-        error_log("Background WhatsApp OTP error: " . $e->getMessage());
+        $waMsg = "Your verification code is $otp";
+        sendWhatsAppNotification($target_mobile, $waMsg, 'visitor_otp_verification', [$otp]);
+    } catch (Exception $e) {
+        error_log("WhatsApp OTP error: " . $e->getMessage());
+        // Non-fatal: OTP is still saved in DB, continue to respond
     }
+
+    $debug_info = [
+        'debug_otp' => $otp,
+        'target_mobile' => $target_mobile
+    ];
+
+    sendResponse('success', 'OTP sent to: ' . $target_mobile, $debug_info);
 
 } catch (Exception $e) {
     sendResponse('error', 'Failed to send OTP: ' . $e->getMessage());
