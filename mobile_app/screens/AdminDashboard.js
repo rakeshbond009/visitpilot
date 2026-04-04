@@ -34,7 +34,7 @@ import { checkOverlayPermission } from '../utils/notificationManager';
 
 const { width, height } = Dimensions.get('window');
 
-export default function AdminDashboard({ navigation }) {
+export default function AdminDashboard({ navigation, route }) {
     const { refreshPermissions } = usePermissions();
     const [userData, setUserData] = useState(null);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'visitors'
@@ -327,6 +327,13 @@ export default function AdminDashboard({ navigation }) {
             return () => clearInterval(interval);
         }, [])
     );
+
+    // Deep link / notification navigation check
+    useEffect(() => {
+        if (route.params?.openVisitId) {
+            fetchVisitDetails(route.params.openVisitId);
+        }
+    }, [route.params?.openVisitId, route.params?.timestamp]);
 
     const onRefresh = async () => {
         setRefreshing(true);

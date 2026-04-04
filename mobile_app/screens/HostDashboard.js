@@ -54,7 +54,7 @@ const getPhotoUrl = (path) => {
     return `${CONFIG.API_BASE_URL}${path}`;
 };
 
-export default function HostDashboard({ navigation }) {
+export default function HostDashboard({ navigation, route }) {
     const [userData, setUserData] = useState(null);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'visitors'
     const [visitorView, setVisitorView] = useState('log'); // 'log', 'invites', 'pending'
@@ -241,6 +241,13 @@ export default function HostDashboard({ navigation }) {
             return () => clearInterval(interval);
         }, [loading])
     );
+
+    // Initial check for deep link / notification navigation
+    useEffect(() => {
+        if (route.params?.openVisitId) {
+            fetchVisitDetails(route.params.openVisitId);
+        }
+    }, [route.params?.openVisitId, route.params?.timestamp]);
 
     const fetchVisitDetails = async (visitId) => {
         try {

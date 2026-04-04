@@ -2,6 +2,8 @@
 // api/visit/status_action.php - Dahua Enabled
 require_once '../includes/api_header.php';
 require_once '../../includes/dahua_helper.php';
+require_once '../../includes/push_helper.php';
+require_once '../../includes/whatsapp_helper.php';
 
 $data = getPostData();
 
@@ -25,8 +27,6 @@ try {
 
         // --- NOTIFICATIONS (NEW) ---
         try {
-            require_once '../../includes/push_helper.php';
-            require_once '../../includes/whatsapp_helper.php';
 
             // Get visitor details
             $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
@@ -41,11 +41,19 @@ try {
                 // Send WhatsApp (will Safety Abort inside the helper if $pdfUrl is null)
                 sendWhatsAppNotification($visit['mobile'], "Your visit is approved", 'visit_approval_visitor_notify', ["*{$visit['visitor_name']}*"], $pdfUrl);
 
-                // Push to Security
+                // Push to Security (General)
                 sendPushNotificationToRole($pdo, 'security', 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
+
+                // Push to the user who CREATED the entry (Heads-up)
+                if (!empty($visit['created_by'])) {
+                    sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
+                        'visit_id' => (string) $id,
+                        'type' => 'visit_status_update'
+                    ]);
+                }
             }
         } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
@@ -94,7 +102,7 @@ try {
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
-        $stmt = $pdo->prepare("SELECT vis.name, vis.mobile, e.name as host_name 
+        $stmt = $pdo->prepare("SELECT vis.name, vis.mobile, e.name as host_name, v.created_by 
                               FROM visits v 
                               JOIN visitors vis ON v.visitor_id = vis.id
                               LEFT JOIN employees e ON v.employee_id = e.id
@@ -109,7 +117,6 @@ try {
 
         if ($visitor_info && !empty($visitor_info['mobile'])) {
             try {
-                require_once '../../includes/whatsapp_helper.php';
                 sendWhatsAppNotification(
                     $visitor_info['mobile'],
                     "Your meeting has been cancelled.",
@@ -120,17 +127,25 @@ try {
                 error_log("invite_cancelled WA error: " . $waErr->getMessage());
             }
 
-            try {
-                require_once '../../includes/push_helper.php';
-                sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
-                    'visit_id' => (string) $id,
-                    'type' => 'approval_status'
-                ]);
-            } catch (Throwable $pushErr) {
-            }
-        }
+                try {
+                    // Push to Security (General)
+                    sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
+                        'visit_id' => (string) $id,
+                        'type' => 'approval_status'
+                    ]);
 
-        sendResponse('success', 'Invitation has been cancelled and visitor notified.');
+                    // Push to the user who CREATED the entry (Heads-up)
+                    if (!empty($visitor_info['created_by'])) {
+                        sendPushNotificationToUserId($pdo, $visitor_info['created_by'], 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
+                            'visit_id' => (string) $id,
+                            'type' => 'visit_status_update'
+                        ]);
+                    }
+                } catch (Throwable $pushErr) {
+                }
+            }
+
+            sendResponse('success', 'Invitation has been cancelled and visitor notified.');
 
     } elseif ($action === 'reject') {
         $reason = $data['reason'] ?? 'Host declined the visit.';
@@ -151,11 +166,19 @@ try {
                 $reason = $data['reason'] ?? 'Host declined the visit.';
                 sendWhatsAppNotification($visit['mobile'], "Your visit request has been declined.", 'visit_rejection_visitor_notify', ["*{$visit['visitor_name']}*", "*{$reason}*"]);
 
-                // Push to Security
+                // Push to Security (General)
                 sendPushNotificationToRole($pdo, 'security', 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
+
+                // Push to the user who CREATED the entry (Heads-up)
+                if (!empty($visit['created_by'])) {
+                    sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
+                        'visit_id' => (string) $id,
+                        'type' => 'visit_status_update'
+                    ]);
+                }
             }
         } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());

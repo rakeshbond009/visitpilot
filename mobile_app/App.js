@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration, DeviceEventEmitter } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
@@ -100,6 +100,8 @@ const linking = {
         },
     },
 };
+
+const navigationRef = createNavigationContainerRef();
 
 export default function App() {
     return (
@@ -266,9 +268,28 @@ function AppContent() {
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const data = standardizeArrivalData(r.notification.request.content.data);
+            const rawData = r.notification.request.content.data;
+            const data = standardizeArrivalData(rawData);
+
+            // 1. Handle Visitor Arrival (Incoming Call Style)
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data); setShowOverlay(true);
+                setArrivalData(data); 
+                setShowOverlay(true);
+            } 
+            // 2. Handle Visit Status Update (Direct Navigation)
+            else if (rawData && (rawData.type === 'visit_status_update' || rawData.visit_id)) {
+                const visitId = rawData.visit_id || rawData.visitId;
+                if (visitId && navigationRef.isReady()) {
+                    // Navigate based on role
+                    const targetDashboard = role === 'admin' ? 'AdminDashboard' : 
+                                           role === 'security' ? 'SecurityDashboard' : 
+                                           'HostDashboard';
+                    
+                    navigationRef.navigate(targetDashboard, { 
+                        openVisitId: visitId,
+                        timestamp: Date.now() // Force update even if already on screen
+                    });
+                }
             }
         });
 
@@ -329,7 +350,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking}>
+            <NavigationContainer linking={linking} ref={navigationRef}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

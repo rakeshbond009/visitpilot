@@ -32,7 +32,7 @@ import { checkOverlayPermission } from '../utils/notificationManager';
 
 const { width, height } = Dimensions.get('window');
 
-export default function SecurityDashboard({ navigation }) {
+export default function SecurityDashboard({ navigation, route }) {
     const { hasPermission, permissions, refreshPermissions } = usePermissions();
     const [userData, setUserData] = useState(null);
     const [stats, setStats] = useState({
@@ -258,6 +258,13 @@ export default function SecurityDashboard({ navigation }) {
             return () => clearInterval(interval);
         }, [])
     );
+
+    // Deep link / notification navigation check
+    useEffect(() => {
+        if (route.params?.openVisitId) {
+            fetchVisitDetails(route.params.openVisitId);
+        }
+    }, [route.params?.openVisitId, route.params?.timestamp]);
 
     const onRefresh = async () => {
         setRefreshing(true);
