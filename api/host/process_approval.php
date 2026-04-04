@@ -50,58 +50,48 @@ if ($action == 'approve') {
     $stmt->execute([$_SESSION['user_id'], $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Approved visit ID: $visit_id via Popup");
 
-    // Fetch visitor name (needed for notification messages)
+    // Send Notification to Security
     $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
-    // ── ROBUST FLUSH RESPONSE ─────────────────────────────────────────────
-    $respJson = json_encode(['success' => true, 'message' => 'Visitor Approved']);
-    if (function_exists('fastcgi_finish_request')) {
-        header('Content-Type: application/json');
-        echo $respJson;
-        fastcgi_finish_request();
-    } else {
-        @ini_set('zlib.output_compression', '0');
-        header('Content-Type: application/json');
-        header('Content-Length: ' . strlen($respJson));
-        header('Connection: close');
-        while (ob_get_level() > 0) {
-            ob_end_flush();
-        }
-        echo $respJson;
-        flush();
-    }
-    ignore_user_abort(true);
-    // ──────────────────────────────────────────────────────────────────────
-
-
-    // Background: FCM push to security
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    // Background: Dahua sync
+    // --- DAHUA INTEGRATION ---
     try {
         $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+
         if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-            $vStmt = $pdo->prepare("SELECT v.id as visitor_id, v.name, vs.visit_photo, vs.visit_code, vs.created_at
-                                   FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
+            // Fetch full visit/visitor details for sync
+            $vStmt = $pdo->prepare("SELECT v.id as visitor_id, v.name, vs.visit_photo, vs.visit_code, vs.created_at 
+                                   FROM visitors v 
+                                   JOIN visits vs ON v.id = vs.visitor_id 
+                                   WHERE vs.id = ?");
             $vStmt->execute([$visit_id]);
             $v = $vStmt->fetch(PDO::FETCH_ASSOC);
+
             if ($v) {
                 $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
+
                 $startTime = $v['created_at'];
-                $endTime   = date('Y-m-d 23:59:59', strtotime($startTime));
-                $deviceSns = array_map('trim', array_filter(explode(',', $raw_settings['dahua_device_sns'] ?? '')));
+                // Set expiry to 12 hours after creation or end of day
+                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
+
+                $deviceSns = explode(',', $raw_settings['dahua_device_sns']);
+                $deviceSns = array_map('trim', $deviceSns);
+
                 $visitorData = [
                     'visitor_id' => $v['visitor_id'],
-                    'name'       => $v['name'],
-                    'face_path'  => realpath('../../' . $v['visit_photo']),
-                    'qr_code'    => $v['visit_code'],
+                    'name' => $v['name'],
+                    'face_path' => realpath('../../' . $v['visit_photo']),
+                    'qr_code' => $v['visit_code'],
                     'start_time' => $startTime,
-                    'end_time'   => $endTime,
-                    'device_sns' => $deviceSns,
+                    'end_time' => $endTime,
+                    'device_sns' => $deviceSns
                 ];
+
                 $syncResult = $dahua->syncVisitor($visitorData);
+
                 if (isset($syncResult['success']) && !$syncResult['success']) {
                     error_log("Dahua Sync Failed for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
                 } else {
@@ -113,40 +103,18 @@ if ($action == 'approve') {
         error_log("Dahua Integration Error: " . $e->getMessage());
     }
 
-    exit;
-
+    echo json_encode(['success' => true, 'message' => 'Visitor Approved and Synced to Security Terminals']);
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=NOW(), rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $reason, $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Rejected visit ID: $visit_id via Popup");
 
-    // Fetch visitor name
+    // Send Notification to Security
     $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
-    // ── ROBUST FLUSH RESPONSE ─────────────────────────────────────────────
-    $respJson = json_encode(['success' => true, 'message' => 'Visitor Rejected']);
-    if (function_exists('fastcgi_finish_request')) {
-        header('Content-Type: application/json');
-        echo $respJson;
-        fastcgi_finish_request();
-    } else {
-        @ini_set('zlib.output_compression', '0');
-        header('Content-Type: application/json');
-        header('Content-Length: ' . strlen($respJson));
-        header('Connection: close');
-        while (ob_get_level() > 0) {
-            ob_end_flush();
-        }
-        echo $respJson;
-        flush();
-    }
-    ignore_user_abort(true);
-    // ─────────────────────────────────────────────────────────────────────
-
-    // Background: FCM push to security
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    exit;
+    echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }

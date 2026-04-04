@@ -155,6 +155,37 @@ try {
     // COMMIT EARLY: Save DB state before long external calls (QR, Dahua, Notifications)
     $pdo->commit();
 
+    // === BEGIN EARLY RESPONSE HACK ===
+    // Send JSON back to client immediately so they don't wait for heavy tasks
+    if (session_status() === PHP_SESSION_ACTIVE) session_write_close();
+    ignore_user_abort(true);
+    set_time_limit(0);
+
+    $qr_filename = $visit_code ? 'uploads/qrcodes/' . $visit_code . '.png' : null;
+
+    ob_start();
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Visitor registered successfully',
+        'data' => [
+            'visit_id' => $visit_id,
+            'visit_code' => $visit_code,
+            'qr_code_url' => $qr_filename,
+            'status' => $invitation_id ? 'approved' : 'pending',
+            'approval_status' => $invitation_id ? 'approved' : 'pending'
+        ]
+    ]);
+    $size = ob_get_length();
+    header("Content-Length: $size");
+    header("Connection: close");
+    ob_end_flush();
+    ob_flush();
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+    flush();
+    // === END EARLY RESPONSE HACK ===
+
     // Generate and Save QR Code if not exists
     $qr_code_path = '';
     if ($visit_code) {
@@ -170,15 +201,17 @@ try {
         curl_close($ch);
 
         if ($qr_image) {
-            $qr_filename = 'uploads/qrcodes/' . $visit_code . '.png';
             if (!is_dir('../../uploads/qrcodes/')) {
                 mkdir('../../uploads/qrcodes/', 0777, true);
             }
             file_put_contents('../../' . $qr_filename, $qr_image);
             $qr_code_path = $qr_filename;
 
-            // Re-open PDO for quick update (since we committed)
-            $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
+            try {
+                $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
+            } catch (Exception $e) {
+                error_log("Failed to update QR code path: " . $e->getMessage());
+            }
         }
     }
 
@@ -273,14 +306,6 @@ try {
     } catch (Exception $e) {
         error_log("Notification System Error: " . $e->getMessage());
     }
-
-    sendResponse('success', 'Visitor registered successfully', [
-        'visit_id' => $visit_id,
-        'visit_code' => $visit_code,
-        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
-    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
