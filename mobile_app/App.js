@@ -89,6 +89,7 @@ function AppContent() {
     const [showOverlay, setShowOverlay] = useState(false);
     const [arrivalData, setArrivalData] = useState(null);
     const [sound, setSound] = useState(null);
+    const [pendingVisitId, setPendingVisitId] = useState(null);
     const { role, loading } = usePermissions();
 
     const standardizeArrivalData = (raw) => {
@@ -97,6 +98,8 @@ function AppContent() {
         if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) {} }
 
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
+        if (!visit_id) return null;
+
         const type = data.type || raw.type || null;
 
         return {
@@ -112,16 +115,41 @@ function AppContent() {
         };
     };
 
-    const handleNavigation = (visit_id) => {
-        if (!visit_id) return;
+    const stopAllNoises = async () => {
+        setShowOverlay(false);
+        setArrivalData(null);
+        Vibration.cancel();
+        if (OverlayPermissionModule?.stopRinging) OverlayPermissionModule.stopRinging();
+        if (sound) {
+            try { await sound.stopAsync(); await sound.unloadAsync(); } catch (e) {}
+            setSound(null);
+        }
+    };
+
+    const performNavigation = (visit_id) => {
+        if (!visit_id || !role) return;
+        
         let targetScreen = 'HostDashboard';
         if (role === 'security') targetScreen = 'SecurityDashboard';
         else if (role === 'admin') targetScreen = 'AdminDashboard';
 
-        if (navigationRef.isReady()) {
-            navigationRef.navigate(targetScreen, { openVisitId: visit_id, timestamp: Date.now() });
-        }
+        const navigateToTarget = () => {
+            if (navigationRef.isReady()) {
+                navigationRef.navigate(targetScreen, { openVisitId: visit_id, timestamp: Date.now() });
+                setPendingVisitId(null);
+            } else {
+                setTimeout(navigateToTarget, 500);
+            }
+        };
+        navigateToTarget();
     };
+
+    // Effect to handle pending navigation when role becomes available
+    useEffect(() => {
+        if (role && pendingVisitId) {
+            performNavigation(pendingVisitId);
+        }
+    }, [role, pendingVisitId]);
 
     useEffect(() => {
         let isLooping = true;
@@ -156,24 +184,26 @@ function AppContent() {
         }, 3000);
 
         const checkNotifications = async () => {
-            const response = await Notifications.getLastNotificationResponseAsync();
-            if (response) {
-                const data = standardizeArrivalData(response.notification.request.content.data);
-                if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                    setArrivalData(data); setShowOverlay(true); return true;
-                } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
-                    handleNavigation(data.visit_id); return true;
+            try {
+                const response = await Notifications.getLastNotificationResponseAsync();
+                if (response) {
+                    const data = standardizeArrivalData(response.notification.request.content.data);
+                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                        setArrivalData(data); setShowOverlay(true);
+                    } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
+                        stopAllNoises();
+                        setPendingVisitId(data.visit_id);
+                    }
                 }
-            }
-            const stored = await AsyncStorage.getItem('pending_arrival_call');
-            if (stored) {
-                const data = standardizeArrivalData(JSON.parse(stored));
-                await AsyncStorage.removeItem('pending_arrival_call');
-                if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                    setArrivalData(data); setShowOverlay(true); return true;
+                const stored = await AsyncStorage.getItem('pending_arrival_call');
+                if (stored) {
+                    const data = standardizeArrivalData(JSON.parse(stored));
+                    await AsyncStorage.removeItem('pending_arrival_call');
+                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                        setArrivalData(data); setShowOverlay(true);
+                    }
                 }
-            }
-            return false;
+            } catch (e) {}
         };
 
         checkNotifications();
@@ -189,7 +219,8 @@ function AppContent() {
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
-                handleNavigation(data.visit_id);
+                stopAllNoises();
+                setPendingVisitId(data.visit_id);
             }
         });
 
@@ -198,13 +229,10 @@ function AppContent() {
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
         };
-    }, [role]);
+    }, []); // Removed role from here to keep listeners stable
 
     const handleAction = async (visitId, action, reason = null) => {
-        setShowOverlay(false); setArrivalData(null); Vibration.cancel();
-        if (OverlayPermissionModule?.stopRinging) OverlayPermissionModule.stopRinging();
-        if (sound) { sound.stopAsync().catch(() => {}); sound.unloadAsync().catch(() => {}); setSound(null); }
-
+        stopAllNoises();
         try {
             await Notifications.dismissAllNotificationsAsync().catch(() => {});
             const response = await apiClient.post('api/visit/status_action.php', { action, visit_id: visitId, reason: reason }, { timeout: 30000 });
@@ -241,7 +269,7 @@ function AppContent() {
                     visitorData={arrivalData}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
                     onReject={(reason) => handleAction(arrivalData.visit_id, 'reject', reason)}
-                    onDismiss={() => { setShowOverlay(false); setArrivalData(null); Vibration.cancel(); if (OverlayPermissionModule?.stopRinging) OverlayPermissionModule.stopRinging(); }}
+                    onDismiss={() => stopAllNoises()}
                 />
             )}
         </View>
