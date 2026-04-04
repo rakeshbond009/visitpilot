@@ -27,7 +27,6 @@ try {
         if (isset($photo_data[1])) {
             $content = base64_decode($photo_data[1]);
             $filename = 'uploads/photos/' . uniqid() . '.jpg';
-            // Path relative to root (from api/visitor/ we go up twice)
             if (!is_dir('../../uploads/photos/')) {
                 mkdir('../../uploads/photos/', 0777, true);
             }
@@ -37,26 +36,39 @@ try {
     }
 
     // 2. Check if visitor exists
-    $stmt = $pdo->prepare("SELECT id FROM visitors WHERE mobile = ?");
+    $stmt = $pdo->prepare("SELECT id, id_proof_type, id_proof_number, photo_path FROM visitors WHERE mobile = ?");
     $stmt->execute([$data['mobile']]);
     $visitor = $stmt->fetch();
 
+    $id_proof_type = $data['id_proof_type'] ?? '';
+    $id_proof_number = $data['id_proof_number'] ?? '';
+
     if ($visitor) {
         $visitor_id = $visitor['id'];
-        // Update details including photo if changed
+        
+        // PRESERVE ID PROOF: If existing visitor has ID proof and new request is empty, keep the old one
+        if (empty($id_proof_type) && !empty($visitor['id_proof_type'])) {
+            $id_proof_type = $visitor['id_proof_type'];
+            $id_proof_number = $visitor['id_proof_number'];
+        }
+
         $sql = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
         $params = [
             $data['name'],
             $data['email'] ?? '',
             $data['address'] ?? '',
-            $data['id_proof_type'] ?? '',
-            $data['id_proof_number'] ?? ''
+            $id_proof_type,
+            $id_proof_number
         ];
 
         if ($photo_path) {
             $sql .= ", photo_path=?";
             $params[] = $photo_path;
+        } else if (!empty($visitor['photo_path'])) {
+            // Keep existing photo if no new one provided
+            $photo_path = $visitor['photo_path'];
         }
+
         $sql .= " WHERE id=?";
         $params[] = $visitor_id;
 
@@ -69,8 +81,8 @@ try {
             $data['mobile'],
             $data['email'] ?? '',
             $data['address'] ?? '',
-            $data['id_proof_type'] ?? '',
-            $data['id_proof_number'] ?? '',
+            $id_proof_type,
+            $id_proof_number,
             $photo_path
         ]);
         $visitor_id = $pdo->lastInsertId();
@@ -83,24 +95,20 @@ try {
     $access_area = $data['access_area'] ?? 'Not Assigned';
     $assets = $data['assets_carried'] ?? 'None';
     $members = $data['members'] ?? [];
-    if (!is_array($members))
-        $members = [];
+    if (!is_array($members)) $members = [];
     $total_visitors = 1 + count($members);
 
     if ($invitation_id) {
         $visit_id = $invitation_id;
-        // Fetch visit code
         $vStmt = $pdo->prepare("SELECT visit_code FROM visits WHERE id = ?");
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
-        // matching the web flow for invitations as requested.
         $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
         $stmt->execute([
             $assets,
-            $data['id_proof_type'] ?? '',
-            $data['id_proof_number'] ?? '',
+            $id_proof_type,
+            $id_proof_number,
             $access_area,
             $photo_path,
             $total_visitors,
@@ -109,10 +117,8 @@ try {
             $visit_id
         ]);
     } else {
-        // Create New Visit with pending status (requires host approval)
         $visit_code = generateVisitCode();
         $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
-
         $stmt->execute([
             $visitor_id,
             $photo_path,
@@ -121,8 +127,8 @@ try {
             $visit_code,
             $access_area,
             $assets,
-            $data['id_proof_type'] ?? '',
-            $data['id_proof_number'] ?? '',
+            $id_proof_type,
+            $id_proof_number,
             $total_visitors,
             $current_time,
             $user_id
@@ -130,11 +136,8 @@ try {
         $visit_id = $pdo->lastInsertId();
     }
 
-    // 4. Handle Accompanying Members
     if (!empty($members)) {
-        // Clear existing members if any (for invited visits)
         $pdo->prepare("DELETE FROM visit_members WHERE visit_id = ?")->execute([$visit_id]);
-
         $stmtMem = $pdo->prepare("INSERT INTO visit_members (visit_id, name) VALUES (?, ?)");
         foreach ($members as $memName) {
             if (!empty(trim($memName))) {
@@ -143,14 +146,12 @@ try {
         }
     }
 
-    // COMMIT EARLY: Save DB state before long external calls (QR, Dahua, Notifications)
     $pdo->commit();
 
-    // Generate and Save QR Code if not exists
+    // QR Code Generation
     $qr_code_path = '';
     if ($visit_code) {
         $qr_api_url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit_code);
-
         $ch = curl_init($qr_api_url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
@@ -159,111 +160,58 @@ try {
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
         $qr_image = curl_exec($ch);
         curl_close($ch);
-
         if ($qr_image) {
             $qr_filename = 'uploads/qrcodes/' . $visit_code . '.png';
-            if (!is_dir('../../uploads/qrcodes/')) {
-                mkdir('../../uploads/qrcodes/', 0777, true);
-            }
+            if (!is_dir('../../uploads/qrcodes/')) mkdir('../../uploads/qrcodes/', 0777, true);
             file_put_contents('../../' . $qr_filename, $qr_image);
             $qr_code_path = $qr_filename;
-
-            // Re-open PDO for quick update (since we committed)
             $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
         }
     }
 
-    // --- DAHUA INTEGRATION (Sync on Check-in/Entry) ---
+    // Dahua Integration
     try {
         $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-
-        // Safety Check: Only sync if visitor is approved AND either checked-in or manually approved
         $checkStatusStmt = $pdo->prepare("SELECT status, approval_status FROM visits WHERE id = ?");
         $checkStatusStmt->execute([$visit_id]);
         $vStatus = $checkStatusStmt->fetch(PDO::FETCH_ASSOC);
-
         if ($vStatus && $vStatus['approval_status'] === 'approved' && in_array($vStatus['status'], ['checked_in', 'approved'])) {
             if ($photo_path && !empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
                 $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
                 $startTime = date('Y-m-d H:i:s');
                 $endTime = date('Y-m-d 23:59:59');
-
-                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns'] ?? '');
-                $deviceSnsList = array_map('trim', array_filter($deviceSnsList));
-
-                $visitorData = [
-                    'visitor_id' => $visitor_id,
-                    'name' => $data['name'],
-                    'face_path' => realpath('../../' . $photo_path),
-                    'qr_code' => $visit_code,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSnsList
-                ];
-
-                $syncResult = $dahua->syncVisitor($visitorData);
-
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed (Register) for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success (Register/Entry) for Visit $visit_id");
-                }
+                $deviceSnsList = array_map('trim', array_filter(explode(',', $raw_settings['dahua_device_sns'] ?? '')));
+                $visitorData = [ 'visitor_id' => $visitor_id, 'name' => $data['name'], 'face_path' => realpath('../../' . $photo_path), 'qr_code' => $visit_code, 'start_time' => $startTime, 'end_time' => $endTime, 'device_sns' => $deviceSnsList ];
+                $dahua->syncVisitor($visitorData);
             }
         }
-    } catch (Exception $e) {
-        error_log("Dahua Integration Error in Register: " . $e->getMessage());
-    }
+    } catch (Exception $e) {}
 
-    // 5. SEND PUSH NOTIFICATION & WHATSAPP
+    // 5. Notifications
     try {
-        $push_log = __DIR__ . '/register_push_trace.log';
-        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Starting push flow for Visitor ID: $visitor_id\n", FILE_APPEND);
-
         require_once dirname(__DIR__, 2) . '/includes/push_helper.php';
-        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Push helper loaded.\n", FILE_APPEND);
-
-        $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?");
-        $stmt->execute([$visitor_id]);
-        $visitor = $stmt->fetch(PDO::FETCH_ASSOC);
-
         $pushData = [
             'visitor_id' => (string) $visitor_id,
             'visit_id' => (string) $visit_id,
-            'visitor_name' => (string) $visitor['name'],
-            'visitor_mobile' => (string) $visitor['mobile'],
+            'visitor_name' => (string) $data['name'],
+            'visitor_mobile' => (string) $data['mobile'],
             'purpose' => (string) $data['purpose'],
-            'company' => (string) ($visitor['address'] ?? ($visitor['company'] ?? 'General Visitor')),
+            'company' => (string) ($data['address'] ?? 'General Visitor'),
             'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
             'type' => 'visitor_arrival',
             'assets_carried' => (string) ($data['assets_carried'] ?? 'None')
         ];
+        sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$data['name']} is waiting for your approval.", $pushData);
 
-        // Send to Role/Employee
-        sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$visitor['name']} is waiting for your approval.", $pushData);
-
-        // WhatsApp Automation
+        // WhatsApp
         require_once '../../includes/whatsapp_helper.php';
         $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
         $hStmt->execute([$data['employee_id']]);
         $host = $hStmt->fetch(PDO::FETCH_ASSOC);
         if ($host && !empty($host['mobile'])) {
-            $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Found host {$host['name']} with mobile {$host['mobile']} for visitor {$visitor['name']} using visitor_arrival_host_alert\n";
-            file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
-
-            sendWhatsAppNotification(
-                $host['mobile'],
-                "Visitor {$visitor['name']} has arrived to meet you.",
-                'visitor_arrival_host_alert',
-                ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]
-            );
-        } else {
-            $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Host NOT found or mobile empty for ID: " . ($data['employee_id'] ?? 'NONE') . "\n";
-            file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
+            sendWhatsAppNotification($host['mobile'], "Visitor {$data['name']} has arrived to meet you.", 'visitor_arrival_host_alert', ["*{$host['name']}*", "*{$data['name']}*", "*{$data['purpose']}*"]);
         }
-    } catch (Exception $e) {
-        error_log("Notification System Error: " . $e->getMessage());
-    }
+    } catch (Exception $e) {}
 
     sendResponse('success', 'Visitor registered successfully', [
         'visit_id' => $visit_id,
@@ -274,8 +222,6 @@ try {
     ]);
 
 } catch (PDOException $e) {
-    if ($pdo->inTransaction()) {
-        $pdo->rollBack();
-    }
+    if ($pdo->inTransaction()) $pdo->rollBack();
     sendResponse('error', 'Database error: ' . $e->getMessage());
 }

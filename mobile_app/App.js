@@ -35,17 +35,21 @@ const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 const OverlayPermissionModule = Platform.OS === 'android' ? require('react-native').NativeModules?.OverlayPermissionModule : null;
 
 Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-    }),
+    handleNotification: async (n) => {
+        // Only show alert/sound if it's NOT an arrival (which has its own overlay)
+        const type = n.request.content.data?.type;
+        const isArrival = type === 'visitor_arrival' || n.request.content.data?.is_call_priority === 'true';
+        return {
+            shouldShowAlert: true,
+            shouldPlaySound: !isArrival, // Don't play default sound for arrivals as we have our own ringing
+            shouldSetBadge: true,
+        };
+    },
 });
 
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
     if (error) return;
     let payload = data?.notification?.data || data;
-    // ONLY background urgent alerts
     if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
         try {
             await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
@@ -144,7 +148,6 @@ function AppContent() {
         navigateToTarget();
     };
 
-    // Effect to handle pending navigation when role becomes available
     useEffect(() => {
         if (role && pendingVisitId) {
             performNavigation(pendingVisitId);
@@ -163,7 +166,10 @@ function AppContent() {
                 if (isLooping) Vibration.vibrate([1000, 1000, 1000], true);
             } else {
                 isLooping = false;
-                if (sound) { sound.stopAsync().catch(() => {}); sound.unloadAsync().catch(() => {}); setSound(null); }
+                if (sound) { 
+                    try { await sound.stopAsync(); await sound.unloadAsync(); } catch (e) {}
+                    setSound(null); 
+                }
                 Vibration.cancel();
             }
         }
@@ -191,7 +197,7 @@ function AppContent() {
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data); setShowOverlay(true);
                     } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
-                        stopAllNoises();
+                        await stopAllNoises();
                         setPendingVisitId(data.visit_id);
                     }
                 }
@@ -207,19 +213,23 @@ function AppContent() {
         };
 
         checkNotifications();
+
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
+                // FOREGROUND STATUS UPDATE: Trigger navigation automatically
+                setPendingVisitId(data.visit_id);
             }
         });
 
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(async (r) => {
             const data = standardizeArrivalData(r.notification.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
-                stopAllNoises();
+                await stopAllNoises();
                 setPendingVisitId(data.visit_id);
             }
         });
@@ -229,10 +239,10 @@ function AppContent() {
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
         };
-    }, []); // Removed role from here to keep listeners stable
+    }, []);
 
     const handleAction = async (visitId, action, reason = null) => {
-        stopAllNoises();
+        await stopAllNoises();
         try {
             await Notifications.dismissAllNotificationsAsync().catch(() => {});
             const response = await apiClient.post('api/visit/status_action.php', { action, visit_id: visitId, reason: reason }, { timeout: 30000 });

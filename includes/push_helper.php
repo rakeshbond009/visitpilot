@@ -172,7 +172,13 @@ function sendPushNotificationToUserId($pdo, $user_id, $title, $body, $data = [])
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
                     'type' => 'visit_status_update'
                 ],
-                'android' => [ 'priority' => 'high', 'notification' => [ 'channel_id' => 'vms_status_updates', 'sound' => 'default' ] ],
+                'android' => [ 
+                    'priority' => 'high', 
+                    'notification' => [ 
+                        'channel_id' => 'vms_status_updates'
+                        // REMOVED 'sound' => 'default' to prevent OS-level sound loop when clicking banner
+                    ] 
+                ],
                 'notification' => [ 'title' => (string) $title, 'body' => (string) $body ]
             ]
         ];
