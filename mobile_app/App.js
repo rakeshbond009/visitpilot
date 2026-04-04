@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration, DeviceEventEmitter } from 'react-native';
+import { View, Alert, Platform, ActivityIndicator, Vibration, DeviceEventEmitter } from 'react-native';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
@@ -45,7 +45,8 @@ Notifications.setNotificationHandler({
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
     if (error) return;
     let payload = data?.notification?.data || data;
-    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true' || payload.is_call_priority === true)) {
+    // ONLY background urgent alerts
+    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
         try {
             await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
             if (OverlayPermissionModule?.wakeUpApp) OverlayPermissionModule.wakeUpApp();
@@ -111,6 +112,17 @@ function AppContent() {
         };
     };
 
+    const handleNavigation = (visit_id) => {
+        if (!visit_id) return;
+        let targetScreen = 'HostDashboard';
+        if (role === 'security') targetScreen = 'SecurityDashboard';
+        else if (role === 'admin') targetScreen = 'AdminDashboard';
+
+        if (navigationRef.isReady()) {
+            navigationRef.navigate(targetScreen, { openVisitId: visit_id, timestamp: Date.now() });
+        }
+    };
+
     useEffect(() => {
         let isLooping = true;
         async function startRinging() {
@@ -149,6 +161,8 @@ function AppContent() {
                 const data = standardizeArrivalData(response.notification.request.content.data);
                 if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                     setArrivalData(data); setShowOverlay(true); return true;
+                } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
+                    handleNavigation(data.visit_id); return true;
                 }
             }
             const stored = await AsyncStorage.getItem('pending_arrival_call');
@@ -175,13 +189,7 @@ function AppContent() {
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
-                let targetScreen = 'HostDashboard';
-                if (role === 'security') targetScreen = 'SecurityDashboard';
-                else if (role === 'admin') targetScreen = 'AdminDashboard';
-
-                if (navigationRef.isReady()) {
-                    navigationRef.navigate(targetScreen, { openVisitId: data.visit_id, timestamp: Date.now() });
-                }
+                handleNavigation(data.visit_id);
             }
         });
 
