@@ -269,26 +269,28 @@ function AppContent() {
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
             const rawData = r.notification.request.content.data;
-            const data = standardizeArrivalData(rawData);
+            
+            // 1. Check for Status Update / Target Visit ID FIRST
+            const visitId = rawData.visit_id || rawData.visitId;
+            const type = rawData.type;
 
-            // 1. Handle Visitor Arrival (Incoming Call Style)
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data); 
-                setShowOverlay(true);
-            } 
-            // 2. Handle Visit Status Update (Direct Navigation)
-            else if (rawData && (rawData.type === 'visit_status_update' || rawData.visit_id)) {
-                const visitId = rawData.visit_id || rawData.visitId;
+            if (type === 'visit_status_update' || (visitId && !rawData.is_call_priority)) {
                 if (visitId && navigationRef.isReady()) {
-                    // Navigate based on role
+                    // Navigate based on role (default to HostDashboard if unsure)
                     const targetDashboard = role === 'admin' ? 'AdminDashboard' : 
                                            role === 'security' ? 'SecurityDashboard' : 
                                            'HostDashboard';
                     
                     navigationRef.navigate(targetDashboard, { 
                         openVisitId: visitId,
-                        timestamp: Date.now() // Force update even if already on screen
+                        timestamp: Date.now() 
                     });
+                }
+            } else {
+                const data = standardizeArrivalData(rawData);
+                if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                    setArrivalData(data); 
+                    setShowOverlay(true);
                 }
             }
         });
