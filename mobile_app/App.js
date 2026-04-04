@@ -315,7 +315,7 @@ function AppContent() {
                 action,
                 visit_id: visitId,
                 reason: reason
-            }, { timeout: 10000 }); // 10s local override
+            }, { timeout: 30000 }); // Increased timeout for critical status updates
 
             if (response.data.status === 'success') {
                 // Success toast or nothing (standardized)
