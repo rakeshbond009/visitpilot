@@ -259,14 +259,16 @@ export default function SecurityDashboard({ navigation, route }) {
         }, [])
     );
 
-    // Deep link / notification navigation check
+    // Handle Open Visit from Notification
     useEffect(() => {
-        if (route.params?.openVisitId) {
-            fetchVisitDetails(route.params.openVisitId);
-            // Clear parameter to avoid repeat logic
+        const visitId = route?.params?.openVisitId;
+        if (visitId) {
+            console.log("[Security] Opening visit from route param:", visitId);
+            fetchVisitDetails(visitId);
+            // Clear the param so it doesn't re-open on refresh
             navigation.setParams({ openVisitId: null });
         }
-    }, [route.params?.openVisitId, route.params?.timestamp]);
+    }, [route?.params?.openVisitId]);
 
     const onRefresh = async () => {
         setRefreshing(true);

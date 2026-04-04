@@ -46,13 +46,6 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-
-                // Heads-up to Creator
-                if (!empty($visit['created_by'])) {
-                    sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Approved', "Visit for {$visit['visitor_name']} has been approved.", [
-                        'visit_id' => (string) $id
-                    ]);
-                }
             }
         } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
@@ -133,12 +126,6 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-
-                if (!empty($visitor_info['created_by'])) {
-                    sendPushNotificationToUserId($pdo, $visitor_info['created_by'], 'Invitation Cancelled', "Invitation for {$visitor_info['name']} has been cancelled.", [
-                        'visit_id' => (string) $id
-                    ]);
-                }
             } catch (Throwable $pushErr) {
             }
         }
@@ -169,13 +156,6 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-
-                // Heads-up to Creator
-                if (!empty($visit['created_by'])) {
-                    sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Rejected', "Visit for {$visit['visitor_name']} has been rejected by host.", [
-                        'visit_id' => (string) $id
-                    ]);
-                }
             }
         } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());

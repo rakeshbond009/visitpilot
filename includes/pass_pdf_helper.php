@@ -90,6 +90,16 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->Cell(40, 5, date('d M Y', strtotime($visit['created_at'])), 0, 0, 'L');
         $pdf->Cell(40, 5, $visit['access_area'] ?: 'General', 0, 1, 'L');
 
+        // QR Code
+        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . $visit['visit_code'];
+        // Note: FPDF can't easily download from URL in some environments without allow_url_fopen
+        // We'll try to use the local one if exists, or just skip if we must.
+        // Actually, FPDF's Image() supports URLs if the wrapper is enabled.
+        try {
+            $pdf->Image($qrUrl, 40, 125, 20, 20, 'PNG');
+        } catch (Exception $e) {
+            // Skip QR if URL image fails
+        }
 
         // Footer
         $pdf->SetY(145);
