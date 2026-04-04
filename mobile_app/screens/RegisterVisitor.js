@@ -265,50 +265,54 @@ export default function RegisterVisitor({ navigation, route }) {
     const fetchMetadata = async () => {
         setLoading(true);
         try {
-            // Load user from storage immediately (no network needed)
+            // Get user data
             const userData = await AsyncStorage.getItem('userData');
-            let parsedUser = null;
             if (userData) {
-                parsedUser = JSON.parse(userData);
+                const parsedUser = JSON.parse(userData);
                 setUser(parsedUser);
-                const fields = parsedUser.mandatory_fields || ['visitor_name', 'mobile_number', 'id_proof', 'purpose', 'meeting_host'];
-                setMandatoryFields(fields);
-                if (fields.includes('id_proof')) setIdProofEnabled(true);
-                if (fields.includes('otp_check')) setOtpEnabled(true);
-                if (parsedUser.employee_id) setHostId(parsedUser.employee_id?.toString() || '');
+                setMandatoryFields(parsedUser.mandatory_fields || ["visitor_name", "mobile_number", "id_proof", "purpose", "meeting_host"]);
+
+                if (parsedUser.mandatory_fields?.includes('id_proof')) {
+                    setIdProofEnabled(true);
+                }
+
+                if (parsedUser.mandatory_fields?.includes('otp_check')) {
+                    setOtpEnabled(true);
+                }
+
+                if (parsedUser.employee_id) {
+                    setHostId(parsedUser.employee_id?.toString() || '');
+                }
             }
 
-            // Fire BOTH network requests in parallel — no sequential waiting
-            const [metaRes, empRes] = await Promise.all([
-                apiClient.get('api/metadata/list.php', { timeout: 10000 }),
-                apiClient.get('api/employee/list.php',  { timeout: 10000 }),
-            ]);
-
-            // Apply metadata
-            if (metaRes.data.status === 'success' && metaRes.data.data) {
-                const meta = metaRes.data.data;
+            // Fetch metadata from API
+            const metaResponse = await apiClient.get('api/metadata/list.php');
+            if (metaResponse.data.status === 'success' && metaResponse.data.data) {
+                const meta = metaResponse.data.data;
                 setPurposes(meta.purposes || []);
                 setAreas(meta.areas || []);
+
                 if (meta.mandatory_fields) {
                     setMandatoryFields(meta.mandatory_fields);
                     if (meta.mandatory_fields.includes('id_proof')) setIdProofEnabled(true);
                     if (meta.mandatory_fields.includes('otp_check')) setOtpEnabled(true);
                 }
+
                 if (meta.purposes?.length > 0) setPurpose(meta.purposes[0].purpose_name);
                 if (meta.areas?.length > 0) setAccessArea(meta.areas[0].area_name);
             }
 
-            // Apply employee list
-            if (empRes.data.status === 'success' && empRes.data.data) {
-                const empList = empRes.data.data.employees || [];
+            // Fetch employees for host selection
+            const response = await apiClient.get('api/employee/list.php');
+            if (response.data.status === 'success' && response.data.data) {
+                const empList = response.data.data.employees || [];
                 setHosts(empList);
-                // Only set default host if not already pre-set from user profile
-                if (empList.length > 0 && !parsedUser?.employee_id) {
+                if (empList.length > 0 && !hostId) {
                     setHostId(empList[0].id?.toString() || '');
                 }
             }
         } catch (error) {
-            console.error('Fetch Metadata Error:', error.message);
+            console.error('Fetch Metadata Error:', error);
         } finally {
             setLoading(false);
         }
@@ -875,6 +879,7 @@ export default function RegisterVisitor({ navigation, route }) {
                         </View>
                     </Modal>
 
+                    {renderSweetAlert()}
                     <View style={{ height: 40 }} />
                 </ScrollView>
             </KeyboardAvoidingView>

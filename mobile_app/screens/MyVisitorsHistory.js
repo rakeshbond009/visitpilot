@@ -37,7 +37,7 @@ const statusColors = {
 
 const getStatusColor = (status) => statusColors[status?.toLowerCase()] || '#64748b';
 
-export default function MyVisitorsHistory({ navigation, route }) {
+export default function MyVisitorsHistory({ navigation }) {
     const [visits, setVisits] = useState([]);
     const [stats, setStats] = useState({ total: 0, active: 0, completed: 0, pending: 0, approved: 0, rejected: 0 });
     const [loading, setLoading] = useState(true);
@@ -136,26 +136,6 @@ export default function MyVisitorsHistory({ navigation, route }) {
             fetchData(1);
         }, [fetchData])
     );
-
-    // Auto-open a specific visit when navigated from a notification tap
-    useEffect(() => {
-        const openVisitId = route?.params?.openVisitId;
-        if (openVisitId) {
-            fetchVisitById(openVisitId);
-        }
-    }, [route?.params?.openVisitId]);
-
-    const fetchVisitById = async (visitId) => {
-        try {
-            const response = await apiClient.get('api/visit/details.php', { params: { id: visitId } });
-            if (response.data.status === 'success') {
-                setSelectedVisit(response.data.data);
-                setDetailModalVisible(true);
-            }
-        } catch (err) {
-            console.error('[Notification tap] Error fetching visit details:', err);
-        }
-    };
 
     const onRefresh = () => {
         setRefreshing(true);

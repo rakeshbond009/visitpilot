@@ -50,60 +50,47 @@ if ($action == 'approve') {
     $stmt->execute([$_SESSION['user_id'], $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Approved visit ID: $visit_id via Popup");
 
-    // Send Notification to Security
+    // Fetch visitor name (needed for notification messages)
     $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
+    // ── RESPOND TO CLIENT NOW — FCM push and Dahua sync run after this ────
+    $respJson = json_encode(['success' => true, 'message' => 'Visitor Approved']);
+    header('Content-Length: ' . strlen($respJson));
+    header('Connection: close');
+    echo $respJson;
+    if (ob_get_level()) ob_end_flush();
+    @flush();
+    ignore_user_abort(true);
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Background: FCM push to security
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    // Notify the visit creator (the user who registered this visit)
-    $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id = ?");
-    $stmt->execute([$visit_id]);
-    $created_by = $stmt->fetchColumn();
-    if ($created_by) {
-        sendPushNotificationToUserId($pdo, $created_by, "Visit Approved ✅", "Your visit request for $visitor_name has been approved by the host.", [
-            'visit_id'     => (string) $visit_id,
-            'status'       => 'approved',
-            'visitor_name' => $visitor_name,
-        ]);
-    }
-
-    // --- DAHUA INTEGRATION ---
+    // Background: Dahua sync
     try {
         $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-
         if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-            // Fetch full visit/visitor details for sync
-            $vStmt = $pdo->prepare("SELECT v.id as visitor_id, v.name, vs.visit_photo, vs.visit_code, vs.created_at 
-                                   FROM visitors v 
-                                   JOIN visits vs ON v.id = vs.visitor_id 
-                                   WHERE vs.id = ?");
+            $vStmt = $pdo->prepare("SELECT v.id as visitor_id, v.name, vs.visit_photo, vs.visit_code, vs.created_at
+                                   FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
             $vStmt->execute([$visit_id]);
             $v = $vStmt->fetch(PDO::FETCH_ASSOC);
-
             if ($v) {
                 $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
                 $startTime = $v['created_at'];
-                // Set expiry to 12 hours after creation or end of day
-                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
-
-                $deviceSns = explode(',', $raw_settings['dahua_device_sns']);
-                $deviceSns = array_map('trim', $deviceSns);
-
+                $endTime   = date('Y-m-d 23:59:59', strtotime($startTime));
+                $deviceSns = array_map('trim', array_filter(explode(',', $raw_settings['dahua_device_sns'] ?? '')));
                 $visitorData = [
                     'visitor_id' => $v['visitor_id'],
-                    'name' => $v['name'],
-                    'face_path' => realpath('../../' . $v['visit_photo']),
-                    'qr_code' => $v['visit_code'],
+                    'name'       => $v['name'],
+                    'face_path'  => realpath('../../' . $v['visit_photo']),
+                    'qr_code'    => $v['visit_code'],
                     'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSns
+                    'end_time'   => $endTime,
+                    'device_sns' => $deviceSns,
                 ];
-
                 $syncResult = $dahua->syncVisitor($visitorData);
-
                 if (isset($syncResult['success']) && !$syncResult['success']) {
                     error_log("Dahua Sync Failed for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
                 } else {
@@ -115,30 +102,30 @@ if ($action == 'approve') {
         error_log("Dahua Integration Error: " . $e->getMessage());
     }
 
-    echo json_encode(['success' => true, 'message' => 'Visitor Approved and Synced to Security Terminals']);
+    exit;
+
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=NOW(), rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $reason, $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Rejected visit ID: $visit_id via Popup");
 
-    // Send Notification to Security
+    // Fetch visitor name
     $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
+    // ── RESPOND TO CLIENT NOW ─────────────────────────────────────────────
+    $respJson = json_encode(['success' => true, 'message' => 'Visitor Rejected']);
+    header('Content-Length: ' . strlen($respJson));
+    header('Connection: close');
+    echo $respJson;
+    if (ob_get_level()) ob_end_flush();
+    @flush();
+    ignore_user_abort(true);
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Background: FCM push to security
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    // Notify the visit creator (the user who registered this visit)
-    $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id = ?");
-    $stmt->execute([$visit_id]);
-    $created_by = $stmt->fetchColumn();
-    if ($created_by) {
-        sendPushNotificationToUserId($pdo, $created_by, "Visit Rejected ❌", "Your visit request for $visitor_name has been rejected. Reason: $reason", [
-            'visit_id'     => (string) $visit_id,
-            'status'       => 'rejected',
-            'visitor_name' => $visitor_name,
-        ]);
-    }
-
-    echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
+    exit;
 }

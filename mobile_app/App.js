@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Alert, Linking, Platform, ActivityIndicator, Vibration, DeviceEventEmitter } from 'react-native';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
@@ -40,15 +40,11 @@ import { PermissionProvider, usePermissions } from './context/PermissionContext'
 
 // Configure notification handler
 Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
-        const data = notification.request.content.data;
-        const isApprovalUpdate = data?.type === 'approval_status_update';
-        return {
-            shouldShowAlert: true,
-            shouldPlaySound: !isApprovalUpdate,  // No sound for approval notifications
-            shouldSetBadge: true,
-        };
-    },
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+    }),
 });
 
 const BACKGROUND_TASK_TIMEOUT = 10000;
@@ -92,9 +88,6 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
 });
 
 const Stack = createStackNavigator();
-
-// Global navigation ref — allows navigating from notification listeners outside component tree
-const navigationRef = createNavigationContainerRef();
 
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
@@ -241,21 +234,9 @@ function AppContent() {
             try {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
-                    const data = response.notification.request.content.data;
-
-                    // Handle approval/rejection notification tap (killed state)
-                    if (data?.type === 'approval_status_update' && data?.visit_id) {
-                        setTimeout(() => {
-                            if (navigationRef.isReady()) {
-                                navigationRef.navigate('MyVisitorsHistory', { openVisitId: data.visit_id });
-                            }
-                        }, 1500);
-                        return true;
-                    }
-
-                    const arrData = standardizeArrivalData(data);
-                    if (arrData && (arrData.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                        setArrivalData(arrData); setShowOverlay(true); return true;
+                    const data = standardizeArrivalData(response.notification.request.content.data);
+                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                        setArrivalData(data); setShowOverlay(true); return true;
                     }
                 }
 
@@ -285,20 +266,9 @@ function AppContent() {
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const data = r.notification.request.content.data;
-
-            // Approval/rejection notification tapped → navigate to visit details
-            if (data?.type === 'approval_status_update' && data?.visit_id) {
-                if (navigationRef.isReady()) {
-                    navigationRef.navigate('MyVisitorsHistory', { openVisitId: data.visit_id });
-                }
-                return;
-            }
-
-            // Visitor arrival → show full-screen overlay
-            const arrData = standardizeArrivalData(data);
-            if (arrData && (arrData.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(arrData); setShowOverlay(true);
+            const data = standardizeArrivalData(r.notification.request.content.data);
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
@@ -359,7 +329,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer ref={navigationRef} linking={linking}>
+            <NavigationContainer linking={linking}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

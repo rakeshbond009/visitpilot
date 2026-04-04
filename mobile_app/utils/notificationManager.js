@@ -92,17 +92,6 @@ export async function registerForPushNotificationsAsync(retryCount = 3, retryDel
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       bypassDnd: true,
     });
-
-    // Silent channel for visit approval/rejection status updates
-    await Notifications.setNotificationChannelAsync('vms_approval_updates', {
-      name: 'Visit Approval Updates',
-      importance: Notifications.AndroidImportance.HIGH,
-      sound: null,            // no sound
-      vibrationPattern: [0, 200],
-      lightColor: '#3b82f6',
-      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-      bypassDnd: false,       // do not bypass Do Not Disturb
-    });
   }
 
   if (!Device.isDevice) {
