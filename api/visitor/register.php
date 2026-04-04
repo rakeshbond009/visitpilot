@@ -181,6 +181,35 @@ try {
             $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
         }
     }
+    
+    // --- EARLY RESPONSE (FAST UI UX) ---
+    // The registration is saved and QR code generated.
+    // Send success to the dashboard/mobile app BEFORE doing slow integrations.
+    $responseData = [
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
+        'status' => $invitation_id ? 'approved' : 'pending',
+        'approval_status' => $invitation_id ? 'approved' : 'pending'
+    ];
+    
+    $responseJson = json_encode([
+        'status' => 'success',
+        'message' => 'Visitor registered successfully',
+        'data' => $responseData
+    ]);
+    
+    ignore_user_abort(true);
+    if (function_exists('fastcgi_finish_request')) {
+        echo $responseJson;
+        fastcgi_finish_request();
+    } else {
+        header('Connection: close');
+        header('Content-Length: ' . strlen($responseJson));
+        echo $responseJson;
+        flush();
+        if (ob_get_level() > 0) ob_flush();
+    }
 
     // --- DAHUA INTEGRATION (Sync on Check-in/Entry) ---
     try {
@@ -273,14 +302,6 @@ try {
     } catch (Exception $e) {
         error_log("Notification System Error: " . $e->getMessage());
     }
-
-    sendResponse('success', 'Visitor registered successfully', [
-        'visit_id' => $visit_id,
-        'visit_code' => $visit_code,
-        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
-    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

@@ -237,7 +237,7 @@ function AppContent() {
                     const data = standardizeArrivalData(response.notification.request.content.data);
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data); setShowOverlay(true); return true;
-                    } else if (data && data.type === 'visit_update' && data.visit_id) {
+                    } else if (data && (data.type === 'visit_update' || data.type === 'approval_status') && data.visit_id) {
                         await AsyncStorage.setItem('pending_visit_open', String(data.visit_id));
                         DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
                         return true;
@@ -266,6 +266,21 @@ function AppContent() {
             const data = standardizeArrivalData(n.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && (data.type === 'visit_update' || data.type === 'approval_status') && data.visit_id) {
+                Alert.alert(
+                    n.request.content.title || "Visit Update",
+                    n.request.content.body || "A visit status has been updated.",
+                    [
+                        { text: "Dismiss", style: "cancel" },
+                        { 
+                            text: "View Details", 
+                            onPress: () => {
+                                AsyncStorage.setItem('pending_visit_open', String(data.visit_id));
+                                DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                            }
+                        }
+                    ]
+                );
             }
         });
 
@@ -273,7 +288,7 @@ function AppContent() {
             const data = standardizeArrivalData(r.notification.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.type === 'visit_update' && data.visit_id) {
+            } else if (data && (data.type === 'visit_update' || data.type === 'approval_status') && data.visit_id) {
                 AsyncStorage.setItem('pending_visit_open', String(data.visit_id));
                 DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
             }
