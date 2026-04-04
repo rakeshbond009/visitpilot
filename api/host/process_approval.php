@@ -57,6 +57,18 @@ if ($action == 'approve') {
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
+    // Notify the visit creator (the user who registered this visit)
+    $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id = ?");
+    $stmt->execute([$visit_id]);
+    $created_by = $stmt->fetchColumn();
+    if ($created_by) {
+        sendPushNotificationToUserId($pdo, $created_by, "Visit Approved ✅", "Your visit request for $visitor_name has been approved by the host.", [
+            'visit_id'     => (string) $visit_id,
+            'status'       => 'approved',
+            'visitor_name' => $visitor_name,
+        ]);
+    }
+
     // --- DAHUA INTEGRATION ---
     try {
         $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -115,6 +127,18 @@ if ($action == 'approve') {
     $visitor_name = $stmt->fetchColumn();
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+
+    // Notify the visit creator (the user who registered this visit)
+    $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id = ?");
+    $stmt->execute([$visit_id]);
+    $created_by = $stmt->fetchColumn();
+    if ($created_by) {
+        sendPushNotificationToUserId($pdo, $created_by, "Visit Rejected ❌", "Your visit request for $visitor_name has been rejected. Reason: $reason", [
+            'visit_id'     => (string) $visit_id,
+            'status'       => 'rejected',
+            'visitor_name' => $visitor_name,
+        ]);
+    }
 
     echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }

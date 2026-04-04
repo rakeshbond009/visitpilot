@@ -41,11 +41,18 @@ try {
                 // Send WhatsApp (will Safety Abort inside the helper if $pdfUrl is null)
                 sendWhatsAppNotification($visit['mobile'], "Your visit is approved", 'visit_approval_visitor_notify', ["*{$visit['visitor_name']}*"], $pdfUrl);
 
-                // Push to the user who created the visit entry
+                // Push to Security
+                sendPushNotificationToRole($pdo, 'security', 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
+                    'visit_id' => (string) $id,
+                    'type' => 'approval_status'
+                ]);
+
+                // Notify the visit creator (user who registered this visit)
                 if (!empty($visit['created_by'])) {
-                    sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'approval_status'
+                    sendPushNotificationToUserId($pdo, $visit['created_by'], "Visit Approved ✅", "Your visit request for {$visit['visitor_name']} has been approved by the host.", [
+                        'visit_id'     => (string) $id,
+                        'status'       => 'approved',
+                        'visitor_name' => $visit['visitor_name'],
                     ]);
                 }
             }
@@ -124,12 +131,10 @@ try {
 
             try {
                 require_once '../../includes/push_helper.php';
-                if (!empty($visitor_info['created_by'])) {
-                    sendPushNotificationToUserId($pdo, $visitor_info['created_by'], 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'approval_status'
-                    ]);
-                }
+                sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
+                    'visit_id' => (string) $id,
+                    'type' => 'approval_status'
+                ]);
             } catch (Throwable $pushErr) {
             }
         }
@@ -155,11 +160,18 @@ try {
                 $reason = $data['reason'] ?? 'Host declined the visit.';
                 sendWhatsAppNotification($visit['mobile'], "Your visit request has been declined.", 'visit_rejection_visitor_notify', ["*{$visit['visitor_name']}*", "*{$reason}*"]);
 
-                // Push to the user who created the visit entry
+                // Push to Security
+                sendPushNotificationToRole($pdo, 'security', 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
+                    'visit_id' => (string) $id,
+                    'type' => 'approval_status'
+                ]);
+
+                // Notify the visit creator (user who registered this visit)
                 if (!empty($visit['created_by'])) {
-                    sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'approval_status'
+                    sendPushNotificationToUserId($pdo, $visit['created_by'], "Visit Rejected ❌", "Your visit request for {$visit['visitor_name']} has been rejected. Reason: {$reason}", [
+                        'visit_id'     => (string) $id,
+                        'status'       => 'rejected',
+                        'visitor_name' => $visit['visitor_name'],
                     ]);
                 }
             }
