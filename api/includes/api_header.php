@@ -1,5 +1,6 @@
 <?php
 // api/includes/api_header.php
+ob_start();
 
 // Allow from any origin
 // Allow from any origin (Dev only - with Credentials support)
@@ -26,6 +27,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 
 header('Content-Type: application/json; charset=utf-8');
+
+$GLOBAL_POST_DATA = null;
+
+function getPostData()
+{
+    global $GLOBAL_POST_DATA;
+    if ($GLOBAL_POST_DATA === null) {
+        $input = file_get_contents('php://input');
+        $GLOBAL_POST_DATA = json_decode($input, true) ?: [];
+    }
+    return $GLOBAL_POST_DATA;
+}
 
 require_once __DIR__ . '/db_api.php';
 
@@ -55,7 +68,8 @@ if (!$user_id) {
                     $_SESSION['role'] = $role;
                     $_SESSION['employee_id'] = $employee_id;
                 }
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+            }
         }
     }
 }
@@ -71,9 +85,4 @@ function sendResponse($status, $message, $data = null, $code = 200)
         'data' => $data
     ]);
     exit;
-}
-
-function getPostData()
-{
-    return json_decode(file_get_contents('php://input'), true);
 }

@@ -192,25 +192,6 @@ export default function SecurityDashboard({ navigation }) {
     const prevVisitsRef = useRef([]);
 
     const checkForUpdates = (newVisits) => {
-        const prevVisits = prevVisitsRef.current;
-
-        if (prevVisits.length === 0) {
-            prevVisitsRef.current = newVisits;
-            return;
-        }
-
-        newVisits.forEach(newVisit => {
-            const oldVisit = prevVisits.find(v => v.id === newVisit.id);
-            if (oldVisit) {
-                if (oldVisit.approval_status === 'pending' && newVisit.approval_status !== 'pending') {
-                    showAlert(
-                        'Visit Status Update',
-                        `Visit for ${newVisit.visitor_name} has been ${newVisit.approval_status.toUpperCase()}.`,
-                        'success'
-                    );
-                }
-            }
-        });
         prevVisitsRef.current = newVisits;
     };
 
