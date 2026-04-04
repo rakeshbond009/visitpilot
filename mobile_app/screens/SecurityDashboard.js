@@ -16,7 +16,6 @@ import {
     Image,
     TextInput,
     Linking,
-    DeviceEventEmitter,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -91,9 +90,9 @@ export default function SecurityDashboard({ navigation }) {
     const [records, setRecords] = useState({ visits: [], overstays: [] });
 
     // SweetAlert Modal State
-    const [rejectionReason, setRejectionReason] = useState('');
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error'
+    const [rejectionReason, setRejectionReason] = useState('');
 
     // Date Filter State
     const [filterType, setFilterType] = useState('all');
@@ -192,6 +191,25 @@ export default function SecurityDashboard({ navigation }) {
     const prevVisitsRef = useRef([]);
 
     const checkForUpdates = (newVisits) => {
+        const prevVisits = prevVisitsRef.current;
+
+        if (prevVisits.length === 0) {
+            prevVisitsRef.current = newVisits;
+            return;
+        }
+
+        newVisits.forEach(newVisit => {
+            const oldVisit = prevVisits.find(v => v.id === newVisit.id);
+            if (oldVisit) {
+                if (oldVisit.approval_status === 'pending' && newVisit.approval_status !== 'pending') {
+                    showAlert(
+                        'Visit Status Update',
+                        `Visit for ${newVisit.visitor_name} has been ${newVisit.approval_status.toUpperCase()}.`,
+                        'success'
+                    );
+                }
+            }
+        });
         prevVisitsRef.current = newVisits;
     };
 
@@ -236,29 +254,8 @@ export default function SecurityDashboard({ navigation }) {
     useFocusEffect(
         useCallback(() => {
             fetchData();
-            
-            // Check for pending detail from launch/notification
-            AsyncStorage.getItem('pending_visit_detail').then(id => {
-                if (id) {
-                    AsyncStorage.removeItem('pending_visit_detail');
-                    console.log("[Dashboard] Picking up pending visit from storage:", id);
-                    fetchVisitDetails(id);
-                }
-            });
-
-            // Listen for direct detail requests (from notifications)
-            const openSub = DeviceEventEmitter.addListener('openVisitDetails', ({ visitId }) => {
-                if (visitId) {
-                    console.log("[Dashboard] Handling openVisitDetails for ID:", visitId);
-                    fetchVisitDetails(visitId);
-                }
-            });
-
             const interval = setInterval(fetchData, 15000);
-            return () => {
-                clearInterval(interval);
-                openSub.remove();
-            };
+            return () => clearInterval(interval);
         }, [])
     );
 
@@ -1069,46 +1066,15 @@ export default function SecurityDashboard({ navigation }) {
     );
 
     const showAlert = (title, message, type = 'success', options = {}) => {
+        setAlertConfig({ title, message, type, ...options });
         if (options.showInput) {
             setRejectionReason('');
         }
-        setAlertConfig({ title, message, type, ...options });
         setAlertVisible(true);
     };
 
-    const handleAction = async (visitId, action, mobile, name) => {
-        let label = '';
-        let msg = '';
-        let type = 'warning';
-
-        switch (action) {
-            case 'approve':
-                label = 'Approve Visit';
-                msg = `Are you sure you want to APPROVE ${name || 'this visitor'}?`;
-                break;
-            case 'reject':
-                label = 'Reject Visit';
-                msg = `Are you sure you want to REJECT ${name || 'this visitor'}?`;
-                type = 'error';
-                break;
-            default:
-                label = 'Confirm';
-                msg = 'Proceed with this action?';
-        }
-
-        if (action === 'reject') {
-            showAlert(
-                'Reject Visit',
-                `Please provide a reason for rejecting ${name || 'this visitor'}:`,
-                'error',
-                {
-                    showCancel: true,
-                    showInput: true,
-                    confirmText: 'Reject Now',
-                    onConfirm: (reason) => executeAction(visitId, 'reject', reason)
-                }
-            );
-        } else if (action === 'checkin' || action === 'checkout') {
+    const handleAction = async (visitId, action) => {
+        if (action === 'checkin' || action === 'checkout') {
             const label = action === 'checkin' ? 'Check-In' : 'Check-Out';
             showAlert(
                 'Confirm ' + label,
@@ -1120,15 +1086,17 @@ export default function SecurityDashboard({ navigation }) {
                     onConfirm: () => executeAction(visitId, action)
                 }
             );
-        } else if (action === 'approve') {
+        } else if (action === 'approve' || action === 'reject') {
+            const label = action === 'approve' ? 'Approve' : 'Reject';
             showAlert(
-                'Confirm Approve',
-                `Are you sure you want to approve this visit request?`,
+                'Confirm ' + label,
+                action === 'reject' ? 'Please provide a reason for rejecting this visit request:' : `Are you sure you want to ${label} this visit request?`,
                 'warning',
                 {
                     showCancel: true,
-                    confirmText: 'Yes, Approve',
-                    onConfirm: () => executeAction(visitId, action)
+                    showInput: action === 'reject',
+                    confirmText: 'Yes, ' + label,
+                    onConfirm: (reason) => executeAction(visitId, action, reason)
                 }
             );
         } else {
@@ -1136,13 +1104,12 @@ export default function SecurityDashboard({ navigation }) {
         }
     };
 
-    const executeAction = async (visitId, action, reason = '') => {
+    const executeAction = async (visitId, action, reason = null) => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
                 action: action,
                 visit_id: visitId,
-                reason: reason,
-                user_id: userData?.id
+                reason: reason
             });
 
             if (response.data.status === 'success') {
@@ -1180,21 +1147,20 @@ export default function SecurityDashboard({ navigation }) {
                         {alertConfig.showInput && (
                             <TextInput
                                 style={{
-                                    width: '100%',
-                                    backgroundColor: '#f1f5f9',
-                                    borderRadius: 12,
-                                    padding: 15,
-                                    fontSize: 14,
-                                    color: '#1e293b',
-                                    marginBottom: 20,
+                                    borderWidth: 1,
+                                    borderColor: '#e2e8f0',
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    marginTop: 15,
                                     minHeight: 80,
-                                    textAlignVertical: 'top'
+                                    color: '#1e293b',
+                                    textAlignVertical: 'top',
+                                    backgroundColor: '#f8fafc'
                                 }}
-                                placeholder="Enter reason here..."
-                                placeholderTextColor="#94a3b8"
-                                multiline={true}
+                                placeholder="Enter reason for rejection..."
                                 value={rejectionReason}
                                 onChangeText={setRejectionReason}
+                                multiline={true}
                                 autoFocus={true}
                             />
                         )}
@@ -1208,7 +1174,7 @@ export default function SecurityDashboard({ navigation }) {
                                     <Text style={styles.alertCancelButtonText}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#ef4444' }]}
+                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
                                     onPress={() => {
                                         if (alertConfig.showInput && !rejectionReason.trim()) {
                                             Alert.alert('Required', 'Please provide a reason');

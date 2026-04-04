@@ -1,6 +1,5 @@
 <?php
 // api/includes/api_header.php
-ob_start();
 
 // Allow from any origin
 // Allow from any origin (Dev only - with Credentials support)
@@ -28,18 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 header('Content-Type: application/json; charset=utf-8');
 
-$GLOBAL_POST_DATA = null;
-
-function getPostData()
-{
-    global $GLOBAL_POST_DATA;
-    if ($GLOBAL_POST_DATA === null) {
-        $input = file_get_contents('php://input');
-        $GLOBAL_POST_DATA = json_decode($input, true) ?: [];
-    }
-    return $GLOBAL_POST_DATA;
-}
-
 require_once __DIR__ . '/db_api.php';
 
 // Auth session handling (Restore session and load permissions if needed)
@@ -48,31 +35,6 @@ handlePersistentLogin();
 $user_id = $_SESSION['user_id'] ?? null;
 $role = $_SESSION['role'] ?? null;
 $employee_id = $_SESSION['employee_id'] ?? null;
-
-// Mobile app fallback: If session is lost, try to get user_id from request body
-if (!$user_id) {
-    $postData = getPostData();
-    if (isset($postData['user_id'])) {
-        $user_id = $postData['user_id'];
-        // Recover role/employee_id from DB if missing from session
-        if ($pdo) {
-            try {
-                $uStmt = $pdo->prepare("SELECT role, employee_id FROM users WHERE id = ?");
-                $uStmt->execute([$user_id]);
-                $uData = $uStmt->fetch(PDO::FETCH_ASSOC);
-                if ($uData) {
-                    $role = $uData['role'];
-                    $employee_id = $uData['employee_id'];
-                    // Restore to session for the rest of this request
-                    $_SESSION['user_id'] = $user_id;
-                    $_SESSION['role'] = $role;
-                    $_SESSION['employee_id'] = $employee_id;
-                }
-            } catch (Exception $e) {
-            }
-        }
-    }
-}
 
 function sendResponse($status, $message, $data = null, $code = 200)
 {
@@ -85,4 +47,9 @@ function sendResponse($status, $message, $data = null, $code = 200)
         'data' => $data
     ]);
     exit;
+}
+
+function getPostData()
+{
+    return json_decode(file_get_contents('php://input'), true);
 }

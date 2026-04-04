@@ -46,13 +46,6 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-
-                if ($visit['created_by']) {
-                    sendPushToUser($pdo, $visit['created_by'], "Visit Approved: {$visit['visitor_name']}", "Host {$visit['host_name']} has approved the visit request.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'approval_status'
-                    ]);
-                }
             }
         } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
@@ -133,17 +126,6 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-
-                // Also notify the person who created the visit (if it was an invitation)
-                $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id=?");
-                $stmt->execute([$id]);
-                $created_by = $stmt->fetchColumn();
-                if ($created_by) {
-                    sendPushToUser($pdo, $created_by, "Invite Cancelled: {$visitor_info['name']}", "Host {$visitor_info['host_name']} has cancelled the invitation.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'approval_status'
-                    ]);
-                }
             } catch (Throwable $pushErr) {
             }
         }
@@ -174,13 +156,6 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-
-                if ($visit['created_by']) {
-                    sendPushToUser($pdo, $visit['created_by'], "Visit Rejected: {$visit['visitor_name']}", "Host {$visit['host_name']} has rejected the visit request.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'approval_status'
-                    ]);
-                }
             }
         } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());

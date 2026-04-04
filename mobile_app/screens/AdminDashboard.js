@@ -95,6 +95,7 @@ export default function AdminDashboard({ navigation }) {
     // SweetAlert Modal State
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error'
+    const [rejectionReason, setRejectionReason] = useState('');
 
     // Filter State
     const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -1047,6 +1048,9 @@ export default function AdminDashboard({ navigation }) {
 
     const showAlert = (title, message, type = 'success', options = {}) => {
         setAlertConfig({ title, message, type, ...options });
+        if (options.showInput) {
+            setRejectionReason('');
+        }
         setAlertVisible(true);
     };
 
@@ -1071,6 +1075,27 @@ export default function AdminDashboard({ navigation }) {
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
 
+                        {alertConfig.showInput && (
+                            <TextInput
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#e2e8f0',
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    marginTop: 15,
+                                    minHeight: 80,
+                                    color: '#1e293b',
+                                    textAlignVertical: 'top',
+                                    backgroundColor: '#f8fafc'
+                                }}
+                                placeholder="Enter reason for rejection..."
+                                value={rejectionReason}
+                                onChangeText={setRejectionReason}
+                                multiline={true}
+                                autoFocus={true}
+                            />
+                        )}
+
                         {alertConfig.showCancel ? (
                             <View style={styles.alertActionRow}>
                                 <TouchableOpacity
@@ -1082,8 +1107,12 @@ export default function AdminDashboard({ navigation }) {
                                 <TouchableOpacity
                                     style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
                                     onPress={() => {
+                                        if (alertConfig.showInput && !rejectionReason.trim()) {
+                                            Alert.alert('Required', 'Please provide a reason');
+                                            return;
+                                        }
                                         setAlertVisible(false);
-                                        if (alertConfig.onConfirm) alertConfig.onConfirm();
+                                        if (alertConfig.onConfirm) alertConfig.onConfirm(rejectionReason);
                                     }}
                                 >
                                     <Text style={styles.alertConfirmButtonText}>{alertConfig.confirmText || 'Yes'}</Text>
@@ -1120,12 +1149,13 @@ export default function AdminDashboard({ navigation }) {
             const label = action === 'approve' ? 'Approve' : 'Reject';
             showAlert(
                 'Confirm ' + label,
-                `Are you sure you want to ${label} this visit request?`,
+                action === 'reject' ? 'Please provide a reason for rejecting this visit request:' : `Are you sure you want to ${label} this visit request?`,
                 'warning',
                 {
                     showCancel: true,
+                    showInput: action === 'reject',
                     confirmText: 'Yes, ' + label,
-                    onConfirm: () => executeAction(visitId, action)
+                    onConfirm: (reason) => executeAction(visitId, action, reason)
                 }
             );
         } else {
@@ -1133,11 +1163,12 @@ export default function AdminDashboard({ navigation }) {
         }
     };
 
-    const executeAction = async (visitId, action) => {
+    const executeAction = async (visitId, action, reason = null) => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
                 action: action,
                 visit_id: visitId,
+                reason: reason
             });
 
             if (response.data.status === 'success') {

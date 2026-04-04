@@ -51,17 +51,11 @@ if ($action == 'approve') {
     logAction($pdo, $_SESSION['user_id'], "Approved visit ID: $visit_id via Popup");
 
     // Send Notification to Security
-    $stmt = $pdo->prepare("SELECT vs.name, v.created_by FROM visits v JOIN visitors vs ON vs.id = v.visitor_id WHERE v.id = ?");
+    $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
-    $visitInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-    $visitor_name = $visitInfo['name'] ?? 'Visitor';
-    $creator_id = $visitInfo['created_by'] ?? null;
+    $visitor_name = $stmt->fetchColumn();
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
-
-    if ($creator_id) {
-        sendPushToUser($pdo, $creator_id, "Visit Approved: $visitor_name", "The host has approved the entry for $visitor_name.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
-    }
 
     // --- DAHUA INTEGRATION ---
     try {
@@ -116,17 +110,11 @@ if ($action == 'approve') {
     logAction($pdo, $_SESSION['user_id'], "Rejected visit ID: $visit_id via Popup");
 
     // Send Notification to Security
-    $stmt = $pdo->prepare("SELECT vs.name, v.created_by FROM visits v JOIN visitors vs ON vs.id = v.visitor_id WHERE v.id = ?");
+    $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
-    $visitInfo = $stmt->fetch(PDO::FETCH_ASSOC);
-    $visitor_name = $visitInfo['name'] ?? 'Visitor';
-    $creator_id = $visitInfo['created_by'] ?? null;
+    $visitor_name = $stmt->fetchColumn();
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
-
-    if ($creator_id) {
-        sendPushToUser($pdo, $creator_id, "Visit Rejected: $visitor_name", "The host has rejected the entry for $visitor_name.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
-    }
 
     echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }

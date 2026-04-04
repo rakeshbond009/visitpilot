@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Animated, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, Animated, Dimensions, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 
@@ -7,6 +7,8 @@ const { width, height } = Dimensions.get('window');
 
 const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismiss }) => {
     const [actionLoading, setActionLoading] = useState(false);
+    const [showReasonInput, setShowReasonInput] = useState(false);
+    const [reason, setReason] = useState('');
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const slideAnim = useRef(new Animated.Value(height)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -47,8 +49,26 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismis
             slideAnim.setValue(height);
             opacityAnim.setValue(0);
             setActionLoading(false);
+            setShowReasonInput(false);
+            setReason('');
         }
     }, [visible]);
+
+    const handleRejectPress = () => {
+        if (!showReasonInput) {
+            setShowReasonInput(true);
+            return;
+        }
+
+        if (!reason.trim()) {
+            Alert.alert('Reason Required', 'Please provide a reason for rejecting this visit.');
+            return;
+        }
+
+        if (actionLoading) return;
+        setActionLoading(true);
+        onReject(reason.trim());
+    };
 
     if (!visible) return null;
 
@@ -109,16 +129,36 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismis
                             <Text style={styles.visitorInfo}>{visitorData?.company || 'Organization Not Disclosed'}</Text>
                         </View>
 
-                        <View style={[styles.detailsGlass, { marginTop: 10 }]}>
-                            <View style={styles.detailItem}>
-                                <Ionicons name="enter-outline" size={18} color="#60a5fa" />
-                                <Text style={styles.detailText}>{visitorData?.purpose || 'General Visit'}</Text>
+                        {showReasonInput ? (
+                            <View style={styles.reasonContainer}>
+                                <Text style={styles.reasonLabel}>Reason for Rejection:</Text>
+                                <TextInput
+                                    style={styles.reasonInput}
+                                    placeholder="Enter reason here..."
+                                    placeholderTextColor="rgba(255,255,255,0.4)"
+                                    value={reason}
+                                    onChangeText={setReason}
+                                    autoFocus={true}
+                                />
+                                <TouchableOpacity 
+                                    style={styles.cancelReasonBtn}
+                                    onPress={() => setShowReasonInput(false)}
+                                >
+                                    <Text style={styles.cancelReasonText}>Go Back</Text>
+                                </TouchableOpacity>
                             </View>
-                            <View style={[styles.detailItem, { marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8 }]}>
-                                <Ionicons name="briefcase-outline" size={18} color="#fbbf24" />
-                                <Text style={styles.detailText}>{visitorData?.assets_carried || visitorData?.assets || 'No items carried'}</Text>
+                        ) : (
+                            <View style={[styles.detailsGlass, { marginTop: 10 }]}>
+                                <View style={styles.detailItem}>
+                                    <Ionicons name="enter-outline" size={18} color="#60a5fa" />
+                                    <Text style={styles.detailText}>{visitorData?.purpose || 'General Visit'}</Text>
+                                </View>
+                                <View style={[styles.detailItem, { marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8 }]}>
+                                    <Ionicons name="briefcase-outline" size={18} color="#fbbf24" />
+                                    <Text style={styles.detailText}>{visitorData?.assets_carried || visitorData?.assets || 'No items carried'}</Text>
+                                </View>
                             </View>
-                        </View>
+                        )}
                     </View>
 
                     <View style={styles.actionSection}>
@@ -126,42 +166,40 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismis
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 style={[styles.actionButton, actionLoading && { opacity: 0.5 }]}
-                                onPress={() => {
-                                    if (actionLoading) return;
-                                    setActionLoading(true);
-                                    onReject();
-                                }}
+                                onPress={handleRejectPress}
                                 disabled={actionLoading}
                             >
                                 <View style={[styles.iconCircle, styles.rejectBtnColor]}>
                                     {actionLoading ? (
                                         <ActivityIndicator color="#fff" size="large" />
                                     ) : (
-                                        <Ionicons name="close" size={36} color="#fff" />
+                                        <Ionicons name={showReasonInput ? "checkmark-circle" : "close"} size={showReasonInput ? 44 : 36} color="#fff" />
                                     )}
                                 </View>
-                                <Text style={styles.btnText}>Decline</Text>
+                                <Text style={styles.btnText}>{showReasonInput ? 'Confirm' : 'Decline'}</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                activeOpacity={0.7}
-                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]}
-                                onPress={() => {
-                                    if (actionLoading) return;
-                                    setActionLoading(true);
-                                    onAccept();
-                                }}
-                                disabled={actionLoading}
-                            >
-                                <View style={[styles.iconCircle, styles.acceptBtnColor]}>
-                                    {actionLoading ? (
-                                        <ActivityIndicator color="#fff" size="large" />
-                                    ) : (
-                                        <Ionicons name="checkmark-sharp" size={38} color="#fff" />
-                                    )}
-                                </View>
-                                <Text style={styles.btnText}>Authorize</Text>
-                            </TouchableOpacity>
+                            {!showReasonInput && (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    style={[styles.actionButton, actionLoading && { opacity: 0.5 }]}
+                                    onPress={() => {
+                                        if (actionLoading) return;
+                                        setActionLoading(true);
+                                        onAccept();
+                                    }}
+                                    disabled={actionLoading}
+                                >
+                                    <View style={[styles.iconCircle, styles.acceptBtnColor]}>
+                                        {actionLoading ? (
+                                            <ActivityIndicator color="#fff" size="large" />
+                                        ) : (
+                                            <Ionicons name="checkmark-sharp" size={38} color="#fff" />
+                                        )}
+                                    </View>
+                                    <Text style={styles.btnText}>Authorize</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </Animated.View>
@@ -332,6 +370,42 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         opacity: 0.9,
+    },
+    reasonContainer: {
+        marginTop: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.12)',
+        borderRadius: 20,
+        padding: 20,
+        width: '85%',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    reasonLabel: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+        marginBottom: 12,
+        textAlign: 'center',
+    },
+    reasonInput: {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        borderRadius: 12,
+        padding: 15,
+        color: '#fff',
+        fontSize: 16,
+        textAlignVertical: 'top',
+        minHeight: 100,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    cancelReasonBtn: {
+        marginTop: 15,
+        alignItems: 'center',
+    },
+    cancelReasonText: {
+        color: '#94a3b8',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
 

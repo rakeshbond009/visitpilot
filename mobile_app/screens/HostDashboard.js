@@ -17,7 +17,6 @@ import {
     Pressable,
     TextInput,
     Linking,
-    DeviceEventEmitter,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -238,29 +237,8 @@ export default function HostDashboard({ navigation }) {
     useFocusEffect(
         useCallback(() => {
             fetchData();
-            
-            // Check for pending detail from launch/notification
-            AsyncStorage.getItem('pending_visit_detail').then(id => {
-                if (id) {
-                    AsyncStorage.removeItem('pending_visit_detail');
-                    console.log("[Dashboard] Picking up pending visit from storage:", id);
-                    fetchVisitDetails(id);
-                }
-            });
-
-            // Listen for direct detail requests (from notifications)
-            const openSub = DeviceEventEmitter.addListener('openVisitDetails', ({ visitId }) => {
-                if (visitId) {
-                    console.log("[Dashboard] Handling openVisitDetails for ID:", visitId);
-                    fetchVisitDetails(visitId);
-                }
-            });
-
             const interval = setInterval(fetchData, 10000);
-            return () => {
-                clearInterval(interval);
-                openSub.remove();
-            };
+            return () => clearInterval(interval);
         }, [loading])
     );
 
@@ -369,8 +347,7 @@ export default function HostDashboard({ navigation }) {
                 response = await apiClient.post('api/visit/status_action.php', {
                     action: action,
                     visit_id: visitId,
-                    reason: reason,
-                    user_id: userData?.id
+                    reason: reason
                 });
             }
 

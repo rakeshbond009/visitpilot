@@ -169,7 +169,11 @@ export default function InviteVisitor({ navigation }) {
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Visitor Name *</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => nameRef.current?.focus()}
+                                style={styles.inputWrapper}
+                            >
                                 <Icon name="account-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
                                     ref={nameRef}
@@ -179,12 +183,16 @@ export default function InviteVisitor({ navigation }) {
                                     value={name}
                                     onChangeText={setName}
                                 />
-                            </View>
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Mobile Number *</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => mobileRef.current?.focus()}
+                                style={styles.inputWrapper}
+                            >
                                 <Icon name="phone-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
                                     ref={mobileRef}
@@ -196,12 +204,16 @@ export default function InviteVisitor({ navigation }) {
                                     keyboardType="phone-pad"
                                     maxLength={10}
                                 />
-                            </View>
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email Address (Optional)</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity
+                                activeOpacity={1}
+                                onPress={() => emailRef.current?.focus()}
+                                style={styles.inputWrapper}
+                            >
                                 <Icon name="email-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
                                     ref={emailRef}
@@ -213,7 +225,7 @@ export default function InviteVisitor({ navigation }) {
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                 />
-                            </View>
+                            </TouchableOpacity>
                         </View>
 
                         <Text style={styles.sectionTitle}>VISIT DETAILS</Text>
@@ -237,8 +249,8 @@ export default function InviteVisitor({ navigation }) {
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Expected Date</Text>
-                            <TouchableOpacity 
-                                style={styles.inputWrapper} 
+                            <TouchableOpacity
+                                style={styles.inputWrapper}
                                 onPress={() => setShowDatePicker(true)}
                                 activeOpacity={0.7}
                             >
