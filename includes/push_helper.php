@@ -259,63 +259,83 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
 
 function sendPushNotificationToUserId($pdo, $user_id, $title, $body, $data = [])
 {
-    try {
-        // Fetch devices for the specific creator ID
-        $stmt = $pdo->prepare("SELECT ud.fcm_token, ud.platform FROM user_devices ud WHERE ud.user_id = ? AND ud.fcm_token IS NOT NULL");
-        $stmt->execute([$user_id]);
-        $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $logFile = __DIR__ . '/push_debug.log';
+    $log = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
 
-        if (empty($devices)) return false;
+    $log("Heads-up push for User ID: $user_id. Title: $title");
 
-        $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
-        if (!file_exists($certPath)) return false;
-        
-        $serviceAccount = json_decode(file_get_contents($certPath), true);
-        $projectId = $serviceAccount['project_id'];
-        $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken) return false;
+    $stmt = $pdo->prepare("SELECT ud.fcm_token, ud.platform FROM user_devices ud WHERE ud.user_id = ? AND ud.fcm_token IS NOT NULL");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        foreach ($devices as $device) {
-            $message = [
-                'message' => [
-                    'token' => (string) $device['fcm_token'],
-                    'notification' => [
-                        'title' => (string) $title,
-                        'body' => (string) $body,
-                    ],
-                    'data' => array_merge([
-                        'title' => (string) $title,
-                        'body' => (string) $body,
-                        'type' => 'visit_status_update',
-                        'visit_id' => (string) ($data['visit_id'] ?? ''),
-                    ], array_map('strval', $data)),
-                    'android' => [
-                        'priority' => 'high',
-                        'notification' => [
-                            'sound' => 'default',
-                            'priority' => 'high',
-                            'channel_id' => 'vms_status_updates'
-                        ]
-                    ]
-                ]
-            ];
-
-            $payloadJson = json_encode($message);
-            $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                'Authorization: Bearer ' . $accessToken,
-                'Content-Type: application/json'
-            ]);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
-            curl_exec($ch);
-            curl_close($ch);
-        }
-        return true;
-    } catch (Exception $e) {
-        error_log("Creator Push error for user $user_id: " . $e->getMessage());
+    if (empty($devices)) {
         return false;
     }
+
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) return false;
+
+    $serviceAccount = json_decode(file_get_contents($certPath), true);
+    $projectId = $serviceAccount['project_id'];
+    $accessToken = getGoogleAccessToken($serviceAccount);
+    if (!$accessToken) return false;
+
+    foreach ($devices as $device) {
+        $message = [
+            'message' => [
+                'token' => (string) $device['fcm_token'],
+                'data' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                    'visit_id' => (string) ($data['visit_id'] ?? ''),
+                    'type' => 'visit_status_update',
+                    'is_call_priority' => 'false'
+                ],
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'channel_id' => 'vms_status_updates',
+                        'sound' => 'default'
+                    ]
+                ],
+                'apns' => [
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => (string) $title,
+                                'body' => (string) $body
+                            ],
+                            'sound' => 'default'
+                        ]
+                    ]
+                ],
+                'notification' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body
+                ]
+            ]
+        ];
+
+        $payloadJson = json_encode($message);
+        $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+        $response = curl_exec($ch);
+        $log("FCM RESPONSE for User $user_id: $response");
+        curl_close($ch);
+    }
+
+    return true;
 }
 ?>

@@ -88,6 +88,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
 });
 
 const Stack = createStackNavigator();
+const navigationRef = createNavigationContainerRef();
 
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
@@ -100,8 +101,6 @@ const linking = {
         },
     },
 };
-
-const navigationRef = createNavigationContainerRef();
 
 export default function App() {
     return (
@@ -268,29 +267,20 @@ function AppContent() {
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const rawData = r.notification.request.content.data;
-            
-            // 1. Check for Status Update / Target Visit ID FIRST
-            const visitId = rawData.visit_id || rawData.visitId;
-            const type = rawData.type;
+            const data = standardizeArrivalData(r.notification.request.content.data);
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
+            } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
+                // Determine target screen based on role
+                let targetScreen = 'HostDashboard';
+                if (role === 'security') targetScreen = 'SecurityDashboard';
+                if (role === 'admin') targetScreen = 'AdminDashboard';
 
-            if (type === 'visit_status_update' || (visitId && !rawData.is_call_priority)) {
-                if (visitId && navigationRef.isReady()) {
-                    // Navigate based on role (default to HostDashboard if unsure)
-                    const targetDashboard = role === 'admin' ? 'AdminDashboard' : 
-                                           role === 'security' ? 'SecurityDashboard' : 
-                                           'HostDashboard';
-                    
-                    navigationRef.navigate(targetDashboard, { 
-                        openVisitId: visitId,
-                        timestamp: Date.now() 
+                if (navigationRef.isReady()) {
+                    navigationRef.navigate(targetScreen, {
+                        openVisitId: data.visit_id,
+                        timestamp: Date.now()
                     });
-                }
-            } else {
-                const data = standardizeArrivalData(rawData);
-                if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                    setArrivalData(data); 
-                    setShowOverlay(true);
                 }
             }
         });

@@ -332,6 +332,8 @@ export default function AdminDashboard({ navigation, route }) {
     useEffect(() => {
         if (route.params?.openVisitId) {
             fetchVisitDetails(route.params.openVisitId);
+            // Clear parameter to avoid repeat logic
+            navigation.setParams({ openVisitId: null });
         }
     }, [route.params?.openVisitId, route.params?.timestamp]);
 

@@ -2,7 +2,6 @@
 // api/visit/status_action.php - Dahua Enabled
 require_once '../includes/api_header.php';
 require_once '../../includes/dahua_helper.php';
-require_once '../../includes/push_helper.php';
 
 $data = getPostData();
 
@@ -26,10 +25,11 @@ try {
 
         // --- NOTIFICATIONS (NEW) ---
         try {
+            require_once '../../includes/push_helper.php';
             require_once '../../includes/whatsapp_helper.php';
 
             // Get visitor details
-            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
+            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
             $stmt->execute([$id]);
             $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -47,11 +47,10 @@ try {
                     'type' => 'approval_status'
                 ]);
 
-                // Targeted Heads-up to Creator
+                // Heads-up to Creator
                 if (!empty($visit['created_by'])) {
                     sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Approved', "Visit for {$visit['visitor_name']} has been approved.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'visit_status_update'
+                        'visit_id' => (string) $id
                     ]);
                 }
             }
@@ -129,6 +128,7 @@ try {
             }
 
             try {
+                require_once '../../includes/push_helper.php';
                 sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
@@ -136,8 +136,7 @@ try {
 
                 if (!empty($visitor_info['created_by'])) {
                     sendPushNotificationToUserId($pdo, $visitor_info['created_by'], 'Invitation Cancelled', "Invitation for {$visitor_info['name']} has been cancelled.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'visit_status_update'
+                        'visit_id' => (string) $id
                     ]);
                 }
             } catch (Throwable $pushErr) {
@@ -154,6 +153,7 @@ try {
         // --- NOTIFICATIONS (NEW) ---
         try {
             require_once '../../includes/whatsapp_helper.php';
+            require_once '../../includes/push_helper.php';
 
             $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
             $stmt->execute([$id]);
@@ -170,11 +170,10 @@ try {
                     'type' => 'approval_status'
                 ]);
 
-                // Targeted Heads-up to Creator
+                // Heads-up to Creator
                 if (!empty($visit['created_by'])) {
                     sendPushNotificationToUserId($pdo, $visit['created_by'], 'Visit Rejected', "Visit for {$visit['visitor_name']} has been rejected by host.", [
-                        'visit_id' => (string) $id,
-                        'type' => 'visit_status_update'
+                        'visit_id' => (string) $id
                     ]);
                 }
             }
