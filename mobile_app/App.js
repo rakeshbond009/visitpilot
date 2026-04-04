@@ -124,14 +124,21 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
-        let data = raw.data || raw.params || raw;
+        let data = raw?.data || raw?.params || raw?.notification?.data || raw?.remoteMessage?.data || raw;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
+        // Deep hunt for visit_id
+        let visit_id = data?.visit_id || data?.visitId || data?.id || raw?.visit_id || raw?.visitId || raw?.id;
 
-        if (!visit_id && data.body) {
+        // Check nested content
+        if (!visit_id && raw?.request?.content?.data) {
+            const nested = raw.request.content.data;
+            visit_id = nested.visit_id || nested.visitId || nested.id;
+        }
+
+        if (!visit_id && data?.body) {
             try {
                 const parsedBody = JSON.parse(data.body);
                 visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
@@ -291,20 +298,21 @@ function AppContent() {
         setTimeout(() => clearInterval(poll), 10000);
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
-            const data = standardizeArrivalData(n.request.content.data);
-            if (!data) return;
-            if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
-                setArrivalData(data); setShowOverlay(true);
+            console.log("[FCM] Notification Received (Foreground):", JSON.stringify(n));
+            const data = standardizeArrivalData(n); // Process entire notification object
+            if (data?.type === 'visitor_arrival' || data?.is_call_priority === 'true') {
+                setArrivalData(data);
+                setShowOverlay(true);
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            stopAllNoises(); // KILL SOUND WHEN TAPPED
-            const data = standardizeArrivalData(r.notification.request.content.data);
-            if (!data) return;
-            if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
-                setArrivalData(data); setShowOverlay(true);
-            } else if (data.visit_id) {
+            console.log("[FCM] Notification Tapped:", JSON.stringify(r));
+            stopAllNoises(); // KILL RINGING INSTANTLY ON TAP
+            const data = standardizeArrivalData(r.notification.request.content.data || r.notification.request.trigger?.remoteMessage?.data);
+            if (data && showOverlay) setShowOverlay(false);
+
+            if (data?.visit_id) {
                 navigateToVisit(data.visit_id);
             }
         });
