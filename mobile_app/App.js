@@ -8,9 +8,6 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createNavigationContainerRef } from '@react-navigation/native';
-
-export const navigationRef = createNavigationContainerRef();
 
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
@@ -117,28 +114,20 @@ function AppContent() {
     const responseListener = useRef();
     const [showOverlay, setShowOverlay] = useState(false);
     const [arrivalData, setArrivalData] = useState(null);
-    const soundRef = useRef(null);
-    const pendingNav = useRef(null);
+    const [sound, setSound] = useState(null);
 
     const { role, hasPermission, loading } = usePermissions();
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
-        let data = raw?.data || raw?.params || raw?.notification?.data || raw?.remoteMessage?.data || raw;
+        let data = raw.data || raw.params || raw;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        // Deep hunt for visit_id
-        let visit_id = data?.visit_id || data?.visitId || data?.id || raw?.visit_id || raw?.visitId || raw?.id;
+        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
 
-        // Check nested content
-        if (!visit_id && raw?.request?.content?.data) {
-            const nested = raw.request.content.data;
-            visit_id = nested.visit_id || nested.visitId || nested.id;
-        }
-
-        if (!visit_id && data?.body) {
+        if (!visit_id && data.body) {
             try {
                 const parsedBody = JSON.parse(data.body);
                 visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
@@ -159,22 +148,9 @@ function AppContent() {
     };
 
     // --- RINGING & VIBRATION ---
-    const stopAllNoises = async () => {
-        try {
-            if (soundRef.current) {
-                await soundRef.current.stopAsync().catch(() => { });
-                await soundRef.current.unloadAsync().catch(() => { });
-                soundRef.current = null;
-            }
-            Vibration.cancel();
-            if (OverlayPermissionModule?.stopRinging) {
-                OverlayPermissionModule.stopRinging();
-            }
-        } catch (e) { }
-    };
-
     useEffect(() => {
         let isLooping = true;
+
         async function startRinging() {
             if (showOverlay) {
                 try {
@@ -187,10 +163,13 @@ function AppContent() {
                         interruptionModeAndroid: 1,
                         playThroughEarpieceAndroid: false
                     });
+
                     const urls = [
                         'https://www.soundjay.com/phone/telephone-ring-03a.mp3',
+                        'https://www.soundjay.com/phone/phone-calling-1.mp3',
                         'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sample.mp3'
                     ];
+
                     for (const url of urls) {
                         try {
                             const { sound: newSound } = await Audio.Sound.createAsync(
@@ -198,7 +177,7 @@ function AppContent() {
                                 { shouldPlay: true, isLooping: true, volume: 1.0 }
                             );
                             if (isLooping) {
-                                soundRef.current = newSound;
+                                setSound(newSound);
                                 break;
                             } else {
                                 newSound.unloadAsync();
@@ -206,43 +185,25 @@ function AppContent() {
                         } catch (e) { }
                     }
                 } catch (e) { }
+
                 if (isLooping) Vibration.vibrate([1000, 1000, 1000], true);
             } else {
                 isLooping = false;
-                stopAllNoises();
+                if (sound) {
+                    sound.stopAsync().catch(() => { });
+                    sound.unloadAsync().catch(() => { });
+                    setSound(null);
+                }
+                Vibration.cancel();
             }
         }
+
         startRinging();
         return () => {
             isLooping = false;
-            stopAllNoises();
+            Vibration.cancel();
         };
     }, [showOverlay]);
-
-    const navigateToVisit = (visitId) => {
-        if (!visitId) return;
-        if (loading || !role) {
-            pendingNav.current = visitId;
-            return;
-        }
-        if (navigationRef.isReady()) {
-            let screen = 'HostDashboard';
-            if (role === 'security') screen = 'SecurityDashboard';
-            else if (role === 'admin') screen = 'AdminDashboard';
-            navigationRef.navigate(screen, { openVisitId: visitId });
-        } else {
-            pendingNav.current = visitId;
-        }
-    };
-
-    // Auto-navigate when role is loaded
-    useEffect(() => {
-        if (!loading && role && pendingNav.current) {
-            const vid = pendingNav.current;
-            pendingNav.current = null;
-            setTimeout(() => navigateToVisit(vid), 500);
-        }
-    }, [loading, role]);
 
     // --- AUTO DISMISS ---
     useEffect(() => {
@@ -298,22 +259,16 @@ function AppContent() {
         setTimeout(() => clearInterval(poll), 10000);
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
-            console.log("[FCM] Notification Received (Foreground):", JSON.stringify(n));
-            const data = standardizeArrivalData(n); // Process entire notification object
-            if (data?.type === 'visitor_arrival' || data?.is_call_priority === 'true') {
-                setArrivalData(data);
-                setShowOverlay(true);
+            const data = standardizeArrivalData(n.request.content.data);
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            console.log("[FCM] Notification Tapped:", JSON.stringify(r));
-            stopAllNoises(); // KILL RINGING INSTANTLY ON TAP
-            const data = standardizeArrivalData(r.notification.request.content.data || r.notification.request.trigger?.remoteMessage?.data);
-            if (data && showOverlay) setShowOverlay(false);
-
-            if (data?.visit_id) {
-                navigateToVisit(data.visit_id);
+            const data = standardizeArrivalData(r.notification.request.content.data);
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
@@ -327,15 +282,27 @@ function AppContent() {
     const handleAction = async (visitId, action, reason = null) => {
         setShowOverlay(false);
         setArrivalData(null);
-        stopAllNoises();
+        Vibration.cancel();
+
+        // STOP NATIVE Alert
+        if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
+            OverlayPermissionModule.stopRinging();
+        }
+
+        if (sound) {
+            sound.stopAsync().catch(() => { });
+            sound.unloadAsync().catch(() => { });
+            setSound(null);
+        }
 
         try {
             await Notifications.dismissAllNotificationsAsync().catch(() => { });
+            // Set a local timeout for the response so we don't hang if server is slow
             const response = await apiClient.post('api/visit/status_action.php', {
                 action,
                 visit_id: visitId,
                 reason: reason
-            });
+            }, { timeout: 10000 }); // 10s local override
 
             if (response.data.status === 'success') {
                 // Success toast or nothing (standardized)
@@ -362,7 +329,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking} ref={navigationRef}>
+            <NavigationContainer linking={linking}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />
@@ -387,7 +354,15 @@ function AppContent() {
                     onDismiss={() => {
                         setShowOverlay(false);
                         setArrivalData(null);
-                        stopAllNoises();
+                        Vibration.cancel();
+                        if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
+                            OverlayPermissionModule.stopRinging();
+                        }
+                        if (sound) {
+                            sound.stopAsync().catch(() => { });
+                            sound.unloadAsync().catch(() => { });
+                            setSound(null);
+                        }
                     }}
                 />
             )}

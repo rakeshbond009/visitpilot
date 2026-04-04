@@ -54,7 +54,7 @@ const getPhotoUrl = (path) => {
     return `${CONFIG.API_BASE_URL}${path}`;
 };
 
-export default function HostDashboard({ navigation, route }) {
+export default function HostDashboard({ navigation }) {
     const [userData, setUserData] = useState(null);
     const [activeTab, setActiveTab] = useState('home'); // 'home', 'visitors'
     const [visitorView, setVisitorView] = useState('log'); // 'log', 'invites', 'pending'
@@ -241,17 +241,6 @@ export default function HostDashboard({ navigation, route }) {
             return () => clearInterval(interval);
         }, [loading])
     );
-
-    // Handle Open Visit from Notification
-    useEffect(() => {
-        const visitId = route?.params?.openVisitId;
-        if (visitId) {
-            console.log("[Host] Opening visit from route param:", visitId);
-            fetchVisitDetails(visitId);
-            // Clear the param so it doesn't re-open on refresh
-            navigation.setParams({ openVisitId: null });
-        }
-    }, [route?.params?.openVisitId]);
 
     const fetchVisitDetails = async (visitId) => {
         try {

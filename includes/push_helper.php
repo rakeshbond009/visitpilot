@@ -136,8 +136,6 @@ function getGoogleAccessToken($serviceAccount)
         $ch = curl_init('https://oauth2.googleapis.com/token');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion' => $jwt
@@ -202,18 +200,12 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
-    $accessToken = getGoogleAccessToken($serviceAccount);
-    if (!$accessToken) return false;
-
-    $startTime = microtime(true);
     foreach ($users as $user) {
-        // SAFETY: If we've been sending for more than 5 seconds, stop and respond to the app
-        if (microtime(true) - $startTime > 5) {
-            $log("LOOP ABORT: Too many devices, processing the rest in background is not possible, skipping remaining.");
-            break; 
-        }
-
         $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']})");
+
+        $accessToken = getGoogleAccessToken($serviceAccount);
+        if (!$accessToken)
+            continue;
 
         $message = [
             'message' => [
@@ -221,14 +213,25 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                 'data' => array_merge([
                     'title' => (string) $title,
                     'body' => (string) $body,
-                    'type' => 'visit_update', 
+                    'type' => 'visit_update', // Different type for updates
                     'is_call_priority' => 'false',
-                    'visit_id' => (string) ($data['visit_id'] ?? ''),
+                    'visitId' => (string) ($data['visit_id'] ?? ''),
                     'click_action' => 'visit_update_action'
                 ], $data),
                 'android' => [
                     'priority' => 'high',
                     'ttl' => '0s',
+                ],
+                'apns' => [
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => (string) $title,
+                                'body' => (string) $body,
+                            ],
+                            'sound' => 'default',
+                        ]
+                    ]
                 ]
             ]
         ];
@@ -239,8 +242,6 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 1);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json'
@@ -252,6 +253,125 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         curl_close($ch);
 
         $log("FCM RESPONSE for Role $role [HTTP $httpCode]: $response");
+    }
+    return true;
+}
+
+function sendPushNotificationToUserId($pdo, $user_id, $title, $body, $data = [])
+{
+    // --- DEBUG LOGGING ---
+    $logFile = __DIR__ . '/push_debug.log';
+    $log = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+
+    $log("Attempting push for User ID: $user_id. Title: $title");
+
+    // Fetch user by ID
+    $stmt = $pdo->prepare("
+        SELECT u.id as user_id, ud.fcm_token, u.role, ud.platform
+        FROM users u 
+        JOIN user_devices ud ON u.id = ud.user_id 
+        WHERE u.id = ? 
+        AND ud.fcm_token IS NOT NULL
+    ");
+    $stmt->execute([$user_id]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fallback (Backward Compatibility)
+    if (empty($users)) {
+        $stmt = $pdo->prepare("SELECT u.id as user_id, u.fcm_token, u.role, 'android' as platform FROM users u WHERE u.id = ? AND u.fcm_token IS NOT NULL");
+        $stmt->execute([$user_id]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    if (empty($users)) {
+        $log("No active FCM tokens found for User ID: $user_id");
+        return false;
+    }
+
+    // Filter tokens
+    $users = array_filter($users, function ($u) {
+        return !empty(trim($u['fcm_token'])) && strlen($u['fcm_token']) > 20;
+    });
+
+    if (empty($users)) {
+        return false;
+    }
+
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase Service Account JSON not found");
+        return false;
+    }
+
+    $serviceAccount = json_decode(file_get_contents($certPath), true);
+    $projectId = $serviceAccount['project_id'];
+
+    foreach ($users as $user) {
+        $platform = strtolower($user['platform'] ?? 'android');
+        $log("Targeting exact User ID: {$user['user_id']} (Platform: $platform)");
+
+        $accessToken = getGoogleAccessToken($serviceAccount);
+        if (!$accessToken)
+            continue;
+
+        $message = [
+            'message' => [
+                'token' => (string) $user['fcm_token'],
+                'data' => array_merge([
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                    'type' => 'visit_update', // Important: keep this type
+                    'is_call_priority' => 'false',
+                    'visitId' => (string) ($data['visit_id'] ?? ''),
+                    'click_action' => 'visit_update_action'
+                ], $data),
+                'android' => [
+                    'priority' => 'high',
+                    'ttl' => '0s',
+                ]
+            ]
+        ];
+        
+        // Add notification block for iOS and Android if needed. 
+        // Based on the 'delivery in killed app states', standard FCM notification block handles it automatically on Android.
+        // Wait, if we use data-only, Android relies on `setBackgroundMessageHandler` which might have restrictions if app is killed, unless it's a high priority data message. It *is* high priority.
+        // However, we'll keep the same pattern as `sendPushNotificationToRole`, just adding notification block to be safe for OS level handling:
+        $message['message']['notification'] = [
+             'title' => (string) $title,
+             'body' => (string) $body,
+        ];
+        
+        $message['message']['apns'] = [
+            'payload' => [
+                'aps' => [
+                    'alert' => [
+                        'title' => (string) $title,
+                        'body' => (string) $body,
+                    ],
+                    'sound' => 'default',
+                ]
+            ]
+        ];
+
+        $payloadJson = json_encode($message);
+        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $log("FCM RESPONSE for User ID $user_id [HTTP $httpCode]: $response");
     }
     return true;
 }

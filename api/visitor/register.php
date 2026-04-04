@@ -46,7 +46,7 @@ try {
 
     if ($visitor) {
         $visitor_id = $visitor['id'];
-        
+
         // PRESERVE ID PROOF: If existing visitor has ID proof and new request is empty, keep the old one
         if (empty($id_proof_type) && !empty($visitor['id_proof_type'])) {
             $id_proof_type = $visitor['id_proof_type'];

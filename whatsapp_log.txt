@@ -744,3 +744,11 @@
 [2026-04-01 22:35:15] CALL: Template visitor_arrival_host_alert to 919873028739
 [2026-04-01 22:35:15] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
 [2026-04-01 22:35:15] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-04-04 22:13:30] TRACE: Found host John Doe with mobile 9873028739 for visitor Test using visitor_arrival_host_alert
+[2026-04-04 22:13:30] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-04-04 22:13:30] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Test*"},{"type":"text","text":"*Test*"}]}]}}
+[2026-04-04 22:13:31] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-04-04 22:22:57] TRACE: Found host John Doe with mobile 9873028739 for visitor Practical Test Visitor using visitor_arrival_host_alert
+[2026-04-04 22:22:57] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-04-04 22:22:57] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Practical Test Visitor*"},{"type":"text","text":"*System Test*"}]}]}}
+[2026-04-04 22:22:58] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
