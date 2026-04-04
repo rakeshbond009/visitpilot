@@ -23,70 +23,58 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
 
-        // Fetch visit details now (used by notifications below)
+        // Fetch visit details for notifications
         require_once '../../includes/push_helper.php';
         require_once '../../includes/whatsapp_helper.php';
-        $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
+        $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
         $stmt->execute([$id]);
         $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // ── SEND RESPONSE NOW — client should not wait for external APIs ─────
+        if (!isset($visit)) {
+            sendResponse('error', 'Visit not found', []);
+            exit;
+        }
+
+        // ── ROBUST FLUSH RESPONSE ─────────────────────────────────────────────
         $respJson = json_encode(['status' => 'success', 'message' => 'Visit Approved', 'data' => []]);
-        if (!headers_sent()) {
+        if (function_exists('fastcgi_finish_request')) {
+            header('Content-Type: application/json');
+            echo $respJson;
+            fastcgi_finish_request();
+        } else {
+            @ini_set('zlib.output_compression', '0');
             header('Content-Type: application/json');
             header('Content-Length: ' . strlen($respJson));
             header('Connection: close');
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+            echo $respJson;
+            flush();
         }
-        echo $respJson;
-        if (ob_get_level()) ob_end_flush();
-        @flush();
         ignore_user_abort(true);
-        // ─────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────
 
-        // Background: PDF generation + WhatsApp + FCM push to security
+        // Background: WhatsApp + PDF + FCM Push
         try {
-            if ($visit) {
-                require_once '../../includes/pass_pdf_helper.php';
-                $pdfUrl = generatePassPdf($id, $pdo);
-                sendWhatsAppNotification($visit['mobile'], "Your visit is approved", 'visit_approval_visitor_notify', ["*{$visit['visitor_name']}*"], $pdfUrl);
-                sendPushNotificationToRole($pdo, 'security', 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
-                    'visit_id' => (string) $id,
-                    'type' => 'approval_status'
-                ]);
-            }
+            require_once '../../includes/pass_pdf_helper.php';
+            $pdfUrl = generatePassPdf($id, $pdo);
+            sendWhatsAppNotification($visit['mobile'], "Your visit is approved", 'visit_approval_visitor_notify', ["*{$visit['visitor_name']}*"], $pdfUrl);
         } catch (Throwable $e) {
-            error_log("Notification error in approve: " . $e->getMessage());
+            error_log("WhatsApp/PDF error in approve: " . $e->getMessage());
         }
 
-        // Background: Dahua sync
         try {
-            $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-            if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret']) && $visit) {
-                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-                $startTime = $visit['created_at'];
-                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
-                $deviceSnsList = array_map('trim', array_filter(explode(',', $raw_settings['dahua_device_sns'] ?? '')));
-                $visitorData = [
-                    'visitor_id' => $visit['visitor_id'],
-                    'name'       => $visit['visitor_name'],
-                    'face_path'  => realpath('../../' . $visit['visit_photo']),
-                    'qr_code'    => $visit['visit_code'],
-                    'start_time' => $startTime,
-                    'end_time'   => $endTime,
-                    'device_sns' => $deviceSnsList,
-                ];
-                $syncResult = $dahua->syncVisitor($visitorData);
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
-                }
-            }
-        } catch (Exception $e) {
-            error_log("Dahua Integration Error: " . $e->getMessage());
+            sendPushNotificationToRole($pdo, 'security', 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
+                'visit_id' => (string) $id,
+                'type'     => 'approval_status',
+            ]);
+        } catch (Throwable $e) {
+            error_log("FCM push error in approve: " . $e->getMessage());
         }
 
         exit;
+
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
@@ -133,40 +121,56 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
 
-        // Fetch visit details now (used by notifications below)
+        // Fetch visit details for notifications
         require_once '../../includes/whatsapp_helper.php';
         require_once '../../includes/push_helper.php';
         $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
         $stmt->execute([$id]);
         $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // ── SEND RESPONSE NOW ─────────────────────────────────────────────────
+        if (!isset($visit)) {
+            sendResponse('error', 'Visit not found', []);
+            exit;
+        }
+
+        // ── ROBUST FLUSH RESPONSE ─────────────────────────────────────────────
         $respJson = json_encode(['status' => 'success', 'message' => 'Visit Rejected', 'data' => []]);
-        if (!headers_sent()) {
+        if (function_exists('fastcgi_finish_request')) {
+            header('Content-Type: application/json');
+            echo $respJson;
+            fastcgi_finish_request();
+        } else {
+            @ini_set('zlib.output_compression', '0');
             header('Content-Type: application/json');
             header('Content-Length: ' . strlen($respJson));
             header('Connection: close');
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+            echo $respJson;
+            flush();
         }
-        echo $respJson;
-        if (ob_get_level()) ob_end_flush();
-        @flush();
         ignore_user_abort(true);
         // ──────────────────────────────────────────────────────────────────────
 
-        // Background: WhatsApp + FCM push to security
+        // Background: WhatsApp + FCM Push
         try {
-            if ($visit) {
-                sendWhatsAppNotification($visit['mobile'], "Your visit request has been declined.", 'visit_rejection_visitor_notify', ["*{$visit['visitor_name']}*", "*{$reason}*"]);
-                sendPushNotificationToRole($pdo, 'security', 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
-                    'visit_id' => (string) $id,
-                    'type' => 'approval_status'
-                ]);
-            }
+            sendWhatsAppNotification($visit['mobile'], "Your visit request has been declined.", 'visit_rejection_visitor_notify', ["*{$visit['visitor_name']}*", "*{$reason}*"]);
         } catch (Exception $e) {
-            error_log("Notification error in reject: " . $e->getMessage());
+            error_log("WhatsApp reject error: " . $e->getMessage());
+        }
+        
+        try {
+            sendPushNotificationToRole($pdo, 'security', 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
+                'visit_id' => (string) $id,
+                'type'     => 'approval_status',
+            ]);
+        } catch (Exception $e) {
+            error_log("FCM reject error: " . $e->getMessage());
         }
 
         exit;
+
 
     } elseif ($action === 'checkin') {
         // Check if visit is approved

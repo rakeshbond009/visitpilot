@@ -136,6 +136,8 @@ function getGoogleAccessToken($serviceAccount)
         $ch = curl_init('https://oauth2.googleapis.com/token');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion' => $jwt
@@ -200,60 +202,80 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
+    // Fetch OAuth token ONCE — not inside the loop (was causing 1 HTTP call per user)
+    $accessToken = getGoogleAccessToken($serviceAccount);
+    if (!$accessToken) {
+        $log("CRITICAL ERROR: Failed to fetch Google Access Token for Role: $role");
+        return false;
+    }
+
+    $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
+    $headers = [
+        'Authorization: Bearer ' . $accessToken,
+        'Content-Type: application/json',
+    ];
+
+    // Send all FCM messages in parallel using curl_multi
+    $mh = curl_multi_init();
+    $handles = [];
+
     foreach ($users as $user) {
         $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']})");
-
-        $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken)
-            continue;
 
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
                 'data' => array_merge([
-                    'title' => (string) $title,
-                    'body' => (string) $body,
-                    'type' => 'visit_update', // Different type for updates
+                    'title'            => (string) $title,
+                    'body'             => (string) $body,
+                    'type'             => 'visit_update',
                     'is_call_priority' => 'false',
-                    'visitId' => (string) ($data['visit_id'] ?? ''),
-                    'click_action' => 'visit_update_action'
+                    'visitId'          => (string) ($data['visit_id'] ?? ''),
+                    'click_action'     => 'visit_update_action',
                 ], $data),
                 'android' => [
                     'priority' => 'high',
-                    'ttl' => '0s',
+                    'ttl'      => '0s',
                 ],
                 'apns' => [
                     'payload' => [
                         'aps' => [
-                            'alert' => [
-                                'title' => (string) $title,
-                                'body' => (string) $body,
-                            ],
+                            'alert' => ['title' => (string) $title, 'body' => (string) $body],
                             'sound' => 'default',
                         ]
                     ]
-                ]
+                ],
             ]
         ];
-
-        $payloadJson = json_encode($message);
-        $url = "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send";
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $accessToken,
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $log("FCM RESPONSE for Role $role [HTTP $httpCode]: $response");
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($message));
+        curl_multi_add_handle($mh, $ch);
+        $handles[] = $ch;
     }
+
+    // Execute all handles simultaneously
+    $running = null;
+    do {
+        curl_multi_exec($mh, $running);
+        if ($running) curl_multi_select($mh, 0.5);
+    } while ($running > 0);
+
+    // Log results and clean up
+    foreach ($handles as $ch) {
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $resp     = curl_multi_getcontent($ch);
+        $log("FCM RESPONSE for Role $role [HTTP $httpCode]: $resp");
+        curl_multi_remove_handle($mh, $ch);
+        curl_close($ch);
+    }
+    curl_multi_close($mh);
+
     return true;
 }
 ?>

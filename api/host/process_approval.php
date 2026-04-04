@@ -55,15 +55,26 @@ if ($action == 'approve') {
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
-    // ── RESPOND TO CLIENT NOW — FCM push and Dahua sync run after this ────
+    // ── ROBUST FLUSH RESPONSE ─────────────────────────────────────────────
     $respJson = json_encode(['success' => true, 'message' => 'Visitor Approved']);
-    header('Content-Length: ' . strlen($respJson));
-    header('Connection: close');
-    echo $respJson;
-    if (ob_get_level()) ob_end_flush();
-    @flush();
+    if (function_exists('fastcgi_finish_request')) {
+        header('Content-Type: application/json');
+        echo $respJson;
+        fastcgi_finish_request();
+    } else {
+        @ini_set('zlib.output_compression', '0');
+        header('Content-Type: application/json');
+        header('Content-Length: ' . strlen($respJson));
+        header('Connection: close');
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        echo $respJson;
+        flush();
+    }
     ignore_user_abort(true);
     // ──────────────────────────────────────────────────────────────────────
+
 
     // Background: FCM push to security
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
@@ -114,13 +125,23 @@ if ($action == 'approve') {
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
-    // ── RESPOND TO CLIENT NOW ─────────────────────────────────────────────
+    // ── ROBUST FLUSH RESPONSE ─────────────────────────────────────────────
     $respJson = json_encode(['success' => true, 'message' => 'Visitor Rejected']);
-    header('Content-Length: ' . strlen($respJson));
-    header('Connection: close');
-    echo $respJson;
-    if (ob_get_level()) ob_end_flush();
-    @flush();
+    if (function_exists('fastcgi_finish_request')) {
+        header('Content-Type: application/json');
+        echo $respJson;
+        fastcgi_finish_request();
+    } else {
+        @ini_set('zlib.output_compression', '0');
+        header('Content-Type: application/json');
+        header('Content-Length: ' . strlen($respJson));
+        header('Connection: close');
+        while (ob_get_level() > 0) {
+            ob_end_flush();
+        }
+        echo $respJson;
+        flush();
+    }
     ignore_user_abort(true);
     // ─────────────────────────────────────────────────────────────────────
 
