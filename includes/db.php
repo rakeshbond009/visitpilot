@@ -544,26 +544,27 @@ if (isset($master_pdo)) {
 function sendAsyncResponse($responseArray, $code = 200) {
     if (!headers_sent()) {
         header('Content-Type: application/json; charset=utf-8');
+        header('Content-Encoding: none'); // Disable gzip if enabled to allow true flush
         if ($code !== 200) {
             http_response_code($code);
         }
     }
     $response = json_encode($responseArray);
     
-    // Clear all existing output buffers
+    // Clear all existing output buffers ensuring no gzip encapsulation
     while (ob_get_level() > 0) {
-        ob_end_clean();
+        @ob_end_clean();
     }
     
     header('Connection: close');
     header('Content-Length: ' . strlen($response));
     ignore_user_abort(true);
     
-    ob_start();
     echo $response;
-    ob_end_flush();
-    ob_flush();
-    flush();
+    
+    // Try to flush everything repeatedly, depending on environment buffering
+    @ob_flush();
+    @flush();
     
     if (session_id()) session_write_close();
     
