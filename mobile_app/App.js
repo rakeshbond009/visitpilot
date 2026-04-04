@@ -143,7 +143,7 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival"
+            type: data.type || (data.visit_id ? "approval_status" : "visitor_arrival")
         };
     };
 
@@ -234,9 +234,16 @@ function AppContent() {
             try {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
-                    const data = standardizeArrivalData(response.notification.request.content.data);
+                    const rawData = response.notification.request.content.data;
+                    const data = standardizeArrivalData(rawData);
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data); setShowOverlay(true); return true;
+                    } else if (data && (data.type === 'approval_status' || rawData.type === 'approval_status')) {
+                        const visitId = data.visit_id || rawData.visit_id || rawData.visitId;
+                        if (visitId) {
+                            await AsyncStorage.setItem('pending_visit_detail', String(visitId));
+                            return true;
+                        }
                     }
                 }
 
@@ -266,9 +273,20 @@ function AppContent() {
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const data = standardizeArrivalData(r.notification.request.content.data);
+            const rawData = r.notification.request.content.data;
+            const data = standardizeArrivalData(rawData);
+            
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data); setShowOverlay(true);
+                setArrivalData(data); 
+                setShowOverlay(true);
+            } else if (data && (data.type === 'approval_status' || rawData.type === 'approval_status')) {
+                const visitId = data.visit_id || rawData.visit_id || rawData.visitId;
+                if (visitId) {
+                    console.log("[Notification Click] Emitting openVisitDetails for ID:", visitId);
+                    // Store for launch handling
+                    AsyncStorage.setItem('pending_visit_detail', String(visitId)).catch(() => {});
+                    DeviceEventEmitter.emit('openVisitDetails', { visitId });
+                }
             }
         });
 

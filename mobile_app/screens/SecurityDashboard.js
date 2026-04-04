@@ -16,6 +16,7 @@ import {
     Image,
     TextInput,
     Linking,
+    DeviceEventEmitter,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -253,8 +254,29 @@ export default function SecurityDashboard({ navigation }) {
     useFocusEffect(
         useCallback(() => {
             fetchData();
+            
+            // Check for pending detail from launch/notification
+            AsyncStorage.getItem('pending_visit_detail').then(id => {
+                if (id) {
+                    AsyncStorage.removeItem('pending_visit_detail');
+                    console.log("[Dashboard] Picking up pending visit from storage:", id);
+                    fetchVisitDetails(id);
+                }
+            });
+
+            // Listen for direct detail requests (from notifications)
+            const openSub = DeviceEventEmitter.addListener('openVisitDetails', ({ visitId }) => {
+                if (visitId) {
+                    console.log("[Dashboard] Handling openVisitDetails for ID:", visitId);
+                    fetchVisitDetails(visitId);
+                }
+            });
+
             const interval = setInterval(fetchData, 15000);
-            return () => clearInterval(interval);
+            return () => {
+                clearInterval(interval);
+                openSub.remove();
+            };
         }, [])
     );
 
