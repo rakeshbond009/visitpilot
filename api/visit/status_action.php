@@ -23,13 +23,6 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
 
-        $responseData = [];
-        sendAsyncResponse([
-            'status' => 'success',
-            'message' => 'Visit Approved',
-            'data' => $responseData
-        ]);
-
         // --- NOTIFICATIONS (NEW) ---
         try {
             require_once '../../includes/push_helper.php';
@@ -58,6 +51,11 @@ try {
             error_log("Notification error in approve: " . $e->getMessage());
         }
 
+        $responseData = [];
+        if (isset($visit)) {
+            $responseData['visitor_mobile'] = $visit['mobile'];
+        }
+
         // --- DAHUA INTEGRATION (Sync on Approval) ---
         try {
             $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -65,37 +63,34 @@ try {
             if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
                 $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
 
-                if (isset($visit)) {
-                    $startTime = $visit['created_at'];
-                    $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
+                $startTime = $visit['created_at'];
+                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
 
-                    $deviceSnsList = explode(',', $raw_settings['dahua_device_sns']);
-                    $deviceSnsList = array_map('trim', $deviceSnsList);
+                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns']);
+                $deviceSnsList = array_map('trim', $deviceSnsList);
 
-                    $visitorData = [
-                        'visitor_id' => $visit['visitor_id'],
-                        'name' => $visit['visitor_name'],
-                        'face_path' => realpath('../../' . $visit['visit_photo']),
-                        'qr_code' => $visit['visit_code'],
-                        'start_time' => $startTime,
-                        'end_time' => $endTime,
-                        'device_sns' => $deviceSnsList
-                    ];
+                $visitorData = [
+                    'visitor_id' => $visit['visitor_id'],
+                    'name' => $visit['visitor_name'],
+                    'face_path' => realpath('../../' . $visit['visit_photo']),
+                    'qr_code' => $visit['visit_code'],
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'device_sns' => $deviceSnsList
+                ];
 
-                    $syncResult = $dahua->syncVisitor($visitorData);
+                $syncResult = $dahua->syncVisitor($visitorData);
 
-                    if (isset($syncResult['success']) && !$syncResult['success']) {
-                        error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                    } else {
-                        logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
-                    }
+                if (isset($syncResult['success']) && !$syncResult['success']) {
+                    error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
+                } else {
+                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
                 }
             }
         } catch (Exception $e) {
             error_log("Dahua Integration Error: " . $e->getMessage());
         }
-        
-        exit;
+        sendResponse('success', 'Visit Approved', $responseData);
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
@@ -111,11 +106,6 @@ try {
         // Setting it to rejected. 1 is for when the invite is cancelled by the host. 
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $id]);
-
-        sendAsyncResponse([
-            'status' => 'success',
-            'message' => 'Invitation has been cancelled and visitor notified.'
-        ]);
 
         if ($visitor_info && !empty($visitor_info['mobile'])) {
             try {
@@ -139,15 +129,13 @@ try {
             } catch (Throwable $pushErr) {
             }
         }
-        
-        exit;
+
+        sendResponse('success', 'Invitation has been cancelled and visitor notified.');
 
     } elseif ($action === 'reject') {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
-
-        $responseData = [];
 
         // --- NOTIFICATIONS (NEW) ---
         try {
@@ -161,14 +149,6 @@ try {
             if ($visit) {
                 // WhatsApp to visitor
                 $reason = $data['reason'] ?? 'Host declined the visit.';
-                $responseData['visitor_mobile'] = $visit['mobile'];
-                
-                sendAsyncResponse([
-                    'status' => 'success',
-                    'message' => 'Visit Rejected',
-                    'data' => $responseData
-                ]);
-
                 sendWhatsAppNotification($visit['mobile'], "Your visit request has been declined.", 'visit_rejection_visitor_notify', ["*{$visit['visitor_name']}*", "*{$reason}*"]);
 
                 // Push to Security
@@ -176,18 +156,17 @@ try {
                     'visit_id' => (string) $id,
                     'type' => 'approval_status'
                 ]);
-            } else {
-                sendAsyncResponse([
-                    'status' => 'success',
-                    'message' => 'Visit Rejected',
-                    'data' => $responseData
-                ]);
             }
         } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());
         }
 
-        exit;
+        $responseData = [];
+        if (isset($visit) && isset($waMsg)) {
+            $responseData['visitor_mobile'] = $visit['mobile'];
+            $responseData['whatsapp_message'] = $waMsg;
+        }
+        sendResponse('success', 'Visit Rejected', $responseData);
 
     } elseif ($action === 'checkin') {
         // Check if visit is approved

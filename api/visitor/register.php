@@ -182,19 +182,6 @@ try {
         }
     }
 
-    // --- RESPOND TO CLIENT FIRST TO DECOUPLE HEAVY BACKGROUND TASKS ---
-    sendAsyncResponse([
-        'status' => 'success',
-        'message' => 'Visitor registered successfully',
-        'data' => [
-            'visit_id' => $visit_id,
-            'visit_code' => $visit_code,
-            'qr_code_url' => $qr_code_path ? $qr_code_path : null,
-            'status' => $invitation_id ? 'approved' : 'pending',
-            'approval_status' => $invitation_id ? 'approved' : 'pending'
-        ]
-    ]);
-
     // --- DAHUA INTEGRATION (Sync on Check-in/Entry) ---
     try {
         $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -287,8 +274,13 @@ try {
         error_log("Notification System Error: " . $e->getMessage());
     }
 
-    // exit at the end because response is already sent
-    exit;
+    sendResponse('success', 'Visitor registered successfully', [
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
+        'status' => $invitation_id ? 'approved' : 'pending',
+        'approval_status' => $invitation_id ? 'approved' : 'pending'
+    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

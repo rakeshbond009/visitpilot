@@ -537,40 +537,4 @@ if (isset($master_pdo)) {
     }
 }
 
-/**
- * Async Response Helper
- * Outputs JSON and closes connection so background processing can continue quickly.
- */
-function sendAsyncResponse($responseArray, $code = 200) {
-    if (!headers_sent()) {
-        header('Content-Type: application/json; charset=utf-8');
-        header('Content-Encoding: none'); // Disable gzip if enabled to allow true flush
-        if ($code !== 200) {
-            http_response_code($code);
-        }
-    }
-    $response = json_encode($responseArray);
-    
-    // Clear all existing output buffers ensuring no gzip encapsulation
-    while (ob_get_level() > 0) {
-        @ob_end_clean();
-    }
-    
-    header('Connection: close');
-    header('Content-Length: ' . strlen($response));
-    ignore_user_abort(true);
-    
-    echo $response;
-    
-    // Try to flush everything repeatedly, depending on environment buffering
-    @ob_flush();
-    @flush();
-    
-    if (session_id()) session_write_close();
-    
-    if (function_exists('fastcgi_finish_request')) {
-        fastcgi_finish_request();
-    }
-}
-
 require_once __DIR__ . '/datetime_helper.php';
