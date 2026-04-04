@@ -11,13 +11,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
-import { APP_VERSION } from './constants';
-
-const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
-
-// For Overlay permission (Appear on top)
-import { NativeModules } from 'react-native';
-const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 
 // Utils
 import apiClient from './utils/apiClient';
@@ -38,7 +31,9 @@ import ComingSoon from './screens/ComingSoon';
 // Context
 import { PermissionProvider, usePermissions } from './context/PermissionContext';
 
-// Configure notification handler
+const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
+const OverlayPermissionModule = Platform.OS === 'android' ? require('react-native').NativeModules?.OverlayPermissionModule : null;
+
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -47,43 +42,25 @@ Notifications.setNotificationHandler({
     }),
 });
 
-const BACKGROUND_TASK_TIMEOUT = 10000;
-
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
-    if (error) {
-        console.error("[BG Task] Error:", error);
-        return;
-    }
-
-    console.log("[BG Task] Triggered with data:", JSON.stringify(data));
-
+    if (error) return;
     let payload = data?.notification?.data || data;
-
-    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true')) {
-        console.log("[BG Task] Valid arrival detected. Waking up...");
-
+    if (payload && (payload.type === 'visitor_arrival' || payload.is_call_priority === 'true' || payload.is_call_priority === true)) {
         try {
             await AsyncStorage.setItem('pending_arrival_call', JSON.stringify(payload));
-        } catch (storageErr) {
-            console.error("[BG Task] Storage Error:", storageErr.message);
-        }
-
-        if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
-            OverlayPermissionModule.wakeUpApp();
-        }
-
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title: payload.title || "Visitor Arrival",
-                body: payload.body || "A visitor is waiting at the gate",
-                data: payload,
-                categoryIdentifier: 'visitor_arrival',
-                sound: true,
-                priority: Notifications.AndroidNotificationPriority.MAX,
-            },
-            trigger: null,
-            channelId: 'vms_urgent_alerts_v2',
-        });
+            if (OverlayPermissionModule?.wakeUpApp) OverlayPermissionModule.wakeUpApp();
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: payload.title || "Visitor Arrival",
+                    body: payload.body || "A visitor is waiting at the gate",
+                    data: payload,
+                    sound: true,
+                    priority: Notifications.AndroidNotificationPriority.MAX,
+                },
+                trigger: null,
+                channelId: 'vms_urgent_alerts_v2',
+            });
+        } catch (e) {}
     }
 });
 
@@ -93,12 +70,7 @@ const navigationRef = createNavigationContainerRef();
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
     config: {
-        screens: {
-            Login: 'login',
-            HostDashboard: 'host',
-            SecurityDashboard: 'security',
-            AdminDashboard: 'admin',
-        },
+        screens: { Login: 'login', HostDashboard: 'host', SecurityDashboard: 'security', AdminDashboard: 'admin' },
     },
 };
 
@@ -116,25 +88,15 @@ function AppContent() {
     const [showOverlay, setShowOverlay] = useState(false);
     const [arrivalData, setArrivalData] = useState(null);
     const [sound, setSound] = useState(null);
-
-    const { role, hasPermission, loading } = usePermissions();
+    const { role, loading } = usePermissions();
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
         let data = raw.data || raw.params || raw;
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) { }
-        }
+        if (typeof data === 'string') { try { data = JSON.parse(data); } catch (e) {} }
 
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
-
-        if (!visit_id && data.body) {
-            try {
-                const parsedBody = JSON.parse(data.body);
-                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
-                data = { ...data, ...parsedBody };
-            } catch (e) { }
-        }
+        const type = data.type || raw.type || null;
 
         return {
             visit_id: visit_id,
@@ -144,121 +106,63 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival"
+            type: type,
+            is_call_priority: String(data.is_call_priority || 'false')
         };
     };
 
-    // --- RINGING & VIBRATION ---
     useEffect(() => {
         let isLooping = true;
-
         async function startRinging() {
             if (showOverlay) {
                 try {
-                    await Audio.setAudioModeAsync({
-                        allowsRecordingIOS: false,
-                        staysActiveInBackground: true,
-                        interruptionModeIOS: 1,
-                        playsInSilentModeIOS: true,
-                        shouldDuckAndroid: true,
-                        interruptionModeAndroid: 1,
-                        playThroughEarpieceAndroid: false
-                    });
-
-                    const urls = [
-                        'https://www.soundjay.com/phone/telephone-ring-03a.mp3',
-                        'https://www.soundjay.com/phone/phone-calling-1.mp3',
-                        'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sample.mp3'
-                    ];
-
-                    for (const url of urls) {
-                        try {
-                            const { sound: newSound } = await Audio.Sound.createAsync(
-                                { uri: url },
-                                { shouldPlay: true, isLooping: true, volume: 1.0 }
-                            );
-                            if (isLooping) {
-                                setSound(newSound);
-                                break;
-                            } else {
-                                newSound.unloadAsync();
-                            }
-                        } catch (e) { }
-                    }
-                } catch (e) { }
-
+                    await Audio.setAudioModeAsync({ allowsRecordingIOS: false, staysActiveInBackground: true, interruptionModeIOS: 1, playsInSilentModeIOS: true, shouldDuckAndroid: true, interruptionModeAndroid: 1, playThroughEarpieceAndroid: false });
+                    const { sound: newSound } = await Audio.Sound.createAsync({ uri: 'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sample.mp3' }, { shouldPlay: true, isLooping: true, volume: 1.0 });
+                    if (isLooping) setSound(newSound); else newSound.unloadAsync();
+                } catch (e) {}
                 if (isLooping) Vibration.vibrate([1000, 1000, 1000], true);
             } else {
                 isLooping = false;
-                if (sound) {
-                    sound.stopAsync().catch(() => { });
-                    sound.unloadAsync().catch(() => { });
-                    setSound(null);
-                }
+                if (sound) { sound.stopAsync().catch(() => {}); sound.unloadAsync().catch(() => {}); setSound(null); }
                 Vibration.cancel();
             }
         }
-
         startRinging();
-        return () => {
-            isLooping = false;
-            Vibration.cancel();
-        };
+        return () => { isLooping = false; Vibration.cancel(); };
     }, [showOverlay]);
 
-    // --- AUTO DISMISS ---
-    useEffect(() => {
-        let timer;
-        if (showOverlay) {
-            timer = setTimeout(() => setShowOverlay(false), 60000);
-        }
-        return () => clearTimeout(timer);
-    }, [showOverlay]);
-
-    // --- NOTIFICATION LISTENERS ---
     useEffect(() => {
         const subscription = DeviceEventEmitter.addListener('showArrivalOverlay', (data) => {
-            const standardized = standardizeArrivalData(data);
-            if (standardized) {
-                setArrivalData(standardized);
-                setShowOverlay(true);
+            const std = standardizeArrivalData(data);
+            if (std && (std.type === 'visitor_arrival' || std.is_call_priority === 'true')) {
+                setArrivalData(std); setShowOverlay(true);
             }
         });
 
         setTimeout(() => {
-            registerForPushNotificationsAsync(3, 2000).then(token => {
-                if (token) updateTokenOnServer(token);
-            });
-        }, 5000);
+            registerForPushNotificationsAsync().then(token => { if (token) updateTokenOnServer(token); });
+        }, 3000);
 
         const checkNotifications = async () => {
-            try {
-                const response = await Notifications.getLastNotificationResponseAsync();
-                if (response) {
-                    const data = standardizeArrivalData(response.notification.request.content.data);
-                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                        setArrivalData(data); setShowOverlay(true); return true;
-                    }
+            const response = await Notifications.getLastNotificationResponseAsync();
+            if (response) {
+                const data = standardizeArrivalData(response.notification.request.content.data);
+                if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                    setArrivalData(data); setShowOverlay(true); return true;
                 }
-
-                const stored = await AsyncStorage.getItem('pending_arrival_call');
-                if (stored) {
-                    const data = standardizeArrivalData(JSON.parse(stored));
-                    await AsyncStorage.removeItem('pending_arrival_call');
-                    if (data) {
-                        setArrivalData(data); setShowOverlay(true); return true;
-                    }
+            }
+            const stored = await AsyncStorage.getItem('pending_arrival_call');
+            if (stored) {
+                const data = standardizeArrivalData(JSON.parse(stored));
+                await AsyncStorage.removeItem('pending_arrival_call');
+                if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                    setArrivalData(data); setShowOverlay(true); return true;
                 }
-            } catch (e) { }
+            }
             return false;
         };
 
         checkNotifications();
-        const poll = setInterval(async () => {
-            if (await checkNotifications()) clearInterval(poll);
-        }, 2000);
-        setTimeout(() => clearInterval(poll), 10000);
-
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
@@ -271,16 +175,12 @@ function AppContent() {
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             } else if (data && (data.type === 'visit_status_update' || data.type === 'visit_update')) {
-                // Determine target screen based on role
                 let targetScreen = 'HostDashboard';
                 if (role === 'security') targetScreen = 'SecurityDashboard';
-                if (role === 'admin') targetScreen = 'AdminDashboard';
+                else if (role === 'admin') targetScreen = 'AdminDashboard';
 
                 if (navigationRef.isReady()) {
-                    navigationRef.navigate(targetScreen, {
-                        openVisitId: data.visit_id,
-                        timestamp: Date.now()
-                    });
+                    navigationRef.navigate(targetScreen, { openVisitId: data.visit_id, timestamp: Date.now() });
                 }
             }
         });
@@ -290,54 +190,23 @@ function AppContent() {
             if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
             if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
         };
-    }, []);
+    }, [role]);
 
     const handleAction = async (visitId, action, reason = null) => {
-        setShowOverlay(false);
-        setArrivalData(null);
-        Vibration.cancel();
-
-        // STOP NATIVE Alert
-        if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
-            OverlayPermissionModule.stopRinging();
-        }
-
-        if (sound) {
-            sound.stopAsync().catch(() => { });
-            sound.unloadAsync().catch(() => { });
-            setSound(null);
-        }
+        setShowOverlay(false); setArrivalData(null); Vibration.cancel();
+        if (OverlayPermissionModule?.stopRinging) OverlayPermissionModule.stopRinging();
+        if (sound) { sound.stopAsync().catch(() => {}); sound.unloadAsync().catch(() => {}); setSound(null); }
 
         try {
-            await Notifications.dismissAllNotificationsAsync().catch(() => { });
-            // Set a local timeout for the response so we don't hang if server is slow
-            const response = await apiClient.post('api/visit/status_action.php', {
-                action,
-                visit_id: visitId,
-                reason: reason
-            }, { timeout: 30000 }); // Increased timeout for critical status updates
-
-            if (response.data.status === 'success') {
-                // Success toast or nothing (standardized)
-            } else {
-                Alert.alert('Error', response.data.message || `Failed to ${action}`);
-            }
+            await Notifications.dismissAllNotificationsAsync().catch(() => {});
+            const response = await apiClient.post('api/visit/status_action.php', { action, visit_id: visitId, reason: reason }, { timeout: 30000 });
+            if (response.data.status !== 'success') Alert.alert('Error', response.data.message || `Failed to ${action}`);
         } catch (error) {
-            console.error('Action Failed:', error);
-            // Don't alert if it's just a timeout but the action likely completed on server
-            if (error.code !== 'ECONNABORTED') {
-                Alert.alert('Error', 'Connection failed while processing action.');
-            }
+            if (error.code !== 'ECONNABORTED') Alert.alert('Error', 'Connection failed while processing action.');
         }
     };
 
-    if (loading) {
-        return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-                <ActivityIndicator size="large" color="#0d6efd" />
-            </View>
-        );
-    }
+    if (loading) return <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#0d6efd" /></View>;
 
     return (
         <View style={{ flex: 1 }}>
@@ -364,19 +233,7 @@ function AppContent() {
                     visitorData={arrivalData}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
                     onReject={(reason) => handleAction(arrivalData.visit_id, 'reject', reason)}
-                    onDismiss={() => {
-                        setShowOverlay(false);
-                        setArrivalData(null);
-                        Vibration.cancel();
-                        if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
-                            OverlayPermissionModule.stopRinging();
-                        }
-                        if (sound) {
-                            sound.stopAsync().catch(() => { });
-                            sound.unloadAsync().catch(() => { });
-                            setSound(null);
-                        }
-                    }}
+                    onDismiss={() => { setShowOverlay(false); setArrivalData(null); Vibration.cancel(); if (OverlayPermissionModule?.stopRinging) OverlayPermissionModule.stopRinging(); }}
                 />
             )}
         </View>
