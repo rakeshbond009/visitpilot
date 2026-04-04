@@ -83,6 +83,8 @@ export default function HostDashboard({ navigation }) {
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error', 'warning'
 
+    const [rejectionReason, setRejectionReason] = useState('');
+    
     // Date Filter State
     const [filterType, setFilterType] = useState('all');
     const [filterStartDate, setFilterStartDate] = useState('');
@@ -261,6 +263,9 @@ export default function HostDashboard({ navigation }) {
     };
 
     const showAlert = (title, message, type = 'success', options = {}) => {
+        if (options.showInput) {
+            setRejectionReason('');
+        }
         setAlertConfig({ title, message, type, ...options });
         setAlertVisible(true);
     };
@@ -303,19 +308,33 @@ export default function HostDashboard({ navigation }) {
                 msg = 'Proceed with this action?';
         }
 
-        showAlert(
-            label,
-            msg,
-            type,
-            {
-                showCancel: true,
-                confirmText: 'Yes, Proceed',
-                onConfirm: () => executeAction(visitId, action)
-            }
-        );
+        if (action === 'reject') {
+            showAlert(
+                'Reject Visit',
+                `Please provide a reason for rejecting ${name || 'this visitor'}:`,
+                'error',
+                {
+                    showCancel: true,
+                    showInput: true,
+                    confirmText: 'Reject Now',
+                    onConfirm: (reason) => executeAction(visitId, 'reject', reason)
+                }
+            );
+        } else {
+            showAlert(
+                label,
+                msg,
+                type,
+                {
+                    showCancel: true,
+                    confirmText: 'Yes, Proceed',
+                    onConfirm: () => executeAction(visitId, action)
+                }
+            );
+        }
     };
 
-    const executeAction = async (visitId, action) => {
+    const executeAction = async (visitId, action, reason = null) => {
         try {
             setDetailsLoading(true);
             let response;
@@ -328,6 +347,7 @@ export default function HostDashboard({ navigation }) {
                 response = await apiClient.post('api/visit/status_action.php', {
                     action: action,
                     visit_id: visitId,
+                    reason: reason
                 });
             }
 
@@ -928,6 +948,28 @@ export default function HostDashboard({ navigation }) {
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
 
+                        {alertConfig.showInput && (
+                            <TextInput
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: '#f1f5f9',
+                                    borderRadius: 12,
+                                    padding: 15,
+                                    fontSize: 14,
+                                    color: '#1e293b',
+                                    marginBottom: 20,
+                                    minHeight: 80,
+                                    textAlignVertical: 'top'
+                                }}
+                                placeholder="Enter reason here..."
+                                placeholderTextColor="#94a3b8"
+                                multiline={true}
+                                value={rejectionReason}
+                                onChangeText={setRejectionReason}
+                                autoFocus={true}
+                            />
+                        )}
+
                         {alertConfig.showCancel ? (
                             <View style={styles.alertActionRow}>
                                 <TouchableOpacity
@@ -937,10 +979,14 @@ export default function HostDashboard({ navigation }) {
                                     <Text style={styles.alertCancelButtonText}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
+                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#ef4444' }]}
                                     onPress={() => {
+                                        if (alertConfig.showInput && !rejectionReason.trim()) {
+                                            Alert.alert('Required', 'Please provide a reason');
+                                            return;
+                                        }
                                         setAlertVisible(false);
-                                        if (alertConfig.onConfirm) alertConfig.onConfirm();
+                                        if (alertConfig.onConfirm) alertConfig.onConfirm(rejectionReason);
                                     }}
                                 >
                                     <Text style={styles.alertConfirmButtonText}>{alertConfig.confirmText || 'Yes'}</Text>

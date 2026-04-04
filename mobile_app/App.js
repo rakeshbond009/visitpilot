@@ -279,7 +279,7 @@ function AppContent() {
         };
     }, []);
 
-    const handleAction = async (visitId, action) => {
+    const handleAction = async (visitId, action, reason = null) => {
         setShowOverlay(false);
         setArrivalData(null);
         Vibration.cancel();
@@ -300,7 +300,8 @@ function AppContent() {
             // Set a local timeout for the response so we don't hang if server is slow
             const response = await apiClient.post('api/visit/status_action.php', { 
                 action, 
-                visit_id: visitId 
+                visit_id: visitId,
+                reason: reason
             }, { timeout: 10000 }); // 10s local override
             
             if (response.data.status === 'success') {
@@ -349,7 +350,7 @@ function AppContent() {
                     visible={showOverlay}
                     visitorData={arrivalData}
                     onAccept={() => handleAction(arrivalData.visit_id, 'approve')}
-                    onReject={() => handleAction(arrivalData.visit_id, 'reject')}
+                    onReject={(reason) => handleAction(arrivalData.visit_id, 'reject', reason)}
                     onDismiss={() => {
                         setShowOverlay(false);
                         setArrivalData(null);

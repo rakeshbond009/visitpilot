@@ -440,11 +440,13 @@ $scheduled_today = (int) $stmt->fetchColumn();
                                                 style="width:32px; height:32px; padding:0" title="Print Invitation">
                                                 <i class="bi bi-printer"></i>
                                             </a>
+                                            <?php if ($inv['status'] === 'pending'): ?>
                                             <button class="btn btn-sm btn-outline-danger rounded-circle"
                                                 style="width:32px; height:32px; padding:0" title="Cancel Invitation"
                                                 onclick="cancelInvitation(<?php echo $inv['id']; ?>, '<?php echo addslashes($inv['visitor_name']); ?>', '<?php echo $inv['mobile']; ?>', '<?php echo addslashes($inv['host_name']); ?>')">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -737,16 +739,18 @@ $scheduled_today = (int) $stmt->fetchColumn();
                                         </div>
                                     </a>
                                 </li>
-                                <li><hr class="dropdown-divider my-2 opacity-10"></li>
-                                <li>
-                                    <button class="dropdown-item text-danger py-2 px-3 rounded-3 d-flex align-items-center" onclick="cancelInvitation(${v.id}, '${v.visitor_name.replace(/'/g, "\\'")}', '${v.mobile}', '${(v.host_name || '').replace(/'/g, "\\'")}')">
-                                        <i class="bi bi-x-circle-fill me-2 fs-5"></i>
-                                        <div>
-                                            <div class="fw-bold small">Cancel Invitation</div>
-                                            <div class="text-muted" style="font-size: 0.7rem;">Revoke access</div>
-                                        </div>
-                                    </button>
-                                </li>
+                                            ${v.status === 'pending' ? `
+                                            <li><hr class="dropdown-divider my-2 opacity-10"></li>
+                                            <li>
+                                                <button class="dropdown-item text-danger py-2 px-3 rounded-3 d-flex align-items-center" onclick="cancelInvitation(${v.id}, '${v.visitor_name.replace(/'/g, "\\'")}', '${v.mobile}', '${(v.host_name || '').replace(/'/g, "\\'")}')">
+                                                    <i class="bi bi-x-circle-fill me-2 fs-5"></i>
+                                                    <div>
+                                                        <div class="fw-bold small">Cancel Invitation</div>
+                                                        <div class="text-muted" style="font-size: 0.7rem;">Revoke access</div>
+                                                    </div>
+                                                </button>
+                                            </li>
+                                            ` : ''}</li>
                             </ul>
                         </div>` :
                             `<span class="badge bg-light text-dark border fw-bold" style="font-size:0.65rem">${v.visit_code || 'N/A'}</span>`

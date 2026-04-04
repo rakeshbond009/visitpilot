@@ -20,8 +20,8 @@ $id = $data['visit_id'] ?? 0;
 
 try {
     if ($action === 'approve') {
-        $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW() WHERE id=?");
-        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
+        $stmt->execute([$user_id, $id]);
 
         // --- NOTIFICATIONS (NEW) ---
         try {
@@ -102,9 +102,10 @@ try {
         $stmt->execute([$id]);
         $visitor_info = $stmt->fetch();
 
-        // Update status
-        $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW() WHERE id=? AND is_invited=1");
-        $stmt->execute([$id]);
+        // Update status - for invitations, approval_status is already approved. 
+        // Setting it to rejected. 1 is for when the invite is cancelled by the host. 
+        $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=? WHERE id=? AND is_invited=1");
+        $stmt->execute([$user_id, $id]);
 
         if ($visitor_info && !empty($visitor_info['mobile'])) {
             try {
@@ -132,8 +133,9 @@ try {
         sendResponse('success', 'Invitation has been cancelled and visitor notified.');
 
     } elseif ($action === 'reject') {
-        $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW() WHERE id=?");
-        $stmt->execute([$id]);
+        $reason = $data['reason'] ?? 'Host declined the visit.';
+        $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
+        $stmt->execute([$user_id, $reason, $id]);
 
         // --- NOTIFICATIONS (NEW) ---
         try {

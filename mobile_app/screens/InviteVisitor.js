@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet,
     View,
@@ -25,6 +25,9 @@ import { CONFIG } from '../utils/config';
 const BASE_URL = CONFIG.API_BASE_URL;
 
 export default function InviteVisitor({ navigation }) {
+    const nameRef = useRef(null);
+    const mobileRef = useRef(null);
+    const emailRef = useRef(null);
     const [name, setName] = useState('');
     const [mobile, setMobile] = useState('');
     const [email, setEmail] = useState('');
@@ -145,7 +148,7 @@ export default function InviteVisitor({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
                 <View style={styles.header}>
@@ -159,29 +162,40 @@ export default function InviteVisitor({ navigation }) {
                 <ScrollView
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.formCard}>
                         <Text style={styles.sectionTitle}>VISITOR DETAILS</Text>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Visitor Name *</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity 
+                                activeOpacity={1}
+                                onPress={() => nameRef.current?.focus()}
+                                style={styles.inputWrapper}
+                            >
                                 <Icon name="account-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
+                                    ref={nameRef}
                                     style={styles.input}
                                     placeholder="Enter full name"
                                     placeholderTextColor="#94a3b8"
                                     value={name}
                                     onChangeText={setName}
                                 />
-                            </View>
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Mobile Number *</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity 
+                                activeOpacity={1}
+                                onPress={() => mobileRef.current?.focus()}
+                                style={styles.inputWrapper}
+                            >
                                 <Icon name="phone-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
+                                    ref={mobileRef}
                                     style={styles.input}
                                     placeholder="10-digit mobile"
                                     placeholderTextColor="#94a3b8"
@@ -190,14 +204,19 @@ export default function InviteVisitor({ navigation }) {
                                     keyboardType="phone-pad"
                                     maxLength={10}
                                 />
-                            </View>
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Email Address (Optional)</Text>
-                            <View style={styles.inputWrapper}>
+                            <TouchableOpacity 
+                                activeOpacity={1}
+                                onPress={() => emailRef.current?.focus()}
+                                style={styles.inputWrapper}
+                            >
                                 <Icon name="email-outline" size={22} color="#6366f1" style={styles.inputIcon} />
                                 <TextInput
+                                    ref={emailRef}
                                     style={styles.input}
                                     placeholder="email@example.com"
                                     placeholderTextColor="#94a3b8"
@@ -206,7 +225,7 @@ export default function InviteVisitor({ navigation }) {
                                     keyboardType="email-address"
                                     autoCapitalize="none"
                                 />
-                            </View>
+                            </TouchableOpacity>
                         </View>
 
                         <Text style={styles.sectionTitle}>VISIT DETAILS</Text>
@@ -439,6 +458,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
+        height: 56,
         fontSize: 16,
         color: '#1e293b',
         fontWeight: '500',

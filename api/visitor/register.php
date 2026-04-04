@@ -96,7 +96,7 @@ try {
 
         // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
         // matching the web flow for invitations as requested.
-        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=? WHERE id=?");
+        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
         $stmt->execute([
             $assets,
             $data['id_proof_type'] ?? '',
@@ -105,12 +105,13 @@ try {
             $photo_path,
             $total_visitors,
             $current_time,
+            $user_id,
             $visit_id
         ]);
     } else {
         // Create New Visit with pending status (requires host approval)
         $visit_code = generateVisitCode();
-        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
 
         $stmt->execute([
             $visitor_id,
@@ -123,7 +124,8 @@ try {
             $data['id_proof_type'] ?? '',
             $data['id_proof_number'] ?? '',
             $total_visitors,
-            $current_time
+            $current_time,
+            $user_id
         ]);
         $visit_id = $pdo->lastInsertId();
     }

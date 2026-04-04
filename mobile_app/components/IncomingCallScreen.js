@@ -81,10 +81,10 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismis
                             <Text style={styles.incomingText}>Incoming Arrival</Text>
                         </View>
                         <Text style={styles.timeText}>Visitor at Gate</Text>
-                        
+
                         {/* Manual Dismiss Button */}
-                        <TouchableOpacity 
-                            onPress={onDismiss} 
+                        <TouchableOpacity
+                            onPress={onDismiss}
                             style={{ position: 'absolute', right: 20, top: 10, padding: 10 }}
                         >
                             <Ionicons name="close-circle-outline" size={32} color="rgba(255,255,255,0.5)" />
@@ -123,9 +123,9 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismis
 
                     <View style={styles.actionSection}>
                         <View style={styles.actionRow}>
-                            <TouchableOpacity 
-                                activeOpacity={0.7} 
-                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]} 
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]}
                                 onPress={() => {
                                     if (actionLoading) return;
                                     setActionLoading(true);
@@ -143,9 +143,9 @@ const IncomingCallScreen = ({ visible, visitorData, onAccept, onReject, onDismis
                                 <Text style={styles.btnText}>Decline</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
-                                activeOpacity={0.7} 
-                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]} 
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                style={[styles.actionButton, actionLoading && { opacity: 0.5 }]}
                                 onPress={() => {
                                     if (actionLoading) return;
                                     setActionLoading(true);

@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS `visits` (
   `approved_by` int(11) DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL,
   `rejection_reason` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
   `visit_code` varchar(20) NOT NULL,
   `pass_type` enum('digital','physical') DEFAULT 'digital',
   `qr_code_path` varchar(255) DEFAULT NULL,
@@ -94,9 +95,11 @@ CREATE TABLE IF NOT EXISTS `visits` (
   KEY `visitor_id` (`visitor_id`),
   KEY `employee_id` (`employee_id`),
   KEY `approved_by` (`approved_by`),
+  KEY `created_by` (`created_by`),
   CONSTRAINT `visits_ibfk_1` FOREIGN KEY (`visitor_id`) REFERENCES `visitors` (`id`) ON DELETE CASCADE,
   CONSTRAINT `visits_ibfk_2` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `visits_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `visits_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `visits_ibfk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `user_devices` (

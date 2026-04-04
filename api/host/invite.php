@@ -76,14 +76,16 @@ try {
         error_log("QR Generation Error: " . $curl_error);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned')");
+    $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, NOW())");
     $stmt->execute([
         $visitor_id,
         $employee_id,
         $data['purpose'],
         $visit_date,
         $visit_code,
-        $qr_filename
+        $qr_filename,
+        $user_id,
+        $user_id
     ]);
 
     $pdo->commit();
