@@ -58,7 +58,7 @@ if ($action == 'approve') {
     $creator_id = $visitInfo['created_by'] ?? null;
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
-    
+
     if ($creator_id) {
         sendPushToUser($pdo, $creator_id, "Visit Approved: $visitor_name", "The host has approved the entry for $visitor_name.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
     }

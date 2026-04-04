@@ -440,7 +440,8 @@ export default function RegisterVisitor({ navigation, route }) {
                 members: members.filter(m => m.trim() !== ''),
                 require_otp: otpEnabled,
                 invitation_id: invitationId,
-                photo_data: photo // Send the base64 photo
+                photo_data: photo, // Send the base64 photo
+                user_id: user?.id
             });
 
             const result = response.data;

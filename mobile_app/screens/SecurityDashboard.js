@@ -91,6 +91,7 @@ export default function SecurityDashboard({ navigation }) {
     const [records, setRecords] = useState({ visits: [], overstays: [] });
 
     // SweetAlert Modal State
+    const [rejectionReason, setRejectionReason] = useState('');
     const [alertVisible, setAlertVisible] = useState(false);
     const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error'
 
@@ -1087,12 +1088,46 @@ export default function SecurityDashboard({ navigation }) {
     );
 
     const showAlert = (title, message, type = 'success', options = {}) => {
+        if (options.showInput) {
+            setRejectionReason('');
+        }
         setAlertConfig({ title, message, type, ...options });
         setAlertVisible(true);
     };
 
-    const handleAction = async (visitId, action) => {
-        if (action === 'checkin' || action === 'checkout') {
+    const handleAction = async (visitId, action, mobile, name) => {
+        let label = '';
+        let msg = '';
+        let type = 'warning';
+
+        switch (action) {
+            case 'approve':
+                label = 'Approve Visit';
+                msg = `Are you sure you want to APPROVE ${name || 'this visitor'}?`;
+                break;
+            case 'reject':
+                label = 'Reject Visit';
+                msg = `Are you sure you want to REJECT ${name || 'this visitor'}?`;
+                type = 'error';
+                break;
+            default:
+                label = 'Confirm';
+                msg = 'Proceed with this action?';
+        }
+
+        if (action === 'reject') {
+            showAlert(
+                'Reject Visit',
+                `Please provide a reason for rejecting ${name || 'this visitor'}:`,
+                'error',
+                {
+                    showCancel: true,
+                    showInput: true,
+                    confirmText: 'Reject Now',
+                    onConfirm: (reason) => executeAction(visitId, 'reject', reason)
+                }
+            );
+        } else if (action === 'checkin' || action === 'checkout') {
             const label = action === 'checkin' ? 'Check-In' : 'Check-Out';
             showAlert(
                 'Confirm ' + label,
@@ -1104,15 +1139,14 @@ export default function SecurityDashboard({ navigation }) {
                     onConfirm: () => executeAction(visitId, action)
                 }
             );
-        } else if (action === 'approve' || action === 'reject') {
-            const label = action === 'approve' ? 'Approve' : 'Reject';
+        } else if (action === 'approve') {
             showAlert(
-                'Confirm ' + label,
-                `Are you sure you want to ${label} this visit request?`,
+                'Confirm Approve',
+                `Are you sure you want to approve this visit request?`,
                 'warning',
                 {
                     showCancel: true,
-                    confirmText: 'Yes, ' + label,
+                    confirmText: 'Yes, Approve',
                     onConfirm: () => executeAction(visitId, action)
                 }
             );
@@ -1121,11 +1155,13 @@ export default function SecurityDashboard({ navigation }) {
         }
     };
 
-    const executeAction = async (visitId, action) => {
+    const executeAction = async (visitId, action, reason = '') => {
         try {
             const response = await apiClient.post('api/visit/status_action.php', {
                 action: action,
                 visit_id: visitId,
+                reason: reason,
+                user_id: userData?.id
             });
 
             if (response.data.status === 'success') {
@@ -1160,6 +1196,28 @@ export default function SecurityDashboard({ navigation }) {
                     <View style={styles.alertBody}>
                         <Text style={styles.alertMessage}>{alertConfig.message}</Text>
 
+                        {alertConfig.showInput && (
+                            <TextInput
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: '#f1f5f9',
+                                    borderRadius: 12,
+                                    padding: 15,
+                                    fontSize: 14,
+                                    color: '#1e293b',
+                                    marginBottom: 20,
+                                    minHeight: 80,
+                                    textAlignVertical: 'top'
+                                }}
+                                placeholder="Enter reason here..."
+                                placeholderTextColor="#94a3b8"
+                                multiline={true}
+                                value={rejectionReason}
+                                onChangeText={setRejectionReason}
+                                autoFocus={true}
+                            />
+                        )}
+
                         {alertConfig.showCancel ? (
                             <View style={styles.alertActionRow}>
                                 <TouchableOpacity
@@ -1169,10 +1227,14 @@ export default function SecurityDashboard({ navigation }) {
                                     <Text style={styles.alertCancelButtonText}>Cancel</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#15803d' }]}
+                                    style={[styles.alertButton, styles.alertConfirmButton, { backgroundColor: alertConfig.type === 'warning' ? '#f59e0b' : '#ef4444' }]}
                                     onPress={() => {
+                                        if (alertConfig.showInput && !rejectionReason.trim()) {
+                                            Alert.alert('Required', 'Please provide a reason');
+                                            return;
+                                        }
                                         setAlertVisible(false);
-                                        if (alertConfig.onConfirm) alertConfig.onConfirm();
+                                        if (alertConfig.onConfirm) alertConfig.onConfirm(rejectionReason);
                                     }}
                                 >
                                     <Text style={styles.alertConfirmButtonText}>{alertConfig.confirmText || 'Yes'}</Text>

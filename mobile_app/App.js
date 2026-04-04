@@ -126,7 +126,7 @@ function AppContent() {
         }
 
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
-        
+
         if (!visit_id && data.body) {
             try {
                 const parsedBody = JSON.parse(data.body);
@@ -150,7 +150,7 @@ function AppContent() {
     // --- RINGING & VIBRATION ---
     useEffect(() => {
         let isLooping = true;
-        
+
         async function startRinging() {
             if (showOverlay) {
                 try {
@@ -185,13 +185,13 @@ function AppContent() {
                         } catch (e) { }
                     }
                 } catch (e) { }
-                
+
                 if (isLooping) Vibration.vibrate([1000, 1000, 1000], true);
             } else {
                 isLooping = false;
                 if (sound) {
-                    sound.stopAsync().catch(() => {});
-                    sound.unloadAsync().catch(() => {});
+                    sound.stopAsync().catch(() => { });
+                    sound.unloadAsync().catch(() => { });
                     setSound(null);
                 }
                 Vibration.cancel();
@@ -301,27 +301,27 @@ function AppContent() {
         setShowOverlay(false);
         setArrivalData(null);
         Vibration.cancel();
-        
+
         // STOP NATIVE Alert
         if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
             OverlayPermissionModule.stopRinging();
         }
 
         if (sound) {
-            sound.stopAsync().catch(() => {});
-            sound.unloadAsync().catch(() => {});
+            sound.stopAsync().catch(() => { });
+            sound.unloadAsync().catch(() => { });
             setSound(null);
         }
 
         try {
-            await Notifications.dismissAllNotificationsAsync().catch(() => {});
+            await Notifications.dismissAllNotificationsAsync().catch(() => { });
             // Set a local timeout for the response so we don't hang if server is slow
-            const response = await apiClient.post('api/visit/status_action.php', { 
-                action, 
+            const response = await apiClient.post('api/visit/status_action.php', {
+                action,
                 visit_id: visitId,
                 reason: reason
             }, { timeout: 10000 }); // 10s local override
-            
+
             if (response.data.status === 'success') {
                 // Success toast or nothing (standardized)
             } else {
@@ -374,12 +374,12 @@ function AppContent() {
                         setArrivalData(null);
                         Vibration.cancel();
                         if (OverlayPermissionModule && OverlayPermissionModule.stopRinging) {
-                           OverlayPermissionModule.stopRinging();
+                            OverlayPermissionModule.stopRinging();
                         }
                         if (sound) {
-                           sound.stopAsync().catch(() => {});
-                           sound.unloadAsync().catch(() => {});
-                           setSound(null);
+                            sound.stopAsync().catch(() => { });
+                            sound.unloadAsync().catch(() => { });
+                            setSound(null);
                         }
                     }}
                 />

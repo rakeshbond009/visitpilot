@@ -36,6 +36,30 @@ $user_id = $_SESSION['user_id'] ?? null;
 $role = $_SESSION['role'] ?? null;
 $employee_id = $_SESSION['employee_id'] ?? null;
 
+// Mobile app fallback: If session is lost, try to get user_id from request body
+if (!$user_id) {
+    $postData = getPostData();
+    if (isset($postData['user_id'])) {
+        $user_id = $postData['user_id'];
+        // Recover role/employee_id from DB if missing from session
+        if ($pdo) {
+            try {
+                $uStmt = $pdo->prepare("SELECT role, employee_id FROM users WHERE id = ?");
+                $uStmt->execute([$user_id]);
+                $uData = $uStmt->fetch(PDO::FETCH_ASSOC);
+                if ($uData) {
+                    $role = $uData['role'];
+                    $employee_id = $uData['employee_id'];
+                    // Restore to session for the rest of this request
+                    $_SESSION['user_id'] = $user_id;
+                    $_SESSION['role'] = $role;
+                    $_SESSION['employee_id'] = $employee_id;
+                }
+            } catch (Exception $e) {}
+        }
+    }
+}
+
 function sendResponse($status, $message, $data = null, $code = 200)
 {
     if ($code !== 200) {

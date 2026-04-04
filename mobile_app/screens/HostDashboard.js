@@ -85,7 +85,7 @@ export default function HostDashboard({ navigation }) {
     const [alertConfig, setAlertConfig] = useState({ title: '', message: '', type: 'success' }); // 'success', 'error', 'warning'
 
     const [rejectionReason, setRejectionReason] = useState('');
-    
+
     // Date Filter State
     const [filterType, setFilterType] = useState('all');
     const [filterStartDate, setFilterStartDate] = useState('');
@@ -369,7 +369,8 @@ export default function HostDashboard({ navigation }) {
                 response = await apiClient.post('api/visit/status_action.php', {
                     action: action,
                     visit_id: visitId,
-                    reason: reason
+                    reason: reason,
+                    user_id: userData?.id
                 });
             }
 
