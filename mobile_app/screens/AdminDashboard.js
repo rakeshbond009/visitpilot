@@ -14,9 +14,9 @@ import {
     ActivityIndicator,
     Alert,
     Image,
-    Linking,
     TextInput,
-    Platform
+    Platform,
+    DeviceEventEmitter,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -324,7 +324,25 @@ export default function AdminDashboard({ navigation }) {
         useCallback(() => {
             fetchData();
             const interval = setInterval(fetchData, 30000); // Admin data updates less frequently
-            return () => clearInterval(interval);
+            
+            const checkPending = async () => {
+                const vid = await AsyncStorage.getItem('pending_visit_open');
+                if (vid) {
+                    await AsyncStorage.removeItem('pending_visit_open');
+                    fetchVisitDetails(vid);
+                }
+            };
+            checkPending();
+
+            const sub = DeviceEventEmitter.addListener('openVisitDetails', (vid) => {
+                AsyncStorage.removeItem('pending_visit_open');
+                fetchVisitDetails(vid);
+            });
+
+            return () => {
+                clearInterval(interval);
+                sub.remove();
+            };
         }, [])
     );
 
