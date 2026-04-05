@@ -2,6 +2,7 @@
 /**
  * VMS - Pass PDF Helper
  * Generates the Visitor Pass PDF to match the provided high-quality digital reference EXACTLY.
+ * VERSION: 1.0.1
  */
 
 function log_pass_error($msg) {
@@ -22,9 +23,9 @@ function generatePassPdf($visit_id, $pdo)
     $pdfFileRelative = "uploads/passes/Pass_" . $visit_id . ".pdf";
     $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
 
-    // Check if it already exists
+    // Overwrite for testing to ensure current code reflects
     if (file_exists($pdfAbsPath)) {
-        return BASE_URL . $pdfFileRelative;
+        @unlink($pdfAbsPath);
     }
 
     try {
@@ -46,33 +47,36 @@ function generatePassPdf($visit_id, $pdo)
 
         if (!$visit) return null;
 
-        // Final Precise Canvas
-        $pdf = new FPDF('P', 'mm', array(100, 210)); 
+        // Custom taller page for Branding
+        $pdf = new FPDF('P', 'mm', array(100, 220)); 
         $pdf->SetAutoPageBreak(false, 0);
         $pdf->AddPage();
         
-        $brandBlue = array(17, 97, 238);
-        $bgGrey = array(248, 249, 250);
-        $pageGrey = array(244, 247, 246);
-        $mutedGrey = array(173, 181, 189);
+        $brandBlue = array(17, 97, 238); // #1161ee
+        $bgGrey = array(248, 249, 250);   // Details box background
+        $pageGrey = array(244, 247, 246); // Exterior page background
+        $labelGrey = array(173, 181, 189); // Muted labels
 
         // 1. Page Background
         $pdf->SetFillColor($pageGrey[0], $pageGrey[1], $pageGrey[2]);
-        $pdf->Rect(0, 0, 100, 210, 'F');
+        $pdf->Rect(0, 0, 100, 220, 'F');
 
-        // 2. Exterior Title
+        // 2. Exterior Header Text
         $pdf->SetY(8);
         $pdf->SetFont('Arial', 'B', 10);
         $pdf->SetTextColor(80, 80, 80);
         $pdf->Cell(100, 5, 'OFFICIAL VISITOR PASS', 0, 1, 'C');
 
-        // 3. Main Tall Card Surface (Highly rounded bottom)
+        // 3. Main Tall Card Surface (190mm height - deep bottom rounding)
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect(10, 18, 80, 185, 20, 'F');
+        $pdf->RoundedRect(10, 18, 80, 190, 20, 'F');
         
-        // 4. Blue Top Banner (Rounded top - ABSOLUTELY STRAIGHT BOTTOM)
+        // 4. Blue Top Banner (ENSURING STRAIGHT BOTTOM BASE)
         $pdf->SetFillColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
-        $pdf->RoundedRect(10, 18, 80, 48, 20, 'F', '12'); 
+        // Draw the top part with 20mm round corners (1 and 2)
+        $pdf->RoundedRect(10, 18, 80, 20, 20, 'F', '12'); 
+        // Draw the rest as a pure straight Rectangle so the bottom cannot be rounded
+        $pdf->Rect(10, 38, 80, 30, 'F');
 
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetXY(10, 28);
@@ -82,18 +86,19 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetFont('Arial', 'B', 28);
         $pdf->Cell(80, 15, 'VISITOR PASS', 0, 1, 'C');
 
-        // 5. White Photo Wrapper (Creating the curved overlap look)
-        $photoY = 52;
+        // 5. White Photo Container (Creating the curved overlap look)
+        $photoY = 54;
         $pdf->SetFillColor(255, 255, 255);
         $pdf->RoundedRect(26, $photoY, 48, 48, 15, 'F'); 
         
         $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : (!empty($visit['photo_path']) ? __DIR__ . '/../' . $visit['photo_path'] : '');
         if (!empty($photoPath) && file_exists($photoPath)) {
+            // 40mm image inside the 48mm white border wrap
             $pdf->Image($photoPath, 30, $photoY + 4, 40, 40);
         }
 
-        // 6. Name and blue ID
-        $pdf->SetXY(10, 110);
+        // 6. Name and blue Identity
+        $pdf->SetXY(10, 112);
         $pdf->SetTextColor(17, 17, 17);
         $pdf->SetFont('Arial', 'B', 24);
         $pdf->Cell(80, 12, strtoupper($visit['visitor_name']), 0, 1, 'C');
@@ -102,12 +107,12 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetTextColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
         $pdf->Cell(80, 5, $visit['visit_code'], 0, 1, 'C');
 
-        // 7. Grid Detail Container
-        $boxY = 132;
+        // 7. Status Grid Unified Box
+        $boxY = 138;
         $pdf->SetFillColor($bgGrey[0], $bgGrey[1], $bgGrey[2]);
         $pdf->RoundedRect(15, $boxY, 70, 32, 10, 'F');
 
-        // PRECISE Variable Fix: Changed $gridCell to $drawGridCell to fix fatal error
+        // Variable defined correctly as $drawGridCell to match calls below
         $drawGridCell = function($label, $value, $x, $y, $isBlue = false) use ($pdf, $labelGrey, $brandBlue) {
             $pdf->SetXY($x, $y);
             $pdf->SetFont('Arial', 'B', 7);
@@ -121,31 +126,31 @@ function generatePassPdf($visit_id, $pdo)
             $pdf->Cell(35, 5, $value, 0, 0, 'L');
         };
 
-        // Grid Cells
+        // Grid Rows
         $drawGridCell('Visiting:', $visit['host_name'], 18, $boxY + 5);
         $drawGridCell('Purpose:', $visit['purpose'] ?: 'Delivery', 48, $boxY + 5);
         $drawGridCell('Access Area:', $visit['access_area'] ?: 'General Office', 18, $boxY + 19);
         $drawGridCell('Date:', date('d M Y', strtotime($visit['created_at'])), 48, $boxY + 19, true);
 
-        // 8. Elevated QR Code (Well away from the dangerous curved area)
+        // 8. Safe Elevated QR Code (Well away from the dangerous curve)
         $localQr = __DIR__ . '/../uploads/qrcodes/' . $visit['visit_code'] . '.png';
         if (file_exists($localQr)) {
-            // Moved UP to 170mm (card ends at 203mm, curve starts at 183mm)
-            $pdf->Image($localQr, 40, 170, 20, 20);
+            // Moved UP to 178mm to stay safe in the white card background
+            $pdf->Image($localQr, 40, 178, 20, 20);
         }
 
-        // 9. Card Footer
-        $pdf->SetXY(10, 198);
+        // 9. Card Footer v1.0.1
+        $pdf->SetXY(10, 202);
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor(190, 190, 190);
-        $pdf->Cell(80, 5, 'VISITPILOT', 0, 0, 'C');
+        $pdf->SetTextColor(180, 180, 180);
+        $pdf->Cell(80, 5, 'VISITPILOT v1.0.1', 0, 0, 'C');
 
         // Save
         $pdf->Output('F', $pdfAbsPath);
         return BASE_URL . $pdfFileRelative;
 
     } catch (Exception $e) {
-        log_pass_error("Final precision failure: " . $e->getMessage());
+        log_pass_error("Critical precision failure: " . $e->getMessage());
         return null;
     }
 }
