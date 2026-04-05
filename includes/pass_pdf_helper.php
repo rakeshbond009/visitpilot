@@ -15,7 +15,6 @@ function generatePassPdf($visit_id, $pdo)
         return BASE_URL . $pdfFileRelative;
     }
 
-    // Try to generate it
     try {
         require_once __DIR__ . '/fpdf.php';
 
@@ -31,81 +30,97 @@ function generatePassPdf($visit_id, $pdo)
         if (!$visit)
             return null;
 
-        $pdf = new FPDF('P', 'mm', array(100, 150)); // Custom size for pass
+        // Fetch Company Name from settings
+        $compStmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'company_name'");
+        $company_name = $compStmt ? $compStmt->fetchColumn() : 'VISITPILOT';
+
+        $pdf = new FPDF('P', 'mm', array(100, 150)); // ID Card Size
         $pdf->AddPage();
+        $pdf->SetAutoPageBreak(false);
 
-        // Background Color (Header)
+        // Header Background (#1161ee)
         $pdf->SetFillColor(17, 97, 238);
-        $pdf->Rect(0, 0, 100, 40, 'F');
+        $pdf->Rect(0, 0, 100, 45, 'F');
 
-        // Company Name
-        $pdf->SetFont('Arial', 'B', 8);
+        // Company Name (Header)
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->Cell(80, 5, 'OFFICIAL VISITOR PASS', 0, 1, 'C');
+        $pdf->SetFont('Arial', 'B', 7);
+        $pdf->SetY(15);
+        $pdf->Cell(80, 5, strtoupper($company_name), 0, 1, 'C');
 
-        $pdf->SetFont('Arial', 'B', 14);
+        // Pass Type
+        $pdf->SetFont('Arial', 'B', 18);
         $pdf->Cell(80, 10, 'VISITOR PASS', 0, 1, 'C');
 
-        // Content Area
-        $pdf->SetY(45);
-
-        // Photo
+        // Photo Positioning
         $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : __DIR__ . '/../assets/img/visitor-icon.png';
         if (file_exists($photoPath)) {
-            // Try to keep it circular? No, FPDF is simple. Let's do a centered square.
-            $pdf->Image($photoPath, 35, 45, 30, 30);
+            // White border for photo container
+            $pdf->SetFillColor(255, 255, 255);
+            $pdf->RoundedRect(32, 35, 36, 36, 5, '34', 'F');
+            $pdf->Image($photoPath, 33, 36, 34, 34);
         }
 
-        $pdf->SetY(80);
+        // Visitor Name
+        $pdf->SetY(75);
         $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->Cell(80, 10, strtoupper($visit['visitor_name']), 0, 1, 'C');
+        $pdf->SetFont('Arial', 'B', 14);
+        $pdf->Cell(80, 8, strtoupper($visit['visitor_name']), 0, 1, 'C');
 
-        $pdf->SetFont('Arial', 'B', 10);
+        // Visitor Code
         $pdf->SetTextColor(17, 97, 238);
-        $pdf->Cell(80, 5, '#' . $visit['visit_code'], 0, 1, 'C');
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->Cell(80, 5, $visit['visit_code'], 0, 1, 'C');
 
-        // Details
-        $pdf->SetY(100);
-        $pdf->SetFont('Arial', '', 8);
-        $pdf->SetTextColor(100, 100, 100);
+        // Details Grid Background (#f8f9fa)
+        $pdf->SetFillColor(248, 249, 250);
+        $pdf->RoundedRect(10, 95, 80, 25, 3, '1234', 'F');
 
-        $pdf->Cell(40, 5, 'HOST:', 0, 0, 'L');
-        $pdf->Cell(40, 5, 'PURPOSE:', 0, 1, 'L');
+        // Grid Content
+        $pdf->SetY(97);
+        $pdf->SetX(12);
+        
+        // Row 1
+        $pdf->SetTextColor(173, 181, 189);
+        $pdf->SetFont('Arial', 'B', 6);
+        $pdf->Cell(38, 4, 'VISITING:', 0, 0);
+        $pdf->Cell(38, 4, 'PURPOSE:', 0, 1);
 
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('Arial', 'B', 9);
-        $pdf->Cell(40, 5, $visit['host_name'], 0, 0, 'L');
-        $pdf->Cell(40, 5, $visit['purpose'], 0, 1, 'L');
+        $pdf->SetX(12);
+        $pdf->SetTextColor(51, 51, 51);
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell(38, 4, substr($visit['host_name'], 0, 20), 0, 0);
+        $pdf->Cell(38, 4, substr($visit['purpose'], 0, 20), 0, 1);
 
         $pdf->Ln(2);
+        $pdf->SetX(12);
 
-        $pdf->SetFont('Arial', '', 8);
-        $pdf->SetTextColor(100, 100, 100);
-        $pdf->Cell(40, 5, 'DATE:', 0, 0, 'L');
-        $pdf->Cell(40, 5, 'ACCESS:', 0, 1, 'L');
+        // Row 2
+        $pdf->SetTextColor(173, 181, 189);
+        $pdf->SetFont('Arial', 'B', 6);
+        $pdf->Cell(38, 4, 'ACCESS AREA:', 0, 0);
+        $pdf->Cell(38, 4, 'DATE:', 0, 1);
 
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('Arial', 'B', 9);
-        $pdf->Cell(40, 5, date('d M Y', strtotime($visit['created_at'])), 0, 0, 'L');
-        $pdf->Cell(40, 5, $visit['access_area'] ?: 'General', 0, 1, 'L');
+        $pdf->SetX(12);
+        $pdf->SetTextColor(51, 51, 51);
+        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->Cell(38, 4, substr($visit['access_area'] ?: 'General', 0, 20), 0, 0);
+        $pdf->SetTextColor(17, 97, 238);
+        $pdf->Cell(38, 4, date('d M Y', strtotime($visit['created_at'])), 0, 1);
 
         // QR Code
         $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . $visit['visit_code'];
-        // Note: FPDF can't easily download from URL in some environments without allow_url_fopen
-        // We'll try to use the local one if exists, or just skip if we must.
-        // Actually, FPDF's Image() supports URLs if the wrapper is enabled.
         try {
-            $pdf->Image($qrUrl, 40, 125, 20, 20, 'PNG');
+            $pdf->Image($qrUrl, 40, 122, 20, 20, 'PNG');
         } catch (Exception $e) {
-            // Skip QR if URL image fails
+            // Skip if error
         }
 
         // Footer
-        $pdf->SetY(145);
-        $pdf->SetFont('Arial', '', 7);
-        $pdf->SetTextColor(150, 150, 150);
-        $pdf->Cell(80, 5, 'Powered by VisitPilot VMS', 0, 1, 'C');
+        $pdf->SetY(144);
+        $pdf->SetFont('Arial', 'B', 6);
+        $pdf->SetTextColor(200, 200, 200);
+        $pdf->Cell(80, 5, strtoupper($company_name), 0, 1, 'C');
 
         $pdf->Output('F', $pdfAbsPath);
 
