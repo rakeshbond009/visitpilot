@@ -30,7 +30,7 @@ function generatePassPdf($visit_id, $pdo)
     try {
         require_once __DIR__ . '/fpdf.php';
 
-        // 2. Ensure directory exists to avoid "not getting generated" errors on new installs
+        // 2. Ensure directory exists
         $pdfDir = dirname($pdfAbsPath);
         if (!is_dir($pdfDir)) {
             @mkdir($pdfDir, 0777, true);
@@ -55,95 +55,100 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetAutoPageBreak(false, 0);
         $pdf->AddPage();
         
-        // Premium Color Palette
+        // Premium Color Palette from pass.php
         $brandBlue = array(17, 97, 238); // #1161ee
-        $darkGrey = array(51, 51, 51);
-        $lightGrey = array(173, 181, 189);
+        $darkText = array(51, 51, 51);
+        $mutedText = array(173, 181, 189);
 
-        // 5. Main Card Border (Rounded Graphics)
-        $pdf->SetDrawColor(230, 230, 230);
-        $pdf->SetLineWidth(0.5);
+        // 5. Overall Card Surface (Clean White rounded card)
+        $pdf->SetFillColor(255, 255, 255);
+        $pdf->RoundedRect(5, 5, 90, 140, 10, 'F');
+        $pdf->SetDrawColor(240, 240, 240);
+        $pdf->SetLineWidth(0.4);
         $pdf->RoundedRect(5, 5, 90, 140, 10, 'D');
 
         // 6. Header Section (Blue Branding Banner)
         $pdf->SetFillColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
-        $pdf->RoundedRect(5, 5, 90, 35, 10, 'F', '12'); // Only top corners rounded
+        $pdf->RoundedRect(5, 5, 90, 45, 10, 'F', '12'); // Only top corners rounded
         
         $pdf->SetTextColor(255, 255, 255);
         $pdf->SetY(12);
-        $pdf->SetFont('Arial', 'B', 8);
+        $pdf->SetFont('Arial', 'B', 7);
         $company = strtoupper($GLOBALS['company_settings']['name'] ?? 'VisitPilot VMS');
         $pdf->Cell(90, 5, $company, 0, 1, 'C');
         
-        $pdf->SetFont('Arial', 'B', 22);
+        $pdf->SetFont('Arial', 'B', 24);
         $pdf->Cell(90, 15, 'VISITOR PASS', 0, 1, 'C');
 
-        // 7. Photo Wrapper (White Rounded Container with "Shadow" feel)
-        $photoY = 32;
+        // 7. Floating Photo Container (Centered, overlapping the header)
+        $photoY = 38;
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect(30, $photoY, 40, 40, 8, 'F');
+        $pdf->RoundedRect(30, $photoY, 40, 40, 8, 'F'); // Shadow/Border Box
         
         // Priority: Visit-specific photo -> Visitor profile photo -> Placeholder
         $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : (!empty($visit['photo_path']) ? __DIR__ . '/../' . $visit['photo_path'] : '');
         if (!empty($photoPath) && file_exists($photoPath)) {
-            $pdf->Image($photoPath, 31, $photoY + 1, 38, 38);
+            $pdf->Image($photoPath, 31.5, $photoY + 1.5, 37, 37);
         } else {
             $pdf->SetXY(30, $photoY + 13);
-            $pdf->SetTextColor(240, 240, 240);
+            $pdf->SetTextColor(245, 245, 245);
             $pdf->SetFont('Arial', 'B', 30);
             $pdf->Cell(40, 15, '?', 0, 0, 'C');
         }
 
-        // 8. Identity Header
-        $pdf->SetXY(5, 75);
-        $pdf->SetTextColor(0, 0, 0);
+        // 8. Identity Header (Name and Code)
+        $pdf->SetXY(5, 82);
+        $pdf->SetTextColor(17, 17, 17);
         $pdf->SetFont('Arial', 'B', 18);
         $pdf->Cell(90, 10, strtoupper($visit['visitor_name']), 0, 1, 'C');
         
-        $pdf->SetFont('Arial', 'B', 10);
-        $pdf->SetTextColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
-        $pdf->Cell(90, 5, '#' . ($visit['visit_code'] ?? $visit_id), 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 11);
+        $pdf->SetTextColor(102, 102, 102);
+        $pdf->Cell(90, 5, '#' . ($visit['visit_code'] ?? '000000'), 0, 1, 'C');
 
-        // 9. Structured Details Grid (Label/Value Pattern)
-        $detailY = 95;
-        $drawDetail = function($pdf, $label, $value, $y) use ($lightGrey, $darkGrey) {
+        // 9. Structured Details List (Vertical stack with lines)
+        $detailY = 100;
+        $drawListItem = function($pdf, $label, $value, $y) use ($mutedText, $darkText) {
             $pdf->SetXY(15, $y);
             $pdf->SetFont('Arial', 'B', 7);
-            $pdf->SetTextColor($lightGrey[0], $lightGrey[1], $lightGrey[2]);
+            $pdf->SetTextColor($mutedText[0], $mutedText[1], $mutedText[2]);
             $pdf->Cell(35, 5, strtoupper($label), 0, 0, 'L');
             
             $pdf->SetFont('Arial', 'B', 9);
-            $pdf->SetTextColor($darkGrey[0], $darkGrey[1], $darkGrey[2]);
+            $pdf->SetTextColor(17, 17, 17);
             $pdf->Cell(35, 5, $value, 0, 1, 'R');
             
             $pdf->SetDrawColor(245, 245, 245);
             $pdf->Line(15, $y + 6, 85, $y + 6);
         };
 
-        $drawDetail($pdf, 'Meeting With', $visit['host_name'] ?? 'Staff', $detailY);
-        $drawDetail($pdf, 'Department', $visit['department'] ?: 'General', $detailY + 8);
-        $drawDetail($pdf, 'Purpose', $visit['purpose'] ?: 'Visit', $detailY + 16);
-        $drawDetail($pdf, 'Date/Time', date('d M Y, h:i A', strtotime($visit['created_at'])), $detailY + 24);
+        $drawListItem($pdf, 'Meeting With', $visit['host_name'] ?? 'Staff', $detailY);
+        $drawListItem($pdf, 'Department', $visit['department'] ?: 'General', $detailY + 8);
+        $drawListItem($pdf, 'Purpose', $visit['purpose'] ?: 'Meeting', $detailY + 16);
 
-        // 10. QR Code (Priority: Local Path -> URL Fallback)
-        $visit_code = $visit['visit_code'] ?? 'PENDING';
+        // 10. Centered QR Code with protective border
+        $visit_code = $visit['visit_code'] ?? '000000';
         $localQr = __DIR__ . '/../uploads/qrcodes/' . $visit_code . '.png';
+        
+        $pdf->SetDrawColor(240, 240, 240);
+        $pdf->RoundedRect(39, 126, 22, 22, 3, 'D'); // QR Border box
         
         try {
             if (file_exists($localQr)) {
-                $pdf->Image($localQr, 15, 122, 18, 18);
+                $pdf->Image($localQr, 40, 127, 20, 20);
             } else {
                 $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit_code);
-                $pdf->Image($qrUrl, 15, 122, 18, 18, 'PNG');
+                $pdf->Image($qrUrl, 40, 127, 20, 20, 'PNG');
             }
         } catch (Exception $qrErr) {
-            log_pass_error("QR placement failed for $visit_code: " . $qrErr->getMessage());
+            log_pass_error("QR placement failed: " . $qrErr->getMessage());
         }
 
-        $pdf->SetXY(35, 128);
+        // 11. Footer Branding
+        $pdf->SetXY(5, 140);
         $pdf->SetFont('Arial', 'B', 7);
-        $pdf->SetTextColor(200, 200, 200);
-        $pdf->Cell(50, 5, 'POWERED BY VISITPILOT VMS', 0, 0, 'C');
+        $pdf->SetTextColor(210, 210, 210);
+        $pdf->Cell(90, 8, 'POWERED BY VISITPILOT VMS', 0, 0, 'C');
 
         // 12. Finalize and Save
         $pdf->Output('F', $pdfAbsPath);
