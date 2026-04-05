@@ -136,6 +136,8 @@ function getGoogleAccessToken($serviceAccount)
         $ch = curl_init('https://oauth2.googleapis.com/token');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion' => $jwt
@@ -200,12 +202,13 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
+    // Fetch token ONCE per batch
+    $accessToken = getGoogleAccessToken($serviceAccount);
+    if (!$accessToken)
+        return false;
+
     foreach ($users as $user) {
         $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']})");
-
-        $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken)
-            continue;
 
         $message = [
             'message' => [
@@ -242,6 +245,8 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json'
