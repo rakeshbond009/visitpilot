@@ -28,7 +28,7 @@ if (!function_exists('menuPath')) {
 <?php if (
     canView('admin_employees') || canView('admin_reports') || canView('admin_audit') || canView('admin_users') ||
     canView('settings_profile') || canView('settings_company') || canView('settings_general') || canView('settings_departments') || canView('settings_access') || canView('settings_email') || canView('settings_tenant') ||
-    canView('settings_ai') || canView('settings_whatsapp')
+    canView('settings_ai') || canView('settings_dahua') || canView('settings_whatsapp')
 ): ?>
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle <?php echo (in_array($current_page, ['employees.php', 'departments.php', 'reports.php', 'audit_logs.php', 'permissions.php', 'settings.php', 'tenants.php', 'cloud_deployment.php'])) ? 'active' : ''; ?>"
@@ -55,7 +55,7 @@ if (!function_exists('menuPath')) {
                             class="bi bi-database me-2"></i> Clients / Tenants</a></li>
             <?php endif; ?>
 
-            <?php if (canView('settings_profile') || canView('settings_company') || canView('settings_general') || canView('settings_departments') || canView('settings_access') || canView('settings_email') || canView('settings_tenant') || canView('settings_ai') || canView('settings_whatsapp')): ?>
+            <?php if (canView('settings_profile') || canView('settings_company') || canView('settings_general') || canView('settings_departments') || canView('settings_access') || canView('settings_email') || canView('settings_tenant') || canView('settings_ai') || canView('settings_dahua') || canView('settings_whatsapp')): ?>
                 <li>
                     <hr class="dropdown-divider">
                 </li>

@@ -1,6 +1,7 @@
 <?php
-// api/visit/status_action.php
+// api/visit/status_action.php - Dahua Enabled
 require_once '../includes/api_header.php';
+require_once '../../includes/dahua_helper.php';
 
 $data = getPostData();
 
@@ -22,22 +23,15 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
 
-        $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
-        $stmt->execute([$id]);
-        $visit = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        $responseData = [];
-        if (isset($visit)) {
-            $responseData['visitor_mobile'] = $visit['mobile'];
-        }
-
-        // Return fast response to Android to avoid timeout
-        sendAsyncResponse('success', 'Visit Approved', $responseData);
-
         // --- NOTIFICATIONS (NEW) ---
         try {
             require_once '../../includes/push_helper.php';
             require_once '../../includes/whatsapp_helper.php';
+
+            // Get visitor details
+            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
+            $stmt->execute([$id]);
+            $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($visit) {
                 // Check if PDF exists (strict lookup only, no fallback generation)
@@ -56,6 +50,47 @@ try {
         } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
         }
+
+        $responseData = [];
+        if (isset($visit)) {
+            $responseData['visitor_mobile'] = $visit['mobile'];
+        }
+
+        // --- DAHUA INTEGRATION (Sync on Approval) ---
+        try {
+            $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
+                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
+
+                $startTime = $visit['created_at'];
+                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
+
+                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns']);
+                $deviceSnsList = array_map('trim', $deviceSnsList);
+
+                $visitorData = [
+                    'visitor_id' => $visit['visitor_id'],
+                    'name' => $visit['visitor_name'],
+                    'face_path' => realpath('../../' . $visit['visit_photo']),
+                    'qr_code' => $visit['visit_code'],
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'device_sns' => $deviceSnsList
+                ];
+
+                $syncResult = $dahua->syncVisitor($visitorData);
+
+                if (isset($syncResult['success']) && !$syncResult['success']) {
+                    error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
+                } else {
+                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
+                }
+            }
+        } catch (Exception $e) {
+            error_log("Dahua Integration Error: " . $e->getMessage());
+        }
+        sendResponse('success', 'Visit Approved', $responseData);
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification

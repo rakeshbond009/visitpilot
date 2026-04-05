@@ -1,6 +1,7 @@
 <?php
 // api/visitor/register.php
 require_once '../includes/api_header.php';
+require_once '../../includes/dahua_helper.php';
 
 $data = getPostData();
 
@@ -151,19 +152,9 @@ try {
         }
     }
 
-    // COMMIT EARLY: Save DB state before long external calls (QR, Notifications)
+    // COMMIT EARLY: Save DB state before long external calls (QR, Dahua, Notifications)
     $pdo->commit();
 
-    // Send FAST response to Android first
-    sendAsyncResponse('success', 'Visitor registered successfully', [
-        'visit_id' => $visit_id,
-        'visit_code' => $visit_code,
-        'qr_code_url' => null,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
-    ]);
-
-    // Continue heavy processing in background
     // Generate and Save QR Code if not exists
     $qr_code_path = '';
     if ($visit_code) {
@@ -173,7 +164,7 @@ try {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($ch, CURLOPT_TIMEOUT, 3);
         $qr_image = curl_exec($ch);
         curl_close($ch);
@@ -185,17 +176,61 @@ try {
             }
             file_put_contents('../../' . $qr_filename, $qr_image);
             $qr_code_path = $qr_filename;
+
+            // Re-open PDO for quick update (since we committed)
             $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
         }
     }
 
-    // GENERATE PDF PASS IMMEDIATELY (Will use local QR just saved above for speed)
-    require_once dirname(__DIR__, 2) . '/includes/pass_pdf_helper.php';
-    $pdfUrl = generatePassPdf($visit_id, $pdo);
+    // --- DAHUA INTEGRATION (Sync on Check-in/Entry) ---
+    try {
+        $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+        // Safety Check: Only sync if visitor is approved AND either checked-in or manually approved
+        $checkStatusStmt = $pdo->prepare("SELECT status, approval_status FROM visits WHERE id = ?");
+        $checkStatusStmt->execute([$visit_id]);
+        $vStatus = $checkStatusStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($vStatus && $vStatus['approval_status'] === 'approved' && in_array($vStatus['status'], ['checked_in', 'approved'])) {
+            if ($photo_path && !empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
+                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
+
+                $startTime = date('Y-m-d H:i:s');
+                $endTime = date('Y-m-d 23:59:59');
+
+                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns'] ?? '');
+                $deviceSnsList = array_map('trim', array_filter($deviceSnsList));
+
+                $visitorData = [
+                    'visitor_id' => $visitor_id,
+                    'name' => $data['name'],
+                    'face_path' => realpath('../../' . $photo_path),
+                    'qr_code' => $visit_code,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'device_sns' => $deviceSnsList
+                ];
+
+                $syncResult = $dahua->syncVisitor($visitorData);
+
+                if (isset($syncResult['success']) && !$syncResult['success']) {
+                    error_log("Dahua Sync Failed (Register) for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
+                } else {
+                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success (Register/Entry) for Visit $visit_id");
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Dahua Integration Error in Register: " . $e->getMessage());
+    }
 
     // 5. SEND PUSH NOTIFICATION & WHATSAPP
     try {
+        $push_log = __DIR__ . '/register_push_trace.log';
+        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Starting push flow for Visitor ID: $visitor_id\n", FILE_APPEND);
+
         require_once dirname(__DIR__, 2) . '/includes/push_helper.php';
+        file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Push helper loaded.\n", FILE_APPEND);
 
         $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?");
         $stmt->execute([$visitor_id]);
@@ -213,6 +248,7 @@ try {
             'assets_carried' => (string) ($data['assets_carried'] ?? 'None')
         ];
 
+        // Send to Role/Employee
         sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$visitor['name']} is waiting for your approval.", $pushData);
 
         // WhatsApp Automation
@@ -221,16 +257,30 @@ try {
         $hStmt->execute([$data['employee_id']]);
         $host = $hStmt->fetch(PDO::FETCH_ASSOC);
         if ($host && !empty($host['mobile'])) {
+            $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Found host {$host['name']} with mobile {$host['mobile']} for visitor {$visitor['name']} using visitor_arrival_host_alert\n";
+            file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
+
             sendWhatsAppNotification(
                 $host['mobile'],
                 "Visitor {$visitor['name']} has arrived to meet you.",
                 'visitor_arrival_host_alert',
                 ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]
             );
+        } else {
+            $trace_msg = "[" . date('Y-m-d H:i:s') . "] TRACE: Host NOT found or mobile empty for ID: " . ($data['employee_id'] ?? 'NONE') . "\n";
+            file_put_contents(__DIR__ . '/../../whatsapp_log.txt', $trace_msg, FILE_APPEND);
         }
     } catch (Exception $e) {
         error_log("Notification System Error: " . $e->getMessage());
     }
+
+    sendResponse('success', 'Visitor registered successfully', [
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
+        'status' => $invitation_id ? 'approved' : 'pending',
+        'approval_status' => $invitation_id ? 'approved' : 'pending'
+    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

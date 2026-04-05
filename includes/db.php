@@ -363,7 +363,7 @@ function enforcePageSecurity()
     // 4. Define Page -> Multiple Permissions Mapping
     // If user has ANY of these permissions, they are allowed into the file
     $pagePermissions = [
-        'settings.php' => ['settings_profile', 'settings_company', 'settings_general', 'settings_departments', 'settings_access', 'settings_email', 'settings_tenant', 'settings_whatsapp', 'settings_ai'],
+        'settings.php' => ['settings_profile', 'settings_company', 'settings_general', 'settings_departments', 'settings_access', 'settings_email', 'settings_tenant', 'settings_dahua', 'settings_whatsapp', 'settings_ai'],
         'reports.php' => ['admin_reports', 'host_reports'],
         'employees.php' => ['admin_employees'],
         'departments.php' => ['settings_departments'],

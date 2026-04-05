@@ -103,15 +103,9 @@ function generatePassPdf($visit_id, $pdo)
 
         // Footer
         $pdf->SetY(145);
-        $pdf->SetFont('Arial', '', 7); // Changed from 'I' to '' to prevent crash on missing font file
+        $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(150, 150, 150);
         $pdf->Cell(80, 5, 'Powered by VisitPilot VMS', 0, 1, 'C');
-
-        // Ensure directory exists
-        $passDir = dirname($pdfAbsPath);
-        if (!is_dir($passDir)) {
-            mkdir($passDir, 0777, true);
-        }
 
         $pdf->Output('F', $pdfAbsPath);
 
