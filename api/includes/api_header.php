@@ -49,42 +49,6 @@ function sendResponse($status, $message, $data = null, $code = 200)
     exit;
 }
 
-function sendAsyncResponse($status, $message, $data = null, $code = 200)
-{
-    if ($code !== 200) {
-        http_response_code($code);
-    }
-    
-    $response = json_encode([
-        'status' => $status,
-        'message' => $message,
-        'data' => $data
-    ]);
-    
-    // Clear all previously opened output buffers
-    while (ob_get_level() > 0) {
-        ob_end_clean();
-    }
-    
-    header('Connection: close');
-    header('Content-Length: ' . strlen($response));
-    header('Content-Type: application/json; charset=utf-8');
-    
-    // Disable compression
-    @ini_set('zlib.output_compression', 'Off');
-    if (function_exists('apache_setenv')) {
-        @apache_setenv('no-gzip', 1);
-    }
-    
-    echo $response;
-    
-    // Flush the output buffers
-    flush();    
-    if (function_exists('fastcgi_finish_request')) {
-        fastcgi_finish_request();
-    }
-}
-
 function getPostData()
 {
     return json_decode(file_get_contents('php://input'), true);

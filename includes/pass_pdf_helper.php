@@ -7,29 +7,29 @@
 
 function generatePassPdf($visit_id, $pdo)
 {
-    $pdfFileRelative = "uploads/passes/Pass_" . $visit_id . ".pdf";
-    $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
-
-    // Check if it already exists
-    if (file_exists($pdfAbsPath)) {
-        return BASE_URL . $pdfFileRelative;
-    }
-
     // Try to generate it
     try {
         require_once __DIR__ . '/fpdf.php';
 
-        // Fetch All Details
+        // Fetch All Details first for tenant safety (visit_code is unique)
         $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.mobile as visitor_mobile, vis.photo_path, emp.name as host_name, emp.department, emp.mobile as host_mobile 
                                FROM visits v 
                                JOIN visitors vis ON v.visitor_id = vis.id 
-                               JOIN employees emp ON v.employee_id = emp.id 
+                               LEFT JOIN employees emp ON v.employee_id = emp.id 
                                WHERE v.id = ?");
         $stmt->execute([$visit_id]);
         $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$visit)
             return null;
+            
+        $pdfFileRelative = "uploads/passes/Pass_" . $visit['visit_code'] . ".pdf";
+        $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
+
+        // Check if it already exists
+        if (file_exists($pdfAbsPath)) {
+            return BASE_URL . $pdfFileRelative;
+        }
 
         $pdf = new FPDF('P', 'mm', array(100, 150)); // Custom size for pass
         $pdf->AddPage();
@@ -91,14 +91,21 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->Cell(40, 5, $visit['access_area'] ?: 'General', 0, 1, 'L');
 
         // QR Code
-        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . $visit['visit_code'];
-        // Note: FPDF can't easily download from URL in some environments without allow_url_fopen
-        // We'll try to use the local one if exists, or just skip if we must.
-        // Actually, FPDF's Image() supports URLs if the wrapper is enabled.
-        try {
-            $pdf->Image($qrUrl, 40, 125, 20, 20, 'PNG');
-        } catch (Exception $e) {
-            // Skip QR if URL image fails
+        $localQrPath = !empty($visit['qr_code_path']) ? __DIR__ . '/../' . $visit['qr_code_path'] : null;
+        
+        if ($localQrPath && file_exists($localQrPath)) {
+            try {
+                $pdf->Image($localQrPath, 40, 125, 20, 20, 'PNG');
+            } catch (Exception $e) {
+                error_log("Failed to load local QR: " . $e->getMessage());
+            }
+        } else {
+            $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . $visit['visit_code'];
+            try {
+                $pdf->Image($qrUrl, 40, 125, 20, 20, 'PNG');
+            } catch (Exception $e) {
+                // Skip QR if URL image fails
+            }
         }
 
         // Footer
