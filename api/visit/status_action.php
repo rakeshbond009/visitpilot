@@ -22,15 +22,22 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
 
+        $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
+        $stmt->execute([$id]);
+        $visit = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $responseData = [];
+        if (isset($visit)) {
+            $responseData['visitor_mobile'] = $visit['mobile'];
+        }
+
+        // Return fast response to Android to avoid timeout
+        sendAsyncResponse('success', 'Visit Approved', $responseData);
+
         // --- NOTIFICATIONS (NEW) ---
         try {
             require_once '../../includes/push_helper.php';
             require_once '../../includes/whatsapp_helper.php';
-
-            // Get visitor details
-            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
-            $stmt->execute([$id]);
-            $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($visit) {
                 // Check if PDF exists (strict lookup only, no fallback generation)
@@ -49,14 +56,6 @@ try {
         } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
         }
-
-        $responseData = [];
-        if (isset($visit)) {
-            $responseData['visitor_mobile'] = $visit['mobile'];
-        }
-
-
-        sendResponse('success', 'Visit Approved', $responseData);
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
