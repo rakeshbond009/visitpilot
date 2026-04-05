@@ -76,19 +76,21 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetFont('Arial', 'B', 26);
         $pdf->Cell(80, 15, 'VISITOR PASS', 0, 1, 'C');
 
-        // 4. Centered Photo with rounded frame effect
+        // 4. Centered Photo with the WHITE WRAP BORDER effect
+        // We first draw the larger white container, then the image inside it
         $photoY = 48;
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect(28, $photoY, 44, 44, 12, 'F');
+        $pdf->RoundedRect(28, $photoY, 44, 44, 12, 'F'); // The "Wrap"
         
         $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : (!empty($visit['photo_path']) ? __DIR__ . '/../' . $visit['photo_path'] : '');
         if (!empty($photoPath) && file_exists($photoPath)) {
+            // Image is 40mm inside a 44mm wrapper (creating a 2mm thick white border)
             $pdf->Image($photoPath, 30, $photoY + 2, 40, 40);
         }
 
         // 5. Visitor Name and blue unique ID
         $pdf->SetXY(10, 96);
-        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetTextColor(17, 17, 17);
         $pdf->SetFont('Arial', 'B', 20);
         $pdf->Cell(80, 12, strtoupper($visit['visitor_name']), 0, 1, 'C');
         
@@ -99,7 +101,7 @@ function generatePassPdf($visit_id, $pdo)
         // 6. Grey Details Box (The 2x2 Grid)
         $boxY = 118;
         $pdf->SetFillColor($bgGrey[0], $bgGrey[1], $bgGrey[2]);
-        $pdf->RoundedRect(15, $boxY, 70, 28, 8, 'F');
+        $pdf->RoundedRect(15, $boxY, 70, 30, 8, 'F');
 
         // Grid Cell Helper
         $drawGridCell = function($label, $value, $x, $y, $isBlue = false) use ($pdf, $labelGrey, $brandBlue) {
@@ -119,13 +121,13 @@ function generatePassPdf($visit_id, $pdo)
         $drawGridCell('Visiting:', $visit['host_name'], 18, $boxY + 4);
         $drawGridCell('Purpose:', $visit['purpose'] ?: 'Meeting', 48, $boxY + 4);
         // Grid Row 2
-        $drawGridCell('Access Area:', $visit['access_area'] ?: 'General', 18, $boxY + 16);
-        $drawGridCell('Date:', date('d M Y', strtotime($visit['created_at'])), 48, $boxY + 16, true);
+        $drawGridCell('Access Area:', $visit['access_area'] ?: 'General', 18, $boxY + 18);
+        $drawGridCell('Date:', date('d M Y', strtotime($visit['created_at'])), 48, $boxY + 18, true);
 
         // 7. QR Code (Centered bottom)
         $localQr = __DIR__ . '/../uploads/qrcodes/' . $visit['visit_code'] . '.png';
         if (file_exists($localQr)) {
-            $pdf->Image($localQr, 38, 148, 24, 24);
+            $pdf->Image($localQr, 40, 152, 20, 20);
         }
 
         // 8. Inner Card Footer
@@ -134,12 +136,12 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetTextColor(210, 210, 210);
         $pdf->Cell(80, 5, 'VISITPILOT', 0, 0, 'C');
 
-        // Save
+        // Final Save
         $pdf->Output('F', $pdfAbsPath);
         return BASE_URL . $pdfFileRelative;
 
     } catch (Exception $e) {
-        log_pass_error("Critical failure: " . $e->getMessage());
+        log_pass_error("Major failure: " . $e->getMessage());
         return null;
     }
 }
