@@ -98,6 +98,8 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
             'Content-Type: application/json'
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -140,6 +142,8 @@ function getGoogleAccessToken($serviceAccount)
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion' => $jwt
         ]));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
         $tokenData = json_decode(curl_exec($ch), true);
         curl_close($ch);
@@ -252,6 +256,8 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
             'Content-Type: application/json'
         ]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

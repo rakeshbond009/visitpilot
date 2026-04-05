@@ -1,5 +1,7 @@
 <?php
 // api/includes/api_header.php
+ignore_user_abort(true);
+set_time_limit(0);
 
 // Allow from any origin
 // Allow from any origin (Dev only - with Credentials support)

@@ -4,6 +4,12 @@
  * Called inline on Hostinger (FastCGI) OR via background_worker.php on Apache.
  */
 
+if (!defined('BASE_URL')) {
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
+    $host = $_SERVER['HTTP_HOST'] ?? 'visitpilot.com'; // Change this to the actual fallback domain if known
+    define('BASE_URL', $protocol . $host . '/');
+}
+
 function runJob_registerVisitor($pdo, $payload) {
     $visit_id       = $payload['visit_id']       ?? 0;
     $visitor_id     = $payload['visitor_id']     ?? 0;
