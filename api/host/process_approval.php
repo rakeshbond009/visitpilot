@@ -50,6 +50,12 @@ if ($action == 'approve') {
     $stmt->execute([$_SESSION['user_id'], $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Approved visit ID: $visit_id via Popup");
 
+    // ⚡ DECOUPLE: Send success to app immediately and continue background sync/notifications
+    require_once '../includes/api_header.php';
+    sendAsyncResponse('success', 'Visitor Approved and Synced to Security Terminals');
+
+    // 5. BACKGROUND TASKS START HERE
+
     // Send Notification to Security
     $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
     $stmt->execute([$visit_id]);
@@ -102,12 +108,14 @@ if ($action == 'approve') {
     } catch (Exception $e) {
         error_log("Dahua Integration Error: " . $e->getMessage());
     }
-
-    echo json_encode(['success' => true, 'message' => 'Visitor Approved and Synced to Security Terminals']);
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=NOW(), rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $reason, $visit_id]);
     logAction($pdo, $_SESSION['user_id'], "Rejected visit ID: $visit_id via Popup");
+
+    // ⚡ DECOUPLE: Send success to app immediately
+    require_once '../includes/api_header.php';
+    sendAsyncResponse('success', 'Visitor Rejected');
 
     // Send Notification to Security
     $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
@@ -115,6 +123,4 @@ if ($action == 'approve') {
     $visitor_name = $stmt->fetchColumn();
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
-
-    echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }

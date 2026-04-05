@@ -22,6 +22,12 @@ try {
     if ($action === 'approve') {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
+        logAction($pdo, $_SESSION['user_id'] ?? 0, "Approved visit ID: $id status_action");
+
+        // ⚡ DECOUPLE: Send success to app immediately and continue background sync/notifications
+        sendAsyncResponse('success', 'Visit Approved', ['visit_id' => $id]);
+
+        // 5. BACKGROUND TASKS START HERE
 
         // --- NOTIFICATIONS (NEW) ---
         try {
@@ -49,11 +55,6 @@ try {
             }
         } catch (Throwable $e) {
             error_log("Notification error in approve: " . $e->getMessage());
-        }
-
-        $responseData = [];
-        if (isset($visit)) {
-            $responseData['visitor_mobile'] = $visit['mobile'];
         }
 
         // --- DAHUA INTEGRATION (Sync on Approval) ---
@@ -90,7 +91,6 @@ try {
         } catch (Exception $e) {
             error_log("Dahua Integration Error: " . $e->getMessage());
         }
-        sendResponse('success', 'Visit Approved', $responseData);
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
@@ -106,6 +106,9 @@ try {
         // Setting it to rejected. 1 is for when the invite is cancelled by the host. 
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $id]);
+
+        // ⚡ DECOUPLE: Send success to app immediately
+        sendAsyncResponse('success', 'Invitation has been cancelled and visitor notified.');
 
         if ($visitor_info && !empty($visitor_info['mobile'])) {
             try {
@@ -130,12 +133,13 @@ try {
             }
         }
 
-        sendResponse('success', 'Invitation has been cancelled and visitor notified.');
-
     } elseif ($action === 'reject') {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
+
+        // ⚡ DECOUPLE: Send success to app immediately
+        sendAsyncResponse('success', 'Visit Rejected');
 
         // --- NOTIFICATIONS (NEW) ---
         try {
@@ -160,13 +164,6 @@ try {
         } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());
         }
-
-        $responseData = [];
-        if (isset($visit) && isset($waMsg)) {
-            $responseData['visitor_mobile'] = $visit['mobile'];
-            $responseData['whatsapp_message'] = $waMsg;
-        }
-        sendResponse('success', 'Visit Rejected', $responseData);
 
     } elseif ($action === 'checkin') {
         // Check if visit is approved

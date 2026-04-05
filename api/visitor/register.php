@@ -155,6 +155,16 @@ try {
     // COMMIT EARLY: Save DB state before long external calls (QR, Dahua, Notifications)
     $pdo->commit();
 
+    // ⚡ DECOUPLE: Send Success Response to App Immediately and continue in background
+    sendAsyncResponse('success', 'Visitor registered successfully', [
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'status' => $invitation_id ? 'approved' : 'pending',
+        'approval_status' => $invitation_id ? 'approved' : 'pending'
+    ]);
+
+    // 5. BACKGROUND TASKS START HERE
+
     // Generate and Save QR Code if not exists
     $qr_code_path = '';
     if ($visit_code) {
@@ -224,7 +234,7 @@ try {
         error_log("Dahua Integration Error in Register: " . $e->getMessage());
     }
 
-    // 5. SEND PUSH NOTIFICATION & WHATSAPP
+    // 6. SEND PUSH NOTIFICATION & WHATSAPP
     try {
         $push_log = __DIR__ . '/register_push_trace.log';
         file_put_contents($push_log, date('[Y-m-d H:i:s] ') . "Starting push flow for Visitor ID: $visitor_id\n", FILE_APPEND);
@@ -273,14 +283,6 @@ try {
     } catch (Exception $e) {
         error_log("Notification System Error: " . $e->getMessage());
     }
-
-    sendResponse('success', 'Visitor registered successfully', [
-        'visit_id' => $visit_id,
-        'visit_code' => $visit_code,
-        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
-    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

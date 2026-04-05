@@ -49,6 +49,43 @@ function sendResponse($status, $message, $data = null, $code = 200)
     exit;
 }
 
+/**
+ * Sends a JSON response immediately and continues script execution in the background.
+ * Essential for heavy tasks like WhatsApp, Dahua Sync, and Push notifications.
+ */
+function sendAsyncResponse($status, $message, $data = null, $code = 200)
+{
+    ignore_user_abort(true);
+    set_time_limit(0);
+
+    if ($code !== 200) {
+        http_response_code($code);
+    }
+
+    $response = json_encode([
+        'status' => $status,
+        'message' => $message,
+        'data' => $data
+    ]);
+
+    header('Content-Type: application/json');
+    header('Content-Length: ' . strlen($response));
+    header('Connection: close');
+
+    echo $response;
+
+    // Flush all output buffers
+    while (ob_get_level()) {
+        ob_end_flush();
+    }
+    flush();
+
+    // Close the request if using FastCGI
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request();
+    }
+}
+
 function getPostData()
 {
     return json_decode(file_get_contents('php://input'), true);
