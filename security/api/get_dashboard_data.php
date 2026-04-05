@@ -38,7 +38,10 @@ try {
         $params[] = $limit_employee_id;
     }
 
-    $sql = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.name as host_name, emp.department 
+    $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, emp.name as host_name, emp.department,
+                   REPLACE(v.visit_photo, '../', '') as visit_photo,
+                   REPLACE(vis.photo_path, '../', '') as photo_path,
+                   COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url 
             FROM visits v 
             JOIN visitors vis ON v.visitor_id = vis.id 
             LEFT JOIN employees emp ON v.employee_id = emp.id 
@@ -90,7 +93,11 @@ try {
         $pending_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
 
     // 3. Check-in Pending for Today (Approved but not yet checked in)
-    $sql_scheduled = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department, vis.photo_path as visitor_photo
+    $sql_scheduled = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department,
+                             REPLACE(v.visit_photo, '../', '') as visit_photo,
+                             REPLACE(vis.photo_path, '../', '') as photo_path,
+                             REPLACE(vis.photo_path, '../', '') as visitor_photo,
+                             COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
                       FROM visits v 
                       JOIN visitors vis ON v.visitor_id = vis.id 
                       LEFT JOIN employees e ON v.employee_id = e.id
@@ -136,7 +143,10 @@ try {
     $avg_seconds = $pdo->query($avg_sql)->fetchColumn() ?: 45;
     $avg_display = ($avg_seconds < 60) ? round($avg_seconds) . "s" : round($avg_seconds / 60) . "m";
 
-    $overstays_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.name as host_name, emp.department
+    $overstays_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, emp.name as host_name, emp.department,
+                             REPLACE(v.visit_photo, '../', '') as visit_photo,
+                             REPLACE(vis.photo_path, '../', '') as photo_path,
+                             COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
                       FROM visits v 
                       JOIN visitors vis ON v.visitor_id = vis.id 
                       LEFT JOIN employees emp ON v.employee_id = emp.id 

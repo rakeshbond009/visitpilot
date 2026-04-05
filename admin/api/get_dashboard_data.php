@@ -79,7 +79,7 @@ $happy_visitors = safeFetchColumn($pdo, "SELECT COUNT(*) FROM visits
 
 $satisfaction_rate = ($total_processed > 0) ? (int)round(($happy_visitors / $total_processed) * 100) : 100;
 
-$overstays_sql = "SELECT v.*, vis.name as visitor_name, emp.name as host_name, emp.department
+$overstays_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.name as host_name, emp.department
                   FROM visits v 
                   JOIN visitors vis ON v.visitor_id = vis.id 
                   LEFT JOIN employees emp ON v.employee_id = emp.id 
@@ -157,7 +157,7 @@ $best_hour = safeFetchColumn($pdo, $slot_sql, $start_h);
 $best_time = ($best_hour > 12 ? $best_hour - 12 : $best_hour) . ":00 " . ($best_hour >= 12 ? "PM" : "AM");
 
 // Recent Activity
-$recent_sql = "SELECT v.*, vis.name as visitor_name, e.name as host_name, e.department
+$recent_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department, COALESCE(NULLIF(v.visit_photo,''), vis.photo_path) as photo_url
                FROM visits v 
                JOIN visitors vis ON v.visitor_id = vis.id 
                LEFT JOIN employees e ON v.employee_id = e.id 

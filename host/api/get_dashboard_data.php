@@ -24,7 +24,10 @@ if (!$host_employee_id && !$is_admin) {
 }
 
 // Pending Visitors List
-$sql_pending = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department
+$sql_pending = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department,
+                       REPLACE(v.visit_photo, '../', '') as visit_photo,
+                       REPLACE(vis.photo_path, '../', '') as photo_path,
+                       COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
@@ -39,7 +42,10 @@ if ($is_admin) {
 $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Today's Visitors
-$sql_today = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department
+$sql_today = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department,
+                     REPLACE(v.visit_photo, '../', '') as visit_photo,
+                     REPLACE(vis.photo_path, '../', '') as photo_path,
+                     COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
               FROM visits v 
               JOIN visitors vis ON v.visitor_id = vis.id 
               LEFT JOIN employees e ON v.employee_id = e.id
@@ -54,7 +60,10 @@ if ($is_admin) {
 $today_visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Active Invitations
-$sql_invites = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department
+$sql_invites = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department,
+                       REPLACE(v.visit_photo, '../', '') as visit_photo,
+                       REPLACE(vis.photo_path, '../', '') as photo_path,
+                       COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
@@ -88,7 +97,10 @@ $stmt->execute([$host_employee_id]);
 $avg_minutes = (int)$stmt->fetchColumn();
 
 // 3. Check-in Pending for Today (Approved but not yet checked in)
-$sql_scheduled = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department
+$sql_scheduled = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department,
+                         REPLACE(v.visit_photo, '../', '') as visit_photo,
+                         REPLACE(vis.photo_path, '../', '') as photo_path,
+                         COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
                   FROM visits v 
                   JOIN visitors vis ON v.visitor_id = vis.id 
                   LEFT JOIN employees e ON v.employee_id = e.id

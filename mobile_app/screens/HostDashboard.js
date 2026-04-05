@@ -51,7 +51,8 @@ const getStatusColor = (status) => {
 const getPhotoUrl = (path) => {
     if (!path) return `https://ui-avatars.com/api/?name=Visitor&background=random`;
     if (path.startsWith('http')) return path;
-    return `${CONFIG.API_BASE_URL}${path}`;
+    const cleanPath = path.replace(/^(\.\.\/)+/, '');
+    return `${CONFIG.API_BASE_URL}${cleanPath}`;
 };
 
 export default function HostDashboard({ navigation }) {
@@ -467,7 +468,7 @@ export default function HostDashboard({ navigation }) {
             >
                 <View style={styles.cardHeader}>
                     <Image
-                        source={{ uri: getPhotoUrl(item.visit_photo) }}
+                        source={{ uri: getPhotoUrl(item.photo_url || item.visit_photo || item.photo_path) }}
                         style={styles.avatar}
                         onError={(e) => console.log('Image Load Error')}
                     />

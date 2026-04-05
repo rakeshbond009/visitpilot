@@ -9,6 +9,8 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
         if (!url) return null;
         if (url.startsWith('http')) return url;
         let cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        // Clean leading ../ if they exist
+        cleanUrl = cleanUrl.replace(/^(\.\.\/)+/, '');
         return `${CONFIG.API_BASE_URL}${cleanUrl}`;
     };
 

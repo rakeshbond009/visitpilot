@@ -22,9 +22,12 @@ try {
     $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($visit) {
-        // Fallback to visitor profile photo if this specific visit photo is missing
-        $final_photo = !empty($visit['visit_photo']) ? $visit['visit_photo'] : (!empty($visit['photo_path']) ? $visit['photo_path'] : '');
+        $v_photo = str_replace('../', '', $visit['visit_photo']);
+        $p_photo = str_replace('../', '', $visit['photo_path']);
+        $final_photo = !empty($v_photo) ? $v_photo : (!empty($p_photo) ? $p_photo : '');
         $visit['photo_url'] = $final_photo ? BASE_URL . $final_photo : null;
+        $visit['visit_photo'] = $v_photo;
+        $visit['photo_path'] = $p_photo;
         $visit['qr_url'] = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
 
         sendResponse('success', 'Visit details found', $visit);

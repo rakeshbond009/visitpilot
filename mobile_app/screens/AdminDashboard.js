@@ -177,8 +177,9 @@ export default function AdminDashboard({ navigation }) {
         if (!url) return null;
         if (url.startsWith('http')) return url;
 
-        // Clean the URL: remove leading slash if present
+        // Clean the URL: remove leading slash or ../ if present
         let cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        cleanUrl = cleanUrl.replace(/^(\.\.\/)+/, '');
 
         // Photos are relative to the root, which matches API_BASE_URL now
         return `${CONFIG.API_BASE_URL}${cleanUrl}`;
@@ -509,9 +510,9 @@ export default function AdminDashboard({ navigation }) {
                         onPress={() => handleRecordClick(item, 'visits')}
                     >
                         <View style={styles.activityPhotoContainer}>
-                            {item.photo_url ? (
+                            { (item.photo_url || item.visit_photo || item.photo_path) ? (
                                 <Image
-                                    source={{ uri: getPhotoUrl(item.photo_url) }}
+                                    source={{ uri: getPhotoUrl(item.photo_url || item.visit_photo || item.photo_path) }}
                                     style={styles.miniVisitorPhoto}
                                     resizeMode="cover"
                                     onError={(e) => console.log('Image Load Error:', e.nativeEvent.error, getPhotoUrl(item.photo_url))}
@@ -764,9 +765,9 @@ export default function AdminDashboard({ navigation }) {
 
                     <View style={styles.visitorMainInfo}>
                         <View style={styles.photoContainer}>
-                            {v.photo_url ? (
+                            { (v.photo_url || v.visit_photo || v.photo_path) ? (
                                 <Image
-                                    source={{ uri: getPhotoUrl(v.photo_url) }}
+                                    source={{ uri: getPhotoUrl(v.photo_url || v.visit_photo || v.photo_path) }}
                                     style={styles.visitorPhoto}
                                     resizeMode="cover"
                                     onError={(e) => console.log('Detail Image Load Error:', e.nativeEvent.error, getPhotoUrl(v.photo_url))}
@@ -1207,8 +1208,8 @@ export default function AdminDashboard({ navigation }) {
                 onPress={() => fetchVisitDetails(item.id)}
             >
                 <Image
-                    source={item.visit_photo ?
-                        { uri: getPhotoUrl(item.visit_photo) } :
+                    source={(item.photo_url || item.visit_photo || item.photo_path) ?
+                        { uri: getPhotoUrl(item.photo_url || item.visit_photo || item.photo_path) } :
                         { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(item.visitor_name || 'Visitor') + '&background=random' }
                     }
                     style={styles.visitorThumbBig}

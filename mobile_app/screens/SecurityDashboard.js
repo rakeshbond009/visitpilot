@@ -185,6 +185,8 @@ export default function SecurityDashboard({ navigation }) {
         if (!url) return null;
         if (url.startsWith('http')) return url;
         let cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        // Clean leading ../ if they exist
+        cleanUrl = cleanUrl.replace(/^(\.\.\/)+/, '');
         return `${CONFIG.API_BASE_URL}${cleanUrl}`;
     };
 
@@ -379,7 +381,7 @@ export default function SecurityDashboard({ navigation }) {
                     visits.slice(0, 5).map(visit => (
                         <TouchableOpacity key={visit.id} style={styles.visitRow} onPress={() => fetchVisitDetails(visit.id)}>
                             <Image
-                                source={visit.visit_photo || visit.photo_path ? { uri: `${CONFIG.API_BASE_URL}${visit.visit_photo || visit.photo_path}` } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
+                                source={visit.visit_photo || visit.photo_path ? { uri: getPhotoUrl(visit.visit_photo || visit.photo_path) } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
                                 style={styles.visitorThumb}
                             />
                             <View style={styles.visitInfo}>
@@ -614,7 +616,7 @@ export default function SecurityDashboard({ navigation }) {
                         applyDateFilter(visits).map(visit => (
                             <TouchableOpacity key={visit.id} style={styles.visitRowBig} onPress={() => fetchVisitDetails(visit.id)}>
                                 <Image
-                                    source={visit.visit_photo || visit.photo_path ? { uri: `${CONFIG.API_BASE_URL}${visit.visit_photo || visit.photo_path}` } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
+                                    source={getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path) ? { uri: getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path) } : { uri: 'https://ui-avatars.com/api/?name=' + encodeURIComponent(visit.visitor_name) + '&background=random' }}
                                     style={styles.visitorThumbBig}
                                 />
                                 <View style={styles.visitInfo}>
