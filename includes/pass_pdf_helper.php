@@ -5,6 +5,7 @@
  */
 
 function log_pass_error($msg) {
+    if (!$msg) return;
     $log_file = __DIR__ . '/pass_pdf.log';
     $timestamp = date('[Y-m-d H:i:s] ');
     @file_put_contents($log_file, $timestamp . $msg . "\n", FILE_APPEND);
@@ -35,7 +36,7 @@ function generatePassPdf($visit_id, $pdo)
         }
 
         // Fetch Data
-        $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, emp.name as host_name, emp.department 
+        $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, emp.name as host_name 
                                FROM visits v 
                                JOIN visitors vis ON v.visitor_id = vis.id 
                                JOIN employees emp ON v.employee_id = emp.id 
@@ -45,8 +46,8 @@ function generatePassPdf($visit_id, $pdo)
 
         if (!$visit) return null;
 
-        // Page setup
-        $pdf = new FPDF('P', 'mm', array(100, 185)); 
+        // Custom taller page for Branding
+        $pdf = new FPDF('P', 'mm', array(100, 195)); 
         $pdf->SetAutoPageBreak(false, 0);
         $pdf->AddPage();
         
@@ -57,7 +58,7 @@ function generatePassPdf($visit_id, $pdo)
 
         // 1. Page Background
         $pdf->SetFillColor($pageGrey[0], $pageGrey[1], $pageGrey[2]);
-        $pdf->Rect(0, 0, 100, 185, 'F');
+        $pdf->Rect(0, 0, 100, 195, 'F');
 
         // 2. Exterior Header Text
         $pdf->SetY(8);
@@ -65,35 +66,35 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetTextColor(80, 80, 80);
         $pdf->Cell(100, 5, 'OFFICIAL VISITOR PASS', 0, 1, 'C');
 
-        // 3. Main Highly-Rounded Card (20mm corners at bottom)
+        // 3. Main Tall Card Surface (165mm height to fit everything)
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect(10, 20, 80, 155, 20, 'F');
+        $pdf->RoundedRect(10, 15, 80, 168, 20, 'F');
         
-        // 4. Blue Top Banner (Rounded top corners)
+        // 4. Blue Top Banner (Rounded top corners ONLY - straight bottom)
         $pdf->SetFillColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
-        $pdf->RoundedRect(10, 20, 80, 48, 20, 'F', '12'); 
+        $pdf->RoundedRect(10, 15, 80, 48, 20, 'F', '12'); 
 
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetXY(10, 32);
+        $pdf->SetXY(10, 24);
         $pdf->SetFont('Arial', 'B', 8);
         $pdf->Cell(80, 5, 'VISITPILOT', 0, 1, 'C');
         
         $pdf->SetFont('Arial', 'B', 28);
         $pdf->Cell(80, 15, 'VISITOR PASS', 0, 1, 'C');
 
-        // 5. Oversized Photo Wrap container (48mm wide)
-        $photoY = 56;
+        // 5. Oversized White Photo Container (Broad border effect)
+        $photoY = 52;
         $pdf->SetFillColor(255, 255, 255);
         $pdf->RoundedRect(26, $photoY, 48, 48, 15, 'F'); 
         
         $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : (!empty($visit['photo_path']) ? __DIR__ . '/../' . $visit['photo_path'] : '');
         if (!empty($photoPath) && file_exists($photoPath)) {
-            // 40mm image inside the 48mm wrapper
+            // 40mm image inside the 48mm white wrapper (creates 4mm broad border)
             $pdf->Image($photoPath, 30, $photoY + 4, 40, 40);
         }
 
-        // 6. Name and blue ID code
-        $pdf->SetXY(10, 110);
+        // 6. Name and blue unique ID (increased spacing)
+        $pdf->SetXY(10, 106);
         $pdf->SetTextColor(17, 17, 17);
         $pdf->SetFont('Arial', 'B', 24);
         $pdf->Cell(80, 12, strtoupper($visit['visitor_name']), 0, 1, 'C');
@@ -102,12 +103,12 @@ function generatePassPdf($visit_id, $pdo)
         $pdf->SetTextColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
         $pdf->Cell(80, 5, $visit['visit_code'], 0, 1, 'C');
 
-        // 7. Unified Grey Details Box
-        $boxY = 132;
+        // 7. Status Grid Unified Box
+        $boxY = 126;
         $pdf->SetFillColor($bgGrey[0], $bgGrey[1], $bgGrey[2]);
         $pdf->RoundedRect(15, $boxY, 70, 32, 10, 'F');
 
-        // Grid helper
+        // Grid helper for exact spacing
         $drawGridCell = function($label, $value, $x, $y, $isBlue = false) use ($pdf, $labelGrey, $brandBlue) {
             $pdf->SetXY($x, $y);
             $pdf->SetFont('Arial', 'B', 7);
@@ -121,29 +122,30 @@ function generatePassPdf($visit_id, $pdo)
             $pdf->Cell(35, 5, $value, 0, 0, 'L');
         };
 
-        // Grid Cells
+        // Grid Data Row 1
         $drawGridCell('Visiting:', $visit['host_name'], 18, $boxY + 5);
         $drawGridCell('Purpose:', $visit['purpose'] ?: 'Delivery', 48, $boxY + 5);
-        $drawGridCell('Access Area:', $visit['access_area'] ?: 'General', 18, $boxY + 19);
+        // Grid Data Row 2
+        $drawGridCell('Access Area:', $visit['access_area'] ?: 'General Office', 18, $boxY + 19);
         $drawGridCell('Date:', date('d M Y', strtotime($visit['created_at'])), 48, $boxY + 19, true);
 
-        // 8. Centered QR (No border)
+        // 8. Centered QR Code (NO BORDER) - ENSURING IT STAYS INSIDE
         $localQr = __DIR__ . '/../uploads/qrcodes/' . $visit['visit_code'] . '.png';
         if (file_exists($localQr)) {
-            $pdf->Image($localQr, 40, 166, 22, 22);
+            $pdf->Image($localQr, 39, 160, 22, 22);
         }
 
         // 9. Card Footer
-        $pdf->SetXY(10, 188);
+        $pdf->SetXY(10, 190);
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor(190, 190, 190);
+        $pdf->SetTextColor(180, 180, 180);
         $pdf->Cell(80, 5, 'VISITPILOT', 0, 0, 'C');
 
         $pdf->Output('F', $pdfAbsPath);
         return BASE_URL . $pdfFileRelative;
 
     } catch (Exception $e) {
-        log_pass_error("Final precision match failure: " . $e->getMessage());
+        log_pass_error("Critical precision failure: " . $e->getMessage());
         return null;
     }
 }
