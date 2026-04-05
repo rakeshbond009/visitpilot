@@ -18,10 +18,10 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         SELECT u.id as user_id, ud.fcm_token, u.role, ud.platform 
         FROM users u 
         JOIN user_devices ud ON u.id = ud.user_id 
-        WHERE u.employee_id = ? 
+        WHERE (u.employee_id = ? OR (u.id = ? AND u.role != 'visitor'))
         AND ud.fcm_token IS NOT NULL
     ");
-    $stmt->execute([$employee_id]);
+    $stmt->execute([$employee_id, $employee_id]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fallback to legacy single token

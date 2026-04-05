@@ -12,10 +12,12 @@ if (!$data) {
 // Basic validation
 $required = ['name', 'mobile', 'employee_id', 'purpose'];
 foreach ($required as $field) {
-    if (empty($data[$field])) {
-        sendResponse('error', "Field '$field' is required");
-    }
+    sendResponse('error', "Field '$field' is required");
 }
+
+// --- TRACE LOGIN FOR ANDROID DEBUGGING ---
+$traceMsg = date('[H:i:s] ') . "Register Request: " . json_encode($data) . "\n";
+file_put_contents(__DIR__ . '/register_push_trace.log', $traceMsg, FILE_APPEND);
 
 try {
     $pdo->beginTransaction();

@@ -6,9 +6,15 @@
 
 if (!defined('BASE_URL')) {
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-    $host = $_SERVER['HTTP_HOST'] ?? 'visitpilot.com'; // Change this to the actual fallback domain if known
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    if ($host === 'localhost' && !empty($_SERVER['SERVER_NAME'])) $host = $_SERVER['SERVER_NAME'];
     define('BASE_URL', $protocol . $host . '/');
 }
+
+// Ensure all background dependencies are loaded
+require_once __DIR__ . '/../../includes/push_helper.php';
+require_once __DIR__ . '/../../includes/dahua_helper.php';
+
 
 function runJob_registerVisitor($pdo, $payload) {
     $visit_id       = $payload['visit_id']       ?? 0;

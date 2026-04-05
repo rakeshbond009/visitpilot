@@ -200,7 +200,9 @@ if ($tenant && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 // 9. BASE URL & REDIRECTS
 $protocol = $is_https ? "https://" : "http://";
 $domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
-define('BASE_URL', $is_local ? $protocol . $domainName . '/visitpilot/' : $protocol . $domainName . '/');
+if (!defined('BASE_URL')) {
+    define('BASE_URL', $is_local ? $protocol . $domainName . '/visitpilot/' : $protocol . $domainName . '/');
+}
 
 function redirect($url)
 {
@@ -221,6 +223,16 @@ function generateVisitCode()
 function handlePersistentLogin()
 {
     global $pdo;
+
+    // Detect Session ID from Custom Header (for Mobile Apps)
+    if (!isset($_SESSION['user_id'])) {
+        $headerSessionId = $_SERVER['HTTP_X_SESSION_ID'] ?? null;
+        if ($headerSessionId) {
+            session_id($headerSessionId);
+            @session_start();
+        }
+    }
+
     if (isset($_SESSION['user_id'])) {
         loadUserPermissions();
         if (!isset($_COOKIE['vms_token']) && $pdo) {
