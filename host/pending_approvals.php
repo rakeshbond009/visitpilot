@@ -105,15 +105,16 @@ if (isset($_GET['ajax_action'])) {
             }
             $visitor_info = $stmt->fetch();
 
-            $sql = "UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW() WHERE id=? AND is_invited=1";
+            $reason = sanitize($_GET['reason'] ?? 'Invitation cancelled by host');
+            $sql = "UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), rejection_reason=? WHERE id=? AND is_invited=1";
             if (!$is_admin)
                 $sql .= " AND employee_id=?";
 
             $stmt = $pdo->prepare($sql);
             if (!$is_admin) {
-                $stmt->execute([$v_id, $host_employee_id]);
+                $stmt->execute([$reason, $v_id, $host_employee_id]);
             } else {
-                $stmt->execute([$v_id]);
+                $stmt->execute([$reason, $v_id]);
             }
             logAction($pdo, $_SESSION['user_id'], "Canceled invitation ID: $v_id");
 

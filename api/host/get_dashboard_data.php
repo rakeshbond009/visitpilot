@@ -71,7 +71,7 @@ $stmt->execute([$host_employee_id]);
 $avg_minutes = (int) $stmt->fetchColumn();
 
 // 3. Rejected Visits
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'rejected'");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status IN ('rejected', 'cancelled')");
 $stmt->execute([$host_employee_id]);
 $rejected_count = (int) $stmt->fetchColumn();
 
@@ -79,7 +79,7 @@ $sql_rejected = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
-                WHERE v.employee_id = ? AND v.status = 'rejected'
+                WHERE v.employee_id = ? AND v.status IN ('rejected', 'cancelled')
                 ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_rejected);
 $stmt->execute([$host_employee_id]);

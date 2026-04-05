@@ -309,16 +309,16 @@ export default function HostDashboard({ navigation }) {
                 msg = 'Proceed with this action?';
         }
 
-        if (action === 'reject') {
+        if (action === 'reject' || action === 'cancel') {
             showAlert(
-                'Reject Visit',
-                `Please provide a reason for rejecting ${name || 'this visitor'}:`,
+                action === 'reject' ? 'Reject Visit' : 'Cancel Invitation',
+                `Please provide a reason for ${action === 'reject' ? 'rejecting' : 'canceling'} ${name || 'this visitor/invitation'}:`,
                 'error',
                 {
                     showCancel: true,
                     showInput: true,
-                    confirmText: 'Reject Now',
-                    onConfirm: (reason) => executeAction(visitId, 'reject', reason)
+                    confirmText: action === 'reject' ? 'Reject Now' : 'Cancel Now',
+                    onConfirm: (reason) => executeAction(visitId, action, reason)
                 }
             );
         } else {
@@ -578,10 +578,10 @@ export default function HostDashboard({ navigation }) {
 
                 <TouchableOpacity
                     style={[styles.statCard, { backgroundColor: '#fee2e2' }]} // similar to statPurple but red/pink for rejected
-                    onPress={() => showDataModal('Rejected Visits', 'rejected')}
+                    onPress={() => showDataModal('Rejected/Cancelled', 'rejected')}
                 >
                     <Text style={[styles.statValue, { color: '#ef4444' }]}>{stats.rejected || 0}</Text>
-                    <Text style={[styles.statLabel, { color: '#ef4444' }]}>Rejected Visits</Text>
+                    <Text style={[styles.statLabel, { color: '#ef4444' }]}>Rejected/Cancelled</Text>
                 </TouchableOpacity>
             </View>
 

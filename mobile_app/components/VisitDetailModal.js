@@ -32,6 +32,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
 
     const photoUri = getPhotoUrl(visit.photo_url || visit.visit_photo || visit.photo_path);
     const [passModalVisible, setPassModalVisible] = React.useState(false);
+    const [inviteModalVisible, setInviteModalVisible] = React.useState(false);
 
     const isPassAllowed = (status) => {
         if (!status) return false;
@@ -58,20 +59,30 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
 
                         <ScrollView style={styles.detailsContainer} showsVerticalScrollIndicator={false}>
                             <View style={styles.detailsHeader}>
-                                <View style={styles.photoContainer}>
-                                    <Image
-                                        source={photoUri ? { uri: photoUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(visit.visitor_name || 'V')}&background=random` }}
-                                        style={styles.visitorPhoto}
-                                        resizeMode="cover"
-                                    />
-                                </View>
-                                <View style={styles.detailsBasic}>
-                                    <Text style={styles.detailsName}>{visit.visitor_name}</Text>
-                                    <Text style={styles.detailsMobile}>{visit.mobile}</Text>
-                                    <View style={[styles.statusBadgeModal, { backgroundColor: getStatusColor(visit.status) }]}>
-                                        <Text style={styles.statusBadgeTextModal}>{(visit.status || '').toUpperCase().replace('_', ' ')}</Text>
+                                <View style={{ flexDirection: 'row', flex: 1 }}>
+                                    <View style={styles.photoContainer}>
+                                        <Image
+                                            source={photoUri ? { uri: photoUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(visit.visitor_name || 'V')}&background=random` }}
+                                            style={styles.visitorPhoto}
+                                            resizeMode="cover"
+                                        />
+                                    </View>
+                                    <View style={styles.detailsBasic}>
+                                        <Text style={styles.detailsName}>{visit.visitor_name}</Text>
+                                        <Text style={styles.detailsMobile}>{visit.mobile}</Text>
+                                        <View style={[styles.statusBadgeModal, { backgroundColor: getStatusColor(visit.status) }]}>
+                                            <Text style={styles.statusBadgeTextModal}>{(visit.status || '').toUpperCase().replace('_', ' ')}</Text>
+                                        </View>
                                     </View>
                                 </View>
+                                {visit.visit_code && (
+                                    <View style={{ marginLeft: 10, justifyContent: 'center' }}>
+                                        <Image
+                                            source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(visit.visit_code)}` }}
+                                            style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: '#eee' }}
+                                        />
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.detailsCard}>
@@ -165,6 +176,16 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                             <Text style={[styles.modalActionText, { fontSize: 16, letterSpacing: 1 }]}>VIEW DIGITAL PASS</Text>
                                         </TouchableOpacity>
                                     )}
+
+                                    {visit.is_invited == 1 && visit.status === 'pending' && (
+                                        <TouchableOpacity
+                                            style={[styles.modalActionBtn, { backgroundColor: '#10b981', marginBottom: 12, borderRadius: 30, height: 55, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 5 }]}
+                                            onPress={() => setInviteModalVisible(true)}
+                                        >
+                                            <Text style={[styles.modalActionText, { fontSize: 16, letterSpacing: 1 }]}>VIEW INVITE</Text>
+                                        </TouchableOpacity>
+                                    )}
+
                                     <View style={styles.actionsContainer}>
                                         {visit.is_invited == 1 && visit.status !== 'checked_out' && visit.status !== 'rejected' && (
                                             <TouchableOpacity
@@ -175,7 +196,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                             </TouchableOpacity>
                                         )}
 
-                                        {visit.status === 'pending' && userRole === 'host' && (
+                                        {visit.status === 'pending' && visit.is_invited == 0 && userRole === 'host' && (
                                             <>
                                                 <TouchableOpacity
                                                     style={[styles.modalActionBtn, styles.rejectBtn]}
@@ -308,6 +329,53 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                         onPress={() => setPassModalVisible(false)}
                     >
                         <Text style={styles.idCloseBtnText}>✕ CLOSE PASS</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
+
+            {/* Premium Web-App Style Invite Modal */}
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={inviteModalVisible}
+                onRequestClose={() => setInviteModalVisible(false)}
+            >
+                <View style={[styles.passOverlay, { backgroundColor: 'rgba(0,0,0,0.9)' }]}>
+                    <View style={[styles.idCardContainer, { borderRadius: 20 }]}>
+                        {/* Invite Header */}
+                        <View style={[styles.idHeader, { backgroundColor: '#10b981', paddingVertical: 20 }]}>
+                            <Text style={[styles.idHeaderTitle, { fontSize: 22 }]}>Visit Invitation</Text>
+                        </View>
+                        
+                        {/* Invite Body */}
+                        <View style={[styles.idBody, { paddingTop: 25 }]}>
+                            <Text style={{ fontSize: 16, color: '#6c757d', textAlign: 'center', marginBottom: 20 }}>
+                                A pre-approved pass has been generated for
+                                {'\n'}<Text style={{ fontWeight: 'bold', color: '#1e293b' }}>{visit.visitor_name}</Text>.
+                            </Text>
+
+                            <View style={{ backgroundColor: '#f8f9fa', borderRadius: 15, padding: 20, alignItems: 'center', borderWidth: 1, borderColor: '#dee2e6', width: '100%', marginBottom: 10 }}>
+                                {visit.visit_code && (
+                                    <Image 
+                                        source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(visit.visit_code)}` }} 
+                                        style={{ width: 140, height: 140, marginBottom: 15 }} 
+                                    />
+                                )}
+                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#0d6efd', marginBottom: 5 }}>{visit.visit_code}</Text>
+                                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#6c757d', textTransform: 'uppercase', marginBottom: 15, letterSpacing: 1 }}>Visitor Pass Code</Text>
+                                
+                                <View style={{ backgroundColor: '#cfe2ff', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#0d6efd' }}>
+                                    <Text style={{ color: '#0d6efd', fontWeight: 'bold', fontSize: 13 }}>Scheduled: {new Date(visit.visit_date || visit.created_at).toLocaleDateString()}</Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.idCloseBtn}
+                        onPress={() => setInviteModalVisible(false)}
+                    >
+                        <Text style={styles.idCloseBtnText}>✕ CLOSE INVITE</Text>
                     </TouchableOpacity>
                 </View>
             </Modal>

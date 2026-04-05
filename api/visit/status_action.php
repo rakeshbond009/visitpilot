@@ -104,8 +104,9 @@ try {
 
         // Update status - for invitations, approval_status is already approved. 
         // Setting it to rejected. 1 is for when the invite is cancelled by the host. 
-        $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=? WHERE id=? AND is_invited=1");
-        $stmt->execute([$user_id, $id]);
+        $reason = $data['reason'] ?? 'Invitation cancelled by host.';
+        $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=? AND is_invited=1");
+        $stmt->execute([$user_id, $reason, $id]);
 
         // ⚡ DECOUPLE: Send success to app immediately
         sendAsyncResponse('success', 'Invitation has been cancelled and visitor notified.');

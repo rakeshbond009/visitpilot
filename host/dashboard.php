@@ -263,7 +263,7 @@ $avg_minutes = (int) $stmt->fetchColumn();
 $avg_duration = $avg_minutes > 0 ? $avg_minutes . "m" : "0m";
 
 // 3. Rejected Visits
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'rejected'");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status IN ('rejected', 'cancelled')");
 $stmt->execute([$host_employee_id]);
 $rejected_count = (int) $stmt->fetchColumn();
 ?>
@@ -332,9 +332,10 @@ $rejected_count = (int) $stmt->fetchColumn();
                     <div class="d-flex align-items-center cursor-pointer" onclick="showDetails('rejected')">
                         <i class="bi bi-x-circle text-danger fs-4 me-3"></i>
                         <div>
-                            <span class="d-block fw-bold text-dark">Rejected Visits</span>
-                            <small class="text-muted">You have rejected
-                                <span id="host-stat-rejected"><?php echo $rejected_count; ?></span> visits.
+                            <span class="d-block fw-bold text-dark">Rejected Visits/Invites</span>
+                            <small class="text-muted">You have <span
+                                    id="host-stat-rejected"><?php echo $rejected_count; ?></span> rejected/cancelled
+                                visits.
                             </small>
                         </div>
                     </div>
@@ -439,11 +440,11 @@ $rejected_count = (int) $stmt->fetchColumn();
                                                 <i class="bi bi-printer"></i>
                                             </a>
                                             <?php if ($inv['status'] === 'pending'): ?>
-                                            <button class="btn btn-sm btn-outline-danger rounded-circle"
-                                                style="width:32px; height:32px; padding:0" title="Cancel Invitation"
-                                                onclick="cancelInvitation(<?php echo $inv['id']; ?>, '<?php echo addslashes($inv['visitor_name']); ?>', '<?php echo $inv['mobile']; ?>', '<?php echo addslashes($inv['host_name']); ?>')">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
+                                                <button class="btn btn-sm btn-outline-danger rounded-circle"
+                                                    style="width:32px; height:32px; padding:0" title="Cancel Invitation"
+                                                    onclick="cancelInvitation(<?php echo $inv['id']; ?>, '<?php echo addslashes($inv['visitor_name']); ?>', '<?php echo $inv['mobile']; ?>', '<?php echo addslashes($inv['host_name']); ?>')">
+                                                    <i class="bi bi-x-lg"></i>
+                                                </button>
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -505,19 +506,24 @@ $rejected_count = (int) $stmt->fetchColumn();
     }
 
     async function cancelInvitation(vId, visitorName, mobile, hostName) {
-        const result = await AppDialog.confirm({
+        const result = await Swal.fire({
             title: 'Cancel Invitation?',
-            text: `This will cancel the invitation for ${visitorName || 'this visitor'} and attempt to notify them via WhatsApp.`,
+            text: `Please provide a reason for canceling the invitation for ${visitorName}:`,
+            input: 'text',
+            inputPlaceholder: 'Reason for cancellation...',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#e74a3b',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, cancel it!'
+            confirmButtonText: 'Yes, cancel it!',
+            inputValidator: (value) => {
+                if (!value) return 'You need to provide a reason!';
+            }
         });
 
         if (result.isConfirmed) {
             try {
-                const res = await fetch(`pending_approvals.php?ajax_action=1&v_id=${vId}&act=cancel_invite&visitor_name=${encodeURIComponent(visitorName || '')}&host_name=${encodeURIComponent(hostName || '')}`);
+                const res = await fetch(`pending_approvals.php?ajax_action=1&v_id=${vId}&act=cancel_invite&reason=${encodeURIComponent(result.value)}&visitor_name=${encodeURIComponent(visitorName || '')}&host_name=${encodeURIComponent(hostName || '')}`);
                 const data = await res.json();
                 if (data.success) {
                     AppDialog.show('Canceled!', data.message || 'The invitation has been canceled.', 'success').then(() => {
@@ -549,7 +555,7 @@ $rejected_count = (int) $stmt->fetchColumn();
     async function syncHostDashboard(force = false) {
         // Prevent background polling from re-rendering the DOM while a modal is open
         if (!force && document.querySelector('.modal.show')) return;
-        
+
         try {
             // Using BASE_URL for consistency if defined, else relative
             const apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL + 'host/api/get_dashboard_data.php' : 'api/get_dashboard_data.php';
@@ -563,7 +569,7 @@ $rejected_count = (int) $stmt->fetchColumn();
                 document.getElementById('host-stat-pending').innerText = data.pending_count;
                 document.getElementById('host-stat-invites').innerText = data.invite_count || 0;
                 document.getElementById('host-stat-today').innerText = data.today_count;
-                if(document.getElementById('host-stat-rejected')) document.getElementById('host-stat-rejected').innerText = data.rejected_count || 0;
+                if (document.getElementById('host-stat-rejected')) document.getElementById('host-stat-rejected').innerText = data.rejected_count || 0;
 
                 // Removed Dashboard Alert Logic (Per User Request)
                 const alertCont = document.getElementById('pending-alert-container');
@@ -633,7 +639,7 @@ $rejected_count = (int) $stmt->fetchColumn();
             'pending': 'Pending Approval Requests',
             'invites': 'Your Active Invitations',
             'today': 'Today\'s Walk-in Visitors',
-            'rejected': 'Rejected Visits'
+            'rejected': 'Rejected/Cancelled Visits'
         };
         const tbody = document.getElementById('modalTableBody');
         const thead = document.querySelector('#detailsListModal thead tr');
