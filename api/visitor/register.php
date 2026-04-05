@@ -32,6 +32,7 @@ foreach ($required as $field) {
         }
     }
 
+try {
     $pdo->beginTransaction();
 
     // 2. Check if visitor exists
