@@ -53,6 +53,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
 
     foreach ($users as $user) {
         $platform = strtolower($user['platform'] ?? 'android');
+        $log("Targeting User ID: {$user['user_id']} | Platform: $platform | Token: " . substr($user['fcm_token'], 0, 20) . '...');
 
         $message = [
             'message' => [
@@ -86,7 +87,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         }
 
         $payloadJson = json_encode($message);
-        $log("Sending to $platform: $payloadJson");
+        $log("Sending to User {$user['user_id']} ($platform)");
 
         $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -105,7 +106,20 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $log("FCM Response [HTTP $httpCode]: $response");
+        $log("FCM Response for User {$user['user_id']} [HTTP $httpCode]: $response");
+
+        // AUTO-PURGE: Remove stale UNREGISTERED tokens immediately
+        if ($httpCode === 404) {
+            $decoded = json_decode($response, true);
+            $errorCode = $decoded['error']['details'][0]['errorCode'] ?? '';
+            if ($errorCode === 'UNREGISTERED') {
+                $log("PURGING stale token for User {$user['user_id']}");
+                $pdo->prepare("DELETE FROM user_devices WHERE user_id = ? AND fcm_token = ?")
+                    ->execute([$user['user_id'], $user['fcm_token']]);
+                $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE id = ? AND fcm_token = ?")
+                    ->execute([$user['user_id'], $user['fcm_token']]);
+            }
+        }
     }
     return true;
 }
@@ -212,7 +226,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
     }
 
     foreach ($users as $user) {
-        $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']})");
+        $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']}) | Token: " . substr($user['fcm_token'], 0, 20) . '...');
 
         $message = [
             'message' => [
@@ -263,7 +277,20 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $log("FCM RESPONSE for Role $role [HTTP $httpCode]: $response");
+        $log("FCM RESPONSE for Role $role, User {$user['user_id']} [HTTP $httpCode]: $response");
+
+        // AUTO-PURGE: Remove stale UNREGISTERED tokens immediately
+        if ($httpCode === 404) {
+            $decoded = json_decode($response, true);
+            $errorCode = $decoded['error']['details'][0]['errorCode'] ?? '';
+            if ($errorCode === 'UNREGISTERED') {
+                $log("PURGING stale token for User {$user['user_id']} (Role: $role)");
+                $pdo->prepare("DELETE FROM user_devices WHERE user_id = ? AND fcm_token = ?")
+                    ->execute([$user['user_id'], $user['fcm_token']]);
+                $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE id = ? AND fcm_token = ?")
+                    ->execute([$user['user_id'], $user['fcm_token']]);
+            }
+        }
     }
     return true;
 }
