@@ -44,6 +44,18 @@ if (!$stmt->fetch()) {
     exit;
 }
 
+function sendAsyncJSON($responseArray) {
+    $response = json_encode($responseArray);
+    while (ob_get_level() > 0) ob_end_clean();
+    header('Connection: close');
+    header('Content-Length: ' . strlen($response));
+    @ini_set('zlib.output_compression', 'Off');
+    if (function_exists('apache_setenv')) @apache_setenv('no-gzip', 1);
+    echo $response;
+    flush();
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+}
+
 if ($action == 'approve') {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_by=?, approved_at=NOW() WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $visit_id]);
@@ -54,9 +66,10 @@ if ($action == 'approve') {
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
+    sendAsyncJSON(['success' => true, 'message' => 'Visitor Approved']);
+
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    echo json_encode(['success' => true, 'message' => 'Visitor Approved']);
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=NOW(), rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $reason, $visit_id]);
@@ -67,7 +80,8 @@ if ($action == 'approve') {
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
+    sendAsyncJSON(['success' => true, 'message' => 'Visitor Rejected']);
+
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }

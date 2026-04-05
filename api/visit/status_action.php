@@ -22,15 +22,20 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
 
+        $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
+        $stmt->execute([$id]);
+        $visit = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $responseData = [];
+        if (isset($visit) && $visit) {
+            $responseData['visitor_mobile'] = $visit['mobile'];
+        }
+        sendAsyncResponse('success', 'Visit Approved', $responseData);
+
         // --- NOTIFICATIONS (NEW) ---
         try {
             require_once '../../includes/push_helper.php';
             require_once '../../includes/whatsapp_helper.php';
-
-            // Get visitor details
-            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
-            $stmt->execute([$id]);
-            $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($visit) {
                 // Check if PDF exists (strict lookup only, no fallback generation)
@@ -50,14 +55,6 @@ try {
             error_log("Notification error in approve: " . $e->getMessage());
         }
 
-        $responseData = [];
-        if (isset($visit)) {
-            $responseData['visitor_mobile'] = $visit['mobile'];
-        }
-
-
-        sendResponse('success', 'Visit Approved', $responseData);
-
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
         $stmt = $pdo->prepare("SELECT vis.name, vis.mobile, e.name as host_name, v.created_by 
@@ -72,6 +69,8 @@ try {
         // Setting it to rejected. 1 is for when the invite is cancelled by the host. 
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $id]);
+
+        sendAsyncResponse('success', 'Invitation has been cancelled and visitor notified.');
 
         if ($visitor_info && !empty($visitor_info['mobile'])) {
             try {
@@ -96,21 +95,25 @@ try {
             }
         }
 
-        sendResponse('success', 'Invitation has been cancelled and visitor notified.');
-
     } elseif ($action === 'reject') {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
 
+        $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
+        $stmt->execute([$id]);
+        $visit = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $responseData = [];
+        if (isset($visit) && $visit) {
+            $responseData['visitor_mobile'] = $visit['mobile'];
+        }
+        sendAsyncResponse('success', 'Visit Rejected', $responseData);
+
         // --- NOTIFICATIONS (NEW) ---
         try {
             require_once '../../includes/whatsapp_helper.php';
             require_once '../../includes/push_helper.php';
-
-            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
-            $stmt->execute([$id]);
-            $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($visit) {
                 // WhatsApp to visitor
@@ -126,13 +129,6 @@ try {
         } catch (Exception $e) {
             error_log("Notification error in reject: " . $e->getMessage());
         }
-
-        $responseData = [];
-        if (isset($visit) && isset($waMsg)) {
-            $responseData['visitor_mobile'] = $visit['mobile'];
-            $responseData['whatsapp_message'] = $waMsg;
-        }
-        sendResponse('success', 'Visit Rejected', $responseData);
 
     } elseif ($action === 'checkin') {
         // Check if visit is approved

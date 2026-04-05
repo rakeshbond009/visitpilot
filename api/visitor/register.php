@@ -154,6 +154,16 @@ try {
     // COMMIT EARLY: Save DB state before long external calls (QR, Notifications)
     $pdo->commit();
 
+    // Send async response so client isn't blocked by QR generation and Notifications
+    $predictable_qr = $visit_code ? 'uploads/qrcodes/' . $visit_code . '.png' : null;
+    sendAsyncResponse('success', 'Visitor registered successfully', [
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'qr_code_url' => $predictable_qr,
+        'status' => $invitation_id ? 'approved' : 'pending',
+        'approval_status' => $invitation_id ? 'approved' : 'pending'
+    ]);
+
     // Generate and Save QR Code if not exists
     $qr_code_path = '';
     if ($visit_code) {
@@ -232,14 +242,6 @@ try {
     } catch (Exception $e) {
         error_log("Notification System Error: " . $e->getMessage());
     }
-
-    sendResponse('success', 'Visitor registered successfully', [
-        'visit_id' => $visit_id,
-        'visit_code' => $visit_code,
-        'qr_code_url' => $qr_code_path ? $qr_code_path : null,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
-    ]);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
