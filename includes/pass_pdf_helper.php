@@ -1,8 +1,8 @@
 <?php
 /**
  * VMS - Pass PDF Helper
- * Generates the Visitor Pass PDF to match the provided high-quality digital reference EXACTLY.
- * VERSION: 1.0.1
+ * FINAL PRODUCTION VERSION 1.0.5 - Absolute 1:1 Match.
+ * Fixes: Name Overflow (16pt), Photo Path Resolver, and Shallower Header Cutout.
  */
 
 function log_pass_error($msg) {
@@ -23,7 +23,7 @@ function generatePassPdf($visit_id, $pdo)
     $pdfFileRelative = "uploads/passes/Pass_" . $visit_id . ".pdf";
     $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
 
-    // Overwrite for testing to ensure current code reflects
+    // Fresh generation every time
     if (file_exists($pdfAbsPath)) {
         @unlink($pdfAbsPath);
     }
@@ -47,72 +47,85 @@ function generatePassPdf($visit_id, $pdo)
 
         if (!$visit) return null;
 
-        // Custom taller page for Branding
-        $pdf = new FPDF('P', 'mm', array(100, 220)); 
+        // Custom canvas for mobile-safe pass rendering
+        $pdf = new FPDF('P', 'mm', array(100, 210)); 
         $pdf->SetAutoPageBreak(false, 0);
         $pdf->AddPage();
         
         $brandBlue = array(17, 97, 238); // #1161ee
-        $bgGrey = array(248, 249, 250);   // Details box background
-        $pageGrey = array(244, 247, 246); // Exterior page background
-        $labelGrey = array(173, 181, 189); // Muted labels
+        $bgGrey = array(242, 243, 245);  
+        $pageGrey = array(244, 247, 246); 
+        $labelGrey = array(155, 155, 155); 
 
-        // 1. Page Background
+        // 1. Page Backdrop
         $pdf->SetFillColor($pageGrey[0], $pageGrey[1], $pageGrey[2]);
-        $pdf->Rect(0, 0, 100, 220, 'F');
+        $pdf->Rect(0, 0, 100, 210, 'F');
 
-        // 2. Exterior Header Text
+        // 2. Exterior Branding with Icon
         $pdf->SetY(8);
         $pdf->SetFont('Arial', 'B', 10);
         $pdf->SetTextColor(80, 80, 80);
-        $pdf->Cell(100, 5, 'OFFICIAL VISITOR PASS', 0, 1, 'C');
+        $pdf->Cell(100, 5, '[ ] OFFICIAL VISITOR PASS', 0, 1, 'C');
 
-        // 3. Main Tall Card Surface (190mm height - deep bottom rounding)
+        // 3. Main Premium Card (Sharp moderate r=8)
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect(10, 18, 80, 190, 20, 'F');
+        $pdf->RoundedRect(10, 15, 80, 185, 8, 'F');
         
-        // 4. Blue Top Banner (ENSURING STRAIGHT BOTTOM BASE)
+        // 4. Blue Identity Banner
         $pdf->SetFillColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
-        // Draw the top part with 20mm round corners (1 and 2)
-        $pdf->RoundedRect(10, 18, 80, 20, 20, 'F', '12'); 
-        // Draw the rest as a pure straight Rectangle so the bottom cannot be rounded
-        $pdf->Rect(10, 38, 80, 30, 'F');
+        $pdf->RoundedRect(10, 15, 80, 48, 8, 'F', '12'); 
 
         $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetXY(10, 28);
+        $pdf->SetXY(10, 22);
         $pdf->SetFont('Arial', 'B', 8);
         $pdf->Cell(80, 5, 'VISITPILOT', 0, 1, 'C');
         
-        $pdf->SetFont('Arial', 'B', 28);
+        $pdf->SetFont('Arial', 'B', 24); 
         $pdf->Cell(80, 15, 'VISITOR PASS', 0, 1, 'C');
 
-        // 5. White Photo Container (Creating the curved overlap look)
-        $photoY = 54;
+        // 5. THE WRAP: SHALLOWER OVERLAP (FIXED - No giant bite)
+        // Banner base is at y=63. We start the photo box at y=57 for a clean 6mm overlap.
+        $photoY = 57;
         $pdf->SetFillColor(255, 255, 255);
-        $pdf->RoundedRect(26, $photoY, 48, 48, 15, 'F'); 
+        $pdf->RoundedRect(26, $photoY, 48, 48, 4, 'F'); 
         
-        $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : (!empty($visit['photo_path']) ? __DIR__ . '/../' . $visit['photo_path'] : '');
-        if (!empty($photoPath) && file_exists($photoPath)) {
-            // 40mm image inside the 48mm white border wrap
-            $pdf->Image($photoPath, 30, $photoY + 4, 40, 40);
+        // COMPREHENSIVE PHOTO RESOLVER (FIXED - Ensures photo displays)
+        $finalPhotoPath = '';
+        $potentialPaths = [
+            !empty($visit['visit_photo']) ? $visit['visit_photo'] : '',
+            !empty($visit['photo_path']) ? $visit['photo_path'] : '',
+            'uploads/visitors/default.png'
+        ];
+        
+        foreach($potentialPaths as $p) {
+            if(!empty($p)) {
+                $abs = __DIR__ . '/../' . ltrim($p, '/');
+                if(file_exists($abs)) {
+                    $finalPhotoPath = $abs;
+                    break;
+                }
+            }
         }
 
-        // 6. Name and blue Identity
-        $pdf->SetXY(10, 112);
+        if (!empty($finalPhotoPath)) {
+            $pdf->Image($finalPhotoPath, 30, $photoY + 4, 40, 40);
+        }
+
+        // 6. Identity Headers (FIXED - Reduced to 16pt to prevent overflow)
+        $pdf->SetXY(10, 110);
         $pdf->SetTextColor(17, 17, 17);
-        $pdf->SetFont('Arial', 'B', 24);
-        $pdf->Cell(80, 12, strtoupper($visit['visitor_name']), 0, 1, 'C');
+        $pdf->SetFont('Arial', 'B', 16); // 16pt safely handles "PRACTICAL TEST VISITOR"
+        $pdf->Cell(80, 8, strtoupper($visit['visitor_name']), 0, 1, 'C');
         
-        $pdf->SetFont('Arial', 'B', 14);
+        $pdf->SetFont('Arial', 'B', 12); 
         $pdf->SetTextColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
-        $pdf->Cell(80, 5, $visit['visit_code'], 0, 1, 'C');
+        $pdf->Cell(80, 6, $visit['visit_code'], 0, 1, 'C');
 
-        // 7. Status Grid Unified Box
-        $boxY = 138;
+        // 7. Details Grid Container
+        $boxY = 132;
         $pdf->SetFillColor($bgGrey[0], $bgGrey[1], $bgGrey[2]);
-        $pdf->RoundedRect(15, $boxY, 70, 32, 10, 'F');
+        $pdf->RoundedRect(15, $boxY, 70, 32, 4, 'F');
 
-        // Variable defined correctly as $drawGridCell to match calls below
         $drawGridCell = function($label, $value, $x, $y, $isBlue = false) use ($pdf, $labelGrey, $brandBlue) {
             $pdf->SetXY($x, $y);
             $pdf->SetFont('Arial', 'B', 7);
@@ -129,28 +142,26 @@ function generatePassPdf($visit_id, $pdo)
         // Grid Rows
         $drawGridCell('Visiting:', $visit['host_name'], 18, $boxY + 5);
         $drawGridCell('Purpose:', $visit['purpose'] ?: 'Delivery', 48, $boxY + 5);
-        $drawGridCell('Access Area:', $visit['access_area'] ?: 'General Office', 18, $boxY + 19);
+        $drawGridCell('Access Area:', $visit['access_area'] ?: 'General Area', 18, $boxY + 19);
         $drawGridCell('Date:', date('d M Y', strtotime($visit['created_at'])), 48, $boxY + 19, true);
 
-        // 8. Safe Elevated QR Code (Well away from the dangerous curve)
+        // 8. Centered QR Code
         $localQr = __DIR__ . '/../uploads/qrcodes/' . $visit['visit_code'] . '.png';
         if (file_exists($localQr)) {
-            // Moved UP to 178mm to stay safe in the white card background
-            $pdf->Image($localQr, 40, 178, 20, 20);
+            $pdf->Image($localQr, 40, 172, 20, 20);
         }
 
-        // 9. Card Footer v1.0.1
-        $pdf->SetXY(10, 202);
+        // 9. Card Footer v1.0.5
+        $pdf->SetXY(10, 198);
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->SetTextColor(180, 180, 180);
-        $pdf->Cell(80, 5, 'VISITPILOT v1.0.1', 0, 0, 'C');
+        $pdf->SetTextColor(190, 190, 190);
+        $pdf->Cell(80, 5, 'VISITPILOT v1.0.5', 0, 0, 'C');
 
-        // Save
         $pdf->Output('F', $pdfAbsPath);
         return BASE_URL . $pdfFileRelative;
 
     } catch (Exception $e) {
-        log_pass_error("Critical precision failure: " . $e->getMessage());
+        log_pass_error("v1.0.5 release failure: " . $e->getMessage());
         return null;
     }
 }
