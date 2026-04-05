@@ -16,14 +16,11 @@ foreach ($required as $field) {
     }
 }
 
-// Get host employee ID from token/session (in api_header.php $user is usually set)
-// For simplicity in this VMS, let's assume employee_id is passed or derived from user
-$employee_id = $data['employee_id'] ?? null;
-if (!$employee_id && isset($user['employee_id'])) {
-    $employee_id = $user['employee_id'];
-}
+// Get host employee ID from token/session
+// Use the global $employee_id defined in api_header.php
+$host_id = $data['employee_id'] ?? $employee_id;
 
-if (!$employee_id) {
+if (!$host_id) {
     sendResponse('error', 'Host employee identification missing');
 }
 
@@ -79,7 +76,7 @@ try {
     $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, NOW())");
     $stmt->execute([
         $visitor_id,
-        $employee_id,
+        $host_id,
         $data['purpose'],
         $visit_date,
         $visit_code,

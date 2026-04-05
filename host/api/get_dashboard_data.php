@@ -49,7 +49,8 @@ $sql_today = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_n
               FROM visits v 
               JOIN visitors vis ON v.visitor_id = vis.id 
               LEFT JOIN employees e ON v.employee_id = e.id
-              WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND DATE(v.created_at) = CURDATE()
+              WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " 
+              AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()))
               ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_today);
 if ($is_admin) {
@@ -67,7 +68,7 @@ $sql_invites = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
-                WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.is_invited = 1 AND (v.status = 'pending' OR v.status = 'approved') AND v.visit_date >= CURDATE()
+                WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.is_invited = 1 AND v.status != 'checked_out' AND v.visit_date >= CURDATE()
                 ORDER BY v.visit_date ASC";
 $stmt = $pdo->prepare($sql_invites);
 if ($is_admin) {
@@ -104,8 +105,8 @@ $sql_scheduled = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as ho
                   FROM visits v 
                   JOIN visitors vis ON v.visitor_id = vis.id 
                   LEFT JOIN employees e ON v.employee_id = e.id
-                  WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.status = 'approved' 
-                  AND (DATE(v.created_at) <= CURDATE() OR (v.is_invited = 1 AND v.visit_date <= CURDATE()))
+                  WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.status IN ('pending', 'approved') 
+                  AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()))
                   ORDER BY v.created_at DESC";
 $stmt_scheduled = $pdo->prepare($sql_scheduled);
 if ($is_admin) {
