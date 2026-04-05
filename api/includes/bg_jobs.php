@@ -16,11 +16,17 @@ function runJob_registerVisitor($pdo, $payload) {
     $visitor_address= $payload['visitor_address']?? '';
     $assets         = $payload['assets']         ?? 'None';
 
+    _vms_log("Job registerVisitor starting: visit_id $visit_id");
+    
     // 1. QR Code
-    if ($visit_code) bgHelper_generateQrCode($visit_code, $visit_id, $pdo);
+    if ($visit_code) {
+        _vms_log("Generating QR for $visit_code");
+        bgHelper_generateQrCode($visit_code, $visit_id, $pdo);
+    }
 
     // 2. FCM Push to host
     try {
+        _vms_log("Sending FCM Push to host $employee_id");
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
         $pushData = [
             'visitor_id'     => (string)$visitor_id,
@@ -34,10 +40,12 @@ function runJob_registerVisitor($pdo, $payload) {
             'assets_carried' => $assets,
         ];
         sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
-    } catch (Throwable $e) { error_log("[BG] FCM register error: " . $e->getMessage()); }
+        _vms_log("FCM Push sent to host $employee_id");
+    } catch (Throwable $e) { _vms_log("FCM register error: " . $e->getMessage()); }
 
     // 3. WhatsApp to host
     try {
+        _vms_log("Sending WhatsApp to host $employee_id");
         require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
         $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
         $hStmt->execute([$employee_id]);
@@ -49,8 +57,9 @@ function runJob_registerVisitor($pdo, $payload) {
                 'visitor_arrival_host_alert',
                 ["*{$host['name']}*", "*{$visitor_name}*", "*{$purpose}*"]
             );
+            _vms_log("WhatsApp sent to host mobile " . $host['mobile']);
         }
-    } catch (Throwable $e) { error_log("[BG] WhatsApp register error: " . $e->getMessage()); }
+    } catch (Throwable $e) { _vms_log("WhatsApp register error: " . $e->getMessage()); }
 
     // 4. Dahua sync (invitation flow only)
     if (!empty($payload['sync_dahua'])) {
