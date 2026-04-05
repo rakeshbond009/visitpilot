@@ -15,6 +15,7 @@
     "android": {
       "package": "com.codepilot.vms",
       "versionCode": 2,
+      "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
         "backgroundColor": "#FFFFFF"

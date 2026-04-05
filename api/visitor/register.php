@@ -29,7 +29,7 @@ try {
     if (!empty($data['photo_data'])) {
         $photo_data = explode(',', $data['photo_data']);
         if (isset($photo_data[1])) {
-            $content  = base64_decode($photo_data[1]);
+            $content = base64_decode($photo_data[1]);
             $filename = 'uploads/photos/' . uniqid() . '.jpg';
             $targetDir = dirname(__DIR__, 2) . '/uploads/photos/';
             if (!is_dir($targetDir)) {
@@ -45,7 +45,7 @@ try {
     $stmt->execute([$data['mobile']]);
     $visitor = $stmt->fetch();
 
-    $id_proof_type   = $data['id_proof_type']   ?? '';
+    $id_proof_type = $data['id_proof_type'] ?? '';
     $id_proof_number = $data['id_proof_number'] ?? '';
 
     if ($visitor) {
@@ -53,23 +53,23 @@ try {
 
         // PRESERVE ID PROOF: keep old one if new request is empty
         if (empty($id_proof_type) && !empty($visitor['id_proof_type'])) {
-            $id_proof_type   = $visitor['id_proof_type'];
+            $id_proof_type = $visitor['id_proof_type'];
             $id_proof_number = $visitor['id_proof_number'];
         }
 
-        $sql    = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
+        $sql = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
         $params = [
             $data['name'],
-            $data['email']   ?? '',
+            $data['email'] ?? '',
             $data['address'] ?? '',
             $id_proof_type,
             $id_proof_number
         ];
         if ($photo_path) {
-            $sql     .= ", photo_path=?";
+            $sql .= ", photo_path=?";
             $params[] = $photo_path;
         }
-        $sql     .= " WHERE id=?";
+        $sql .= " WHERE id=?";
         $params[] = $visitor_id;
 
         $stmt = $pdo->prepare($sql);
@@ -79,7 +79,7 @@ try {
         $stmt->execute([
             $data['name'],
             $data['mobile'],
-            $data['email']   ?? '',
+            $data['email'] ?? '',
             $data['address'] ?? '',
             $id_proof_type,
             $id_proof_number,
@@ -89,13 +89,14 @@ try {
     }
 
     // 3. Handle visit record
-    $invitation_id  = $data['invitation_id'] ?? null;
-    $visit_code     = '';
-    $current_time   = date('Y-m-d H:i:s');
-    $access_area    = $data['access_area']    ?? 'Not Assigned';
-    $assets         = $data['assets_carried'] ?? 'None';
-    $members        = $data['members']        ?? [];
-    if (!is_array($members)) $members = [];
+    $invitation_id = $data['invitation_id'] ?? null;
+    $visit_code = '';
+    $current_time = date('Y-m-d H:i:s');
+    $access_area = $data['access_area'] ?? 'Not Assigned';
+    $assets = $data['assets_carried'] ?? 'None';
+    $members = $data['members'] ?? [];
+    if (!is_array($members))
+        $members = [];
     $total_visitors = 1 + count($members);
 
     if ($invitation_id) {
@@ -105,19 +106,34 @@ try {
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
+        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='approved', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
         $stmt->execute([
-            $assets, $id_proof_type, $id_proof_number,
-            $access_area, $photo_path, $total_visitors,
-            $current_time, $user_id, $visit_id
+            $assets,
+            $id_proof_type,
+            $id_proof_number,
+            $access_area,
+            $photo_path,
+            $total_visitors,
+            $current_time,
+            $user_id,
+            $visit_id
         ]);
     } else {
         $visit_code = generateVisitCode();
         $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
-            $visitor_id, $photo_path, $data['employee_id'], $data['purpose'], $visit_code,
-            $access_area, $assets, $id_proof_type, $id_proof_number,
-            $total_visitors, $current_time, $user_id
+            $visitor_id,
+            $photo_path,
+            $data['employee_id'],
+            $data['purpose'],
+            $visit_code,
+            $access_area,
+            $assets,
+            $id_proof_type,
+            $id_proof_number,
+            $total_visitors,
+            $current_time,
+            $user_id
         ]);
         $visit_id = $pdo->lastInsertId();
     }
@@ -150,17 +166,17 @@ try {
     $pdo->commit();
 
     $bgPayload = [
-        'visit_id'       => $visit_id,
-        'visitor_id'     => $visitor_id,
-        'visit_code'     => $visit_code,
-        'photo_path'     => $photo_path,
-        'employee_id'    => $data['employee_id'],
-        'purpose'        => $data['purpose'],
-        'visitor_name'   => $visitorRow['name']    ?? $data['name'],
-        'visitor_mobile' => $visitorRow['mobile']  ?? $data['mobile'],
-        'visitor_address'=> $visitorRow['address'] ?? '',
-        'assets'         => $assets,
-        'sync_dahua'     => $needsDahuaSync,
+        'visit_id' => $visit_id,
+        'visitor_id' => $visitor_id,
+        'visit_code' => $visit_code,
+        'photo_path' => $photo_path,
+        'employee_id' => $data['employee_id'],
+        'purpose' => $data['purpose'],
+        'visitor_name' => $visitorRow['name'] ?? $data['name'],
+        'visitor_mobile' => $visitorRow['mobile'] ?? $data['mobile'],
+        'visitor_address' => $visitorRow['address'] ?? '',
+        'assets' => $assets,
+        'sync_dahua' => $needsDahuaSync,
     ];
 
     // ⚡ STEP 1: No-op job writing
@@ -168,9 +184,9 @@ try {
 
     // ⚡ STEP 2: Respond IMMEDIATELY (flush / fastcgi_finish_request)
     sendInstantResponse('success', 'Visitor registered successfully', [
-        'visit_id'        => $visit_id,
-        'visit_code'      => $visit_code,
-        'status'          => $invitation_id ? 'approved' : 'pending',
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'status' => $invitation_id ? 'approved' : 'pending',
         'approval_status' => $invitation_id ? 'approved' : 'pending'
     ]);
 

@@ -612,7 +612,7 @@ export default function HostDashboard({ navigation }) {
                             <Icon name="calendar-star" size={22} color="#3b82f6" />
                             <Text style={[styles.sectionTitleMobile, { marginLeft: 10 }]}>Upcoming Invites</Text>
                         </View>
-                        <TouchableOpacity onPress={() => setActiveTab('invites')}>
+                        <TouchableOpacity onPress={() => { setActiveTab('visitors'); setVisitorView('invites'); }}>
                             <Text style={styles.seeAllMobile}>VIEW ALL</Text>
                         </TouchableOpacity>
                     </View>
@@ -1427,7 +1427,6 @@ export default function HostDashboard({ navigation }) {
             >
                 {activeTab === 'home' && renderHome()}
                 {activeTab === 'visitors' && renderVisitors()}
-                {activeTab === 'invites' && renderInvites()}
             </ScrollView>
 
             <VisitListModal

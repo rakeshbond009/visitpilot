@@ -167,29 +167,21 @@
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-date">${formatDateTime(v.created_at)}</div>
-                            <div class="timeline-title">Visit Registered</div>
+                            <div class="timeline-title">Visit Registered${v.created_by_name ? ` by ${v.created_by_name}` : ''}</div>
                             <small class="text-muted">Visitor: ${v.visitor_name}</small>
                         </div>
                     </div>`;
 
                 if (v.approved_at) {
-                    let decision = 'Decision Made';
-                    let decisionClass = 'secondary';
-
-                    if (v.approval_status === 'approved') {
-                        decision = 'Approved';
-                        decisionClass = 'success';
-                    } else if (v.approval_status === 'canceled' || v.approval_status === 'cancelled' || v.approval_status === 'rejected') {
-                        decision = 'Rejected';
-                        decisionClass = 'danger';
-                    }
+                    let decision = v.approval_status === 'approved' ? 'Approved' : 'Rejected';
+                    let decisionClass = v.approval_status === 'approved' ? 'success' : 'danger';
 
                     timelineHtml += `
                     <div class="timeline-item ${decisionClass}">
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-date">${formatDateTime(v.approved_at)}</div>
-                            <div class="timeline-title">Host Decision: ${decision}</div>
+                            <div class="timeline-title">${decision}${v.approved_by_name ? ` by ${v.approved_by_name}` : ''}</div>
                             ${v.rejection_reason ? `<small class="text-danger">Reason: ${v.rejection_reason}</small>` : ''}
                         </div>
                     </div>`;
@@ -201,7 +193,7 @@
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-date">${formatDateTime(v.check_in_time)}</div>
-                            <div class="timeline-title">Checked In</div>
+                            <div class="timeline-title">Checked In${v.checked_in_by_name ? ` by ${v.checked_in_by_name}` : ''}</div>
                             <small class="text-muted">Entered through security gate</small>
                         </div>
                     </div>`;
@@ -213,7 +205,7 @@
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-date">${formatDateTime(v.check_out_time)}</div>
-                            <div class="timeline-title">Checked Out</div>
+                            <div class="timeline-title">Checked Out${v.checked_out_by_name ? ` by ${v.checked_out_by_name}` : ''}</div>
                             <small class="text-muted">Exit recorded</small>
                         </div>
                     </div>`;

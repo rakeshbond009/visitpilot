@@ -158,6 +158,25 @@ if ($is_admin) {
 }
 $frequent_visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Rejected Visitors List
+$sql_rejected = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department,
+                      REPLACE(v.visit_photo, '../', '') as visit_photo,
+                      REPLACE(vis.photo_path, '../', '') as photo_path,
+                      COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
+               FROM visits v 
+               JOIN visitors vis ON v.visitor_id = vis.id 
+               LEFT JOIN employees e ON v.employee_id = e.id
+               WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.status = 'rejected'
+               AND DATE(v.created_at) = CURDATE()
+               ORDER BY v.created_at DESC";
+$stmt = $pdo->prepare($sql_rejected);
+if ($is_admin) {
+    $stmt->execute();
+} else {
+    $stmt->execute([$host_employee_id]);
+}
+$rejected_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 function standardize_list(&$list) {
     foreach ($list as &$v) {
         $v_photo = !empty($v['visit_photo'] ?? '') ? str_replace('../', '', $v['visit_photo']) : '';
@@ -174,6 +193,7 @@ standardize_list($today_visitors);
 standardize_list($active_invites);
 standardize_list($scheduled_list);
 standardize_list($frequent_visitors);
+standardize_list($rejected_list);
 
 echo json_encode([
     'success' => true,
@@ -183,14 +203,16 @@ echo json_encode([
         'invites' => count($active_invites),
         'completed' => (int)$meetings_completed,
         'avg_time' => $avg_minutes . "m",
-        'rejected' => 0 // Added for future rejected_count logic
+        'rejected' => count($rejected_list)
     ],
     'pending_count' => count($pending_list),
     'today_count' => count($today_visitors),
+    'rejected_count' => count($rejected_list),
     'invite_count' => count($active_invites),
     'active_invites' => $active_invites, // Mobile app looks for this directly too
     'pending_list' => $pending_list,
     'today_visitors' => $today_visitors,
+    'rejected_list' => $rejected_list,
     'scheduled_list' => $scheduled_list,
     'visitors' => $today_visitors, // Fallback for list views
     'latest_pending' => !empty($pending_list) ? $pending_list[0] : null,

@@ -33,7 +33,13 @@ export default function InviteVisitor({ navigation }) {
     const [email, setEmail] = useState('');
     const [purpose, setPurpose] = useState('');
     const [hostId, setHostId] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const getLocalDateString = (d) => {
+        return d.getFullYear() + '-' + 
+               String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+               String(d.getDate()).padStart(2, '0');
+    };
+
+    const [date, setDate] = useState(getLocalDateString(new Date()));
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [loading, setLoading] = useState(false);
     const [purposes, setPurposes] = useState([]);
@@ -50,7 +56,7 @@ export default function InviteVisitor({ navigation }) {
     const onDateChange = (event, selectedDate) => {
         setShowDatePicker(Platform.OS === 'ios');
         if (selectedDate) {
-            setDate(selectedDate.toISOString().split('T')[0]);
+            setDate(getLocalDateString(selectedDate));
         }
     };
 

@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS `visits` (
   `visit_date` date DEFAULT NULL,
   `check_in_time` datetime DEFAULT NULL,
   `check_out_time` datetime DEFAULT NULL,
+  `checked_in_by` int(11) DEFAULT NULL,
+  `checked_out_by` int(11) DEFAULT NULL,
   `status` enum('pending','approved','rejected','checked_in','checked_out') DEFAULT 'pending',
   `approval_status` enum('pending','approved','rejected') DEFAULT 'pending',
   `is_invited` tinyint(1) DEFAULT 0,
@@ -99,7 +101,9 @@ CREATE TABLE IF NOT EXISTS `visits` (
   CONSTRAINT `visits_ibfk_1` FOREIGN KEY (`visitor_id`) REFERENCES `visitors` (`id`) ON DELETE CASCADE,
   CONSTRAINT `visits_ibfk_2` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`) ON DELETE CASCADE,
   CONSTRAINT `visits_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `visits_ibfk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `visits_ibfk_4` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `visits_ibfk_5` FOREIGN KEY (`checked_in_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `visits_ibfk_6` FOREIGN KEY (`checked_out_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `user_devices` (

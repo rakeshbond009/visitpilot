@@ -51,10 +51,10 @@ try {
         $stmt->execute([$user_id, $reason, $id]);
 
         $bgPayload = [
-            'visit_id'       => $id,
-            'visitor_name'   => $visitor_info['name']      ?? '',
-            'visitor_mobile' => $visitor_info['mobile']    ?? '',
-            'host_name'      => $visitor_info['host_name'] ?? 'your host',
+            'visit_id' => $id,
+            'visitor_name' => $visitor_info['name'] ?? '',
+            'visitor_mobile' => $visitor_info['mobile'] ?? '',
+            'host_name' => $visitor_info['host_name'] ?? 'your host',
         ];
         // ⚡ STEP 1: Apache/LSAPI path
         dispatchBackgroundTask('cancel_invite', $bgPayload);
@@ -70,7 +70,7 @@ try {
 
         $bgPayload = [
             'visit_id' => $id,
-            'reason'   => $reason,
+            'reason' => $reason,
         ];
         // ⚡ STEP 1: Apache/LSAPI path
         dispatchBackgroundTask('reject_visit', $bgPayload);
@@ -89,13 +89,13 @@ try {
             sendResponse('error', 'Cannot check-in: Visit not yet approved by host');
         }
 
-        $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW() WHERE id=?");
-        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW(), checked_in_by=? WHERE id=?");
+        $stmt->execute([$user_id, $id]);
         sendResponse('success', 'Check-in successful');
 
     } elseif ($action === 'checkout') {
-        $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW() WHERE id=?");
-        $stmt->execute([$id]);
+        $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW(), checked_out_by=? WHERE id=?");
+        $stmt->execute([$user_id, $id]);
         sendResponse('success', 'Check-out successful');
 
     } elseif ($action === 'qr_process') {
@@ -129,10 +129,15 @@ try {
             if ($visit['status'] == 'checked_in') {
                 sendResponse('check_out', 'Visitor ' . $visit['visitor_name'] . ' is currently inside. Do you want to Mark Check Out?', $responseData);
             }
-            // 2. Invitation Flow: Always return invitation status for any non-checked-in invitation
-            // This ensures the mobile app always shows the registration prompt as per the user's requirement
+            // 2. Invitation Flow: 
+            // - If already 'approved' (meaning registration is done), allow direct Check In
+            // - Otherwise, redirect to registration
             elseif ($visit['is_invited'] == 1 && $visit['status'] !== 'checked_out') {
-                sendResponse('invitation', 'Pre-Approved Invitation Found for ' . $visit['visitor_name'], array_merge(['code' => $code], $responseData));
+                if ($visit['status'] == 'approved') {
+                    sendResponse('check_in', 'Pre-Approved Invitation for ' . $visit['visitor_name'] . ' (Ready for Check-In). Do you want to Mark Check In?', $responseData);
+                } else {
+                    sendResponse('invitation', 'Pre-Approved Invitation Found for ' . $visit['visitor_name'], array_merge(['code' => $code], $responseData));
+                }
             }
             // 3. Normal Flow - Ask to Check In if approved or registered
             elseif ($visit['status'] == 'approved' || $visit['status'] == 'registered') {

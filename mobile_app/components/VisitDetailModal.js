@@ -148,11 +148,24 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                         <Text style={styles.timelineDate}>{formatDate(visit.created_at)}</Text>
                                     </View>
                                 </View>
+                                {visit.approved_at && (
+                                    <View style={styles.timelineItem}>
+                                        <View style={[styles.timelineDot, { backgroundColor: visit.approval_status === 'approved' ? '#10b981' : '#ef4444' }]} />
+                                        <View>
+                                            <Text style={styles.timelineTitle}>
+                                                {visit.approval_status === 'approved' ? 'Approved' : 'Rejected'}
+                                                {visit.approved_by_name ? ` by ${visit.approved_by_name}` : ''}
+                                            </Text>
+                                            <Text style={styles.timelineDate}>{formatDate(visit.approved_at)}</Text>
+                                            {visit.rejection_reason && <Text style={{ fontSize: 12, color: '#ef4444' }}>Reason: {visit.rejection_reason}</Text>}
+                                        </View>
+                                    </View>
+                                )}
                                 {visit.check_in_time && (
                                     <View style={styles.timelineItem}>
                                         <View style={[styles.timelineDot, { backgroundColor: '#10b981' }]} />
                                         <View>
-                                            <Text style={styles.timelineTitle}>Checked In</Text>
+                                            <Text style={styles.timelineTitle}>Checked In{visit.checked_in_by_name ? ` by ${visit.checked_in_by_name}` : ''}</Text>
                                             <Text style={styles.timelineDate}>{formatDate(visit.check_in_time)}</Text>
                                         </View>
                                     </View>
@@ -161,7 +174,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                     <View style={styles.timelineItem}>
                                         <View style={[styles.timelineDot, { backgroundColor: '#64748b' }]} />
                                         <View>
-                                            <Text style={styles.timelineTitle}>Checked Out</Text>
+                                            <Text style={styles.timelineTitle}>Checked Out{visit.checked_out_by_name ? ` by ${visit.checked_out_by_name}` : ''}</Text>
                                             <Text style={styles.timelineDate}>{formatDate(visit.check_out_time)}</Text>
                                         </View>
                                     </View>
