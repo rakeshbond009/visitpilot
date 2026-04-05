@@ -125,15 +125,19 @@ function generatePassPdf($visit_id, $pdo)
         $drawDetail($pdf, 'Purpose', $visit['purpose'] ?: 'Visit', $detailY + 16);
         $drawDetail($pdf, 'Date/Time', date('d M Y, h:i A', strtotime($visit['created_at'])), $detailY + 24);
 
-        // 10. QR Code & Branding Footer
-        $qrData = $visit['visit_code'] ?? $visit_id;
-        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qrData);
+        // 10. QR Code (Priority: Local Path -> URL Fallback)
+        $visit_code = $visit['visit_code'] ?? 'PENDING';
+        $localQr = __DIR__ . '/../uploads/qrcodes/' . $visit_code . '.png';
         
-        // FPDF handles URL downloads automatically if server allow_url_fopen is enabled
         try {
-            $pdf->Image($qrUrl, 15, 122, 18, 18, 'PNG');
+            if (file_exists($localQr)) {
+                $pdf->Image($localQr, 15, 122, 18, 18);
+            } else {
+                $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit_code);
+                $pdf->Image($qrUrl, 15, 122, 18, 18, 'PNG');
+            }
         } catch (Exception $qrErr) {
-            log_pass_error("QR download failed: " . $qrErr->getMessage());
+            log_pass_error("QR placement failed for $visit_code: " . $qrErr->getMessage());
         }
 
         $pdf->SetXY(35, 128);
