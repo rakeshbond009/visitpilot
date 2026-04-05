@@ -158,16 +158,41 @@ if ($is_admin) {
 }
 $frequent_visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+function standardize_list(&$list) {
+    foreach ($list as &$v) {
+        $v_photo = !empty($v['visit_photo'] ?? '') ? str_replace('../', '', $v['visit_photo']) : '';
+        $p_photo = !empty($v['photo_path'] ?? '') ? str_replace('../', '', $v['photo_path']) : '';
+        
+        $v['visit_photo'] = $v_photo ? BASE_URL . $v_photo : null;
+        $v['photo_path'] = $p_photo ? BASE_URL . $p_photo : null;
+        $v['photo_url'] = $v['visit_photo'] ?: $v['photo_path'];
+    }
+}
+
+standardize_list($pending_list);
+standardize_list($today_visitors);
+standardize_list($active_invites);
+standardize_list($scheduled_list);
+standardize_list($frequent_visitors);
+
 echo json_encode([
     'success' => true,
+    'stats' => [ // Mobile app expects a 'stats' object
+        'pending' => count($pending_list),
+        'today' => count($today_visitors),
+        'invites' => count($active_invites),
+        'completed' => (int)$meetings_completed,
+        'avg_time' => $avg_minutes . "m",
+        'rejected' => 0 // Added for future rejected_count logic
+    ],
     'pending_count' => count($pending_list),
     'today_count' => count($today_visitors),
     'invite_count' => count($active_invites),
+    'active_invites' => $active_invites, // Mobile app looks for this directly too
     'pending_list' => $pending_list,
     'today_visitors' => $today_visitors,
     'scheduled_list' => $scheduled_list,
-    'active_invites' => $active_invites,
-    'visitors' => $today_visitors,
+    'visitors' => $today_visitors, // Fallback for list views
     'latest_pending' => !empty($pending_list) ? $pending_list[0] : null,
     'completed_meetings' => $meetings_completed,
     'avg_meeting_time' => $avg_minutes . "m",

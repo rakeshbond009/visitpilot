@@ -243,12 +243,23 @@ export default function RegisterVisitor({ navigation, route }) {
                 setHostId(inv.host_id?.toString() || '');
                 setPurpose(inv.purpose || '');
                 setInvitationId(inv.id || null);
-                setAssets(inv.assets_carried || ''); // Restore the assets pre-fill fix
+                setAssets(inv.assets_carried || '');
+
+                // Pre-fill ID details if available from invitation or past visits
+                if (inv.id_proof_type) {
+                    setIdType(inv.id_proof_type);
+                    setIdProofEnabled(true);
+                }
+                if (inv.id_proof_number) {
+                    setIdNumber(inv.id_proof_number);
+                    setIdProofEnabled(true);
+                }
+
                 setIsPreApproved(true);
                 setPhoto(null); // Force new photo for every visit
 
                 if (showSuccessAlert) {
-                    const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}\nAssets: ${inv.assets_carried || 'None'}`;
+                    const details = `Visitor: ${inv.visitor_name}\nHost: ${inv.host_name || 'N/A'}\nPurpose: ${inv.purpose || 'N/A'}\nID Proof: ${inv.id_proof_type || 'Needed'} ${inv.id_proof_number || ''}`;
                     showAlert('Success', `Invitation found and details pre-filled!\n\n${details}`, 'success');
                 }
             } else {

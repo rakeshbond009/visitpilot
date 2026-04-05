@@ -10,7 +10,8 @@ if (!$id) {
 
 try {
     $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, 
-                   vis.id_proof_type, vis.id_proof_number,
+                   COALESCE(NULLIF(v.id_proof_type, ''), vis.id_proof_type) as id_proof_type,
+                   COALESCE(NULLIF(v.id_proof_number, ''), vis.id_proof_number) as id_proof_number,
                    emp.name as host_name, emp.department, v.access_area, v.assets_carried
             FROM visits v 
             JOIN visitors vis ON v.visitor_id = vis.id 

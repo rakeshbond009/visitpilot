@@ -45,6 +45,17 @@ function safeFetchAll($pdo, $sql, $mode = PDO::FETCH_ASSOC)
     }
 }
 
+function standardize_list(&$list) {
+    foreach ($list as &$v) {
+        $v_photo = !empty($v['visit_photo'] ?? '') ? str_replace('../', '', $v['visit_photo']) : '';
+        $p_photo = !empty($v['photo_path'] ?? '') ? str_replace('../', '', $v['photo_path']) : '';
+        
+        $v['visit_photo'] = $v_photo ? BASE_URL . $v_photo : null;
+        $v['photo_path'] = $p_photo ? BASE_URL . $p_photo : null;
+        $v['photo_url'] = $v['visit_photo'] ?: $v['photo_path'];
+    }
+}
+
 // stats
 $total_today = safeFetchColumn($pdo, "SELECT count(*) FROM visits WHERE date(created_at) = CURDATE()");
 $active_visitors = (int) safeFetchColumn($pdo, "SELECT count(*) FROM visits WHERE status = 'checked_in'");
@@ -87,6 +98,7 @@ $overstays_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_pa
                   AND v.check_in_time < DATE_SUB(NOW(), INTERVAL 8 HOUR) 
                   ORDER BY v.check_in_time ASC";
 $overstays_list = safeFetchAll($pdo, $overstays_sql);
+standardize_list($overstays_list);
 $overstays_count = count($overstays_list);
 
 // Zone Density (Department-wise) - UNIQUE DEPARTMENTS
@@ -157,12 +169,14 @@ $best_hour = safeFetchColumn($pdo, $slot_sql, $start_h);
 $best_time = ($best_hour > 12 ? $best_hour - 12 : $best_hour) . ":00 " . ($best_hour >= 12 ? "PM" : "AM");
 
 // Recent Activity
-$recent_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, e.name as host_name, e.department, COALESCE(NULLIF(v.visit_photo,''), vis.photo_path) as photo_url
+$recent_sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_name, e.department, 
+                      COALESCE(NULLIF(REPLACE(v.visit_photo, '../', ''), ''), REPLACE(vis.photo_path, '../', '')) as photo_url
                FROM visits v 
                JOIN visitors vis ON v.visitor_id = vis.id 
                LEFT JOIN employees e ON v.employee_id = e.id 
                ORDER BY v.created_at DESC LIMIT 10";
 $recent = safeFetchAll($pdo, $recent_sql);
+standardize_list($recent);
 
 echo json_encode([
     'success' => true,

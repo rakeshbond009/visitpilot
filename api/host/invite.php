@@ -17,30 +17,36 @@ foreach ($required as $field) {
 }
 
 // Get host employee ID from token/session
-// Use the global $employee_id defined in api_header.php
-$host_id = $data['employee_id'] ?? $employee_id;
+// RE-FETCH from database to ensure consistency with fresh dashboard data
+$stmt = $pdo->prepare("SELECT employee_id FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$db_employee_id = $stmt->fetchColumn();
+
+$host_id = $data['employee_id'] ?? $db_employee_id ?? $employee_id;
 
 if (!$host_id) {
-    sendResponse('error', 'Host employee identification missing');
+    sendResponse('error', 'Host employee identification missing. Please contact administrator.');
 }
 
 try {
     $pdo->beginTransaction();
 
     // 1. Check if visitor exists
-    $stmt = $pdo->prepare("SELECT id FROM visitors WHERE mobile = ?");
+    $stmt = $pdo->prepare("SELECT id, id_proof_type, id_proof_number FROM visitors WHERE mobile = ?");
     $stmt->execute([$data['mobile']]);
     $visitor = $stmt->fetch();
 
     if ($visitor) {
         $visitor_id = $visitor['id'];
-        // Update details if provided
-        $stmt = $pdo->prepare("UPDATE visitors SET name = ?, email = ? WHERE id = ?");
-        $stmt->execute([$data['name'], $data['email'] ?? '', $visitor_id]);
-    }
-    else {
-        $stmt = $pdo->prepare("INSERT INTO visitors (name, mobile, email) VALUES (?, ?, ?)");
-        $stmt->execute([$data['name'], $data['mobile'], $data['email'] ?? '']);
+        // Update details if provided, but don't overwrite ID proof if it exists and new one is empty
+        $update_id_type = (!empty($data['id_proof_type'])) ? $data['id_proof_type'] : $visitor['id_proof_type'];
+        $update_id_number = (!empty($data['id_proof_number'])) ? $data['id_proof_number'] : $visitor['id_proof_number'];
+
+        $stmt = $pdo->prepare("UPDATE visitors SET name = ?, email = ?, id_proof_type = ?, id_proof_number = ? WHERE id = ?");
+        $stmt->execute([$data['name'], $data['email'] ?? '', $update_id_type, $update_id_number, $visitor_id]);
+    } else {
+        $stmt = $pdo->prepare("INSERT INTO visitors (name, mobile, email, id_proof_type, id_proof_number) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$data['name'], $data['mobile'], $data['email'] ?? '', $data['id_proof_type'] ?? '', $data['id_proof_number'] ?? '']);
         $visitor_id = $pdo->lastInsertId();
     }
 
@@ -68,12 +74,11 @@ try {
 
     if ($qr_image) {
         file_put_contents('../../' . $qr_filename, $qr_image);
-    }
-    else {
+    } else {
         error_log("QR Generation Error: " . $curl_error);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, NOW())");
+    $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, id_proof_type, id_proof_number, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, ?, ?, NOW())");
     $stmt->execute([
         $visitor_id,
         $host_id,
@@ -81,6 +86,8 @@ try {
         $visit_date,
         $visit_code,
         $qr_filename,
+        $data['id_proof_type'] ?? '',
+        $data['id_proof_number'] ?? '',
         $user_id,
         $user_id
     ]);

@@ -26,6 +26,16 @@ if ($is_host) {
 }
 
 try {
+    function standardize_list(&$list) {
+        foreach ($list as &$v) {
+            $v_photo = !empty($v['visit_photo'] ?? '') ? str_replace('../', '', $v['visit_photo']) : '';
+            $p_photo = !empty($v['photo_path'] ?? '') ? str_replace('../', '', $v['photo_path']) : '';
+            
+            $v['visit_photo'] = $v_photo ? BASE_URL . $v_photo : null;
+            $v['photo_path'] = $p_photo ? BASE_URL . $p_photo : null;
+            $v['photo_url'] = $v['visit_photo'] ?: $v['photo_path'];
+        }
+    }
     $where = "WHERE (DATE(v.created_at) = CURDATE() 
                OR v.status = 'checked_in' 
                OR v.approval_status = 'pending'
@@ -51,6 +61,7 @@ try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $visits = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    standardize_list($visits);
 
     // Also get stats
     $active_visitors = (int) $pdo->query("SELECT count(*) FROM visits WHERE status = 'checked_in'")->fetchColumn();
@@ -111,6 +122,8 @@ try {
     $sql_scheduled .= " ORDER BY v.created_at DESC";
     $stmt_scheduled = $pdo->query($sql_scheduled);
     $scheduled_list = $stmt_scheduled ? $stmt_scheduled->fetchAll(PDO::FETCH_ASSOC) : [];
+    standardize_list($scheduled_list);
+
     $scheduled_today_count = count($scheduled_list);
 
     // 4. Fast Service Rate (Checked in within 30 mins)
@@ -155,6 +168,7 @@ try {
     if ($limit_employee_id)
         $overstays_sql .= " AND v.employee_id = " . $pdo->quote($limit_employee_id);
     $overstay_list = $pdo->query($overstays_sql)->fetchAll(PDO::FETCH_ASSOC);
+    standardize_list($overstay_list);
     $overstays_count = count($overstay_list);
 
     // Peak Congestion & Best Slot (Last 30 Days)

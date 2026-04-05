@@ -9,7 +9,10 @@ if (empty($query)) {
 
 try {
     // Search by mobile or visit code
-    $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.email, vis.address, vis.id_proof_type, vis.id_proof_number, emp.name as host_name, emp.department as host_dept, emp.id as host_id, v.visit_date
+    $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.email, vis.address, 
+                   COALESCE(NULLIF(v.id_proof_type, ''), vis.id_proof_type) as id_proof_type,
+                   COALESCE(NULLIF(v.id_proof_number, ''), vis.id_proof_number) as id_proof_number,
+                   emp.name as host_name, emp.department as host_dept, emp.id as host_id, v.visit_date
             FROM visits v 
             JOIN visitors vis ON v.visitor_id = vis.id 
             JOIN employees emp ON v.employee_id = emp.id 
