@@ -22,10 +22,9 @@ try {
     $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($visit) {
-        // Full URLs for assets using BASE_URL
-        // Strictly use the photo taken DURING this specific visit. Do NOT fall back to profile photo.
-        $final_photo = $visit['visit_photo'];
-        $visit['photo_url'] = $final_photo ? BASE_URL . $final_photo : BASE_URL . 'assets/img/visitor-icon.png';
+        // Fallback to visitor profile photo if this specific visit photo is missing
+        $final_photo = !empty($visit['visit_photo']) ? $visit['visit_photo'] : (!empty($visit['photo_path']) ? $visit['photo_path'] : '');
+        $visit['photo_url'] = $final_photo ? BASE_URL . $final_photo : null;
         $visit['qr_url'] = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
 
         sendResponse('success', 'Visit details found', $visit);
