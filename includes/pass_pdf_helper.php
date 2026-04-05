@@ -1,133 +1,139 @@
 <?php
+require_once __DIR__ . '/fpdf.php';
+
 /**
- * VMS - Pass PDF Lookup Helper
- * Strictly looks for existing PDF files in uploads/passes/
- * Returns the public URL if found, or null if missing.
+ * Premium Visitor Pass PDF Helper
+ * Generates a high-quality, branded visitor pass matching the digital template.
  */
 
-function generatePassPdf($visit_id, $pdo)
-{
-    $pdfFileRelative = "uploads/passes/Pass_" . $visit_id . ".pdf";
-    $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
+function log_pass_msg($msg) {
+    $log_file = __DIR__ . '/pass_pdf.log';
+    $timestamp = date('[Y-m-d H:i:s] ');
+    @file_put_contents($log_file, $timestamp . $msg . "\n", FILE_APPEND);
+}
 
-    // Check if it already exists
-    if (file_exists($pdfAbsPath)) {
-        return BASE_URL . $pdfFileRelative;
-    }
-
+function generateVisitPass($visit) {
     try {
-        require_once __DIR__ . '/fpdf.php';
+        $visit_id = $visit['visit_id'] ?? $visit['id'];
+        $pdfFileRelative = "uploads/passes/Pass_" . $visit_id . ".pdf";
+        $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
 
-        // Fetch All Details
-        $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.mobile as visitor_mobile, vis.photo_path, emp.name as host_name, emp.department, emp.mobile as host_mobile 
-                               FROM visits v 
-                               JOIN visitors vis ON v.visitor_id = vis.id 
-                               JOIN employees emp ON v.employee_id = emp.id 
-                               WHERE v.id = ?");
-        $stmt->execute([$visit_id]);
-        $visit = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Ensure directory exists to prevent "not getting generated" errors
+        $pdfDir = dirname($pdfAbsPath);
+        if (!is_dir($pdfDir)) {
+            @mkdir($pdfDir, 0777, true);
+        }
 
-        if (!$visit)
-            return null;
+        log_pass_msg("Generating Premium Pass for Visit ID: " . $visit_id);
 
-        // Fetch Company Name from settings
-        $compStmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'company_name'");
-        $company_name = $compStmt ? $compStmt->fetchColumn() : 'VISITPILOT';
-
-        $pdf = new FPDF('P', 'mm', array(100, 150)); // ID Card Size
+        // 1. Initialize PDF (100x150mm tailored card size)
+        $pdf = new FPDF('P', 'mm', array(100, 150));
+        $pdf->SetAutoPageBreak(false, 0);
         $pdf->AddPage();
-        $pdf->SetAutoPageBreak(false);
-
-        // Header Background (#1161ee)
-        $pdf->SetFillColor(17, 97, 238);
-        $pdf->Rect(0, 0, 100, 45, 'F');
-
-        // Company Name (Header)
-        $pdf->SetTextColor(255, 255, 255);
-        $pdf->SetFont('Arial', 'B', 7);
-        $pdf->SetY(15);
-        $pdf->Cell(80, 5, strtoupper($company_name), 0, 1, 'C');
-
-        // Pass Type
-        $pdf->SetFont('Arial', 'B', 18);
-        $pdf->Cell(80, 10, 'VISITOR PASS', 0, 1, 'C');
-
-        // Photo Positioning
-        $photoPath = !empty($visit['visit_photo']) ? __DIR__ . '/../' . $visit['visit_photo'] : __DIR__ . '/../assets/img/visitor-icon.png';
-        if (file_exists($photoPath)) {
-            // White border for photo container
-            $pdf->SetFillColor(255, 255, 255);
-            $pdf->RoundedRect(32, 35, 36, 36, 5, '34', 'F');
-            $pdf->Image($photoPath, 33, 36, 34, 34);
-        }
-
-        // Visitor Name
-        $pdf->SetY(75);
-        $pdf->SetTextColor(0, 0, 0);
-        $pdf->SetFont('Arial', 'B', 14);
-        $pdf->Cell(80, 8, strtoupper($visit['visitor_name']), 0, 1, 'C');
-
-        // Visitor Code
-        $pdf->SetTextColor(17, 97, 238);
-        $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(80, 5, $visit['visit_code'], 0, 1, 'C');
-
-        // Details Grid Background (#f8f9fa)
-        $pdf->SetFillColor(248, 249, 250);
-        $pdf->RoundedRect(10, 95, 80, 25, 3, '1234', 'F');
-
-        // Grid Content
-        $pdf->SetY(97);
-        $pdf->SetX(12);
         
-        // Row 1
-        $pdf->SetTextColor(173, 181, 189);
-        $pdf->SetFont('Arial', 'B', 6);
-        $pdf->Cell(38, 4, 'VISITING:', 0, 0);
-        $pdf->Cell(38, 4, 'PURPOSE:', 0, 1);
+        // Colors
+        $brandBlue = array(17, 97, 238); // #1161ee
+        $darkGrey = array(51, 51, 51);
+        $lightGrey = array(173, 181, 189);
+        $borderGrey = array(240, 240, 240);
 
-        $pdf->SetX(12);
-        $pdf->SetTextColor(51, 51, 51);
+        // 2. Main Card Border with rounded corners
+        $pdf->SetDrawColor(220, 220, 220);
+        $pdf->RoundedRect(5, 5, 90, 140, 10, 'D');
+
+        // 3. Header Section (Blue Banner)
+        $pdf->SetFillColor($brandBlue[0], $brandBlue[1], $brandBlue[2]);
+        $pdf->RoundedRect(5, 5, 90, 35, 10, 'F', '12'); // Only top corners
+        
+        // Company Branding
+        $pdf->SetTextColor(255, 255, 255);
+        $pdf->SetY(12);
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->Cell(38, 4, substr($visit['host_name'], 0, 20), 0, 0);
-        $pdf->Cell(38, 4, substr($visit['purpose'], 0, 20), 0, 1);
+        $company = strtoupper($GLOBALS['company_settings']['name'] ?? 'VisitPilot VMS');
+        $pdf->Cell(90, 5, $company, 0, 1, 'C');
+        
+        $pdf->SetFont('Arial', 'B', 22);
+        $pdf->Cell(90, 15, 'VISITOR PASS', 0, 1, 'C');
 
-        $pdf->Ln(2);
-        $pdf->SetX(12);
-
-        // Row 2
-        $pdf->SetTextColor(173, 181, 189);
-        $pdf->SetFont('Arial', 'B', 6);
-        $pdf->Cell(38, 4, 'ACCESS AREA:', 0, 0);
-        $pdf->Cell(38, 4, 'DATE:', 0, 1);
-
-        $pdf->SetX(12);
-        $pdf->SetTextColor(51, 51, 51);
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->Cell(38, 4, substr($visit['access_area'] ?: 'General', 0, 20), 0, 0);
-        $pdf->SetTextColor(17, 97, 238);
-        $pdf->Cell(38, 4, date('d M Y', strtotime($visit['created_at'])), 0, 1);
-
-        // QR Code
-        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . $visit['visit_code'];
-        try {
-            $pdf->Image($qrUrl, 40, 122, 20, 20, 'PNG');
-        } catch (Exception $e) {
-            // Skip if error
+        // 4. Photo Container (Rounded White Box)
+        $photoY = 32;
+        $pdf->SetFillColor(255, 255, 255);
+        $pdf->RoundedRect(30, $photoY, 40, 40, 8, 'F');
+        
+        // Load Photo
+        $photoPath = '';
+        if (!empty($visit['visit_photo'])) {
+            $photoPath = __DIR__ . '/../' . $visit['visit_photo'];
+        } elseif (!empty($visit['photo_path'])) {
+             $photoPath = __DIR__ . '/../' . $visit['photo_path'];
         }
 
-        // Footer
-        $pdf->SetY(144);
-        $pdf->SetFont('Arial', 'B', 6);
+        if (!empty($photoPath) && file_exists($photoPath)) {
+            // Rounded image effect (using a white mask or just placement)
+            $pdf->Image($photoPath, 31, $photoY + 1, 38, 38);
+        } else {
+            // Placeholder Icon
+            $pdf->SetXY(30, $photoY + 12);
+            $pdf->SetTextColor(240, 240, 240);
+            $pdf->SetFont('Arial', 'B', 30);
+            $pdf->Cell(40, 15, '?', 0, 0, 'C');
+        }
+
+        // 5. Visitor Name and ID
+        $pdf->SetXY(5, 75);
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetFont('Arial', 'B', 18);
+        $pdf->Cell(90, 10, strtoupper($visit['visitor_name']), 0, 1, 'C');
+        
+        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetTextColor(120, 120, 120);
+        $pdf->Cell(90, 5, 'Visit Code: ' . ($visit['visit_code'] ?? 'PENDING'), 0, 1, 'C');
+
+        // 6. Detailed Information Grid
+        $detailY = 95;
+        $drawDetail = function($pdf, $label, $value, $y) use ($lightGrey, $darkGrey) {
+            $pdf->SetXY(15, $y);
+            $pdf->SetFont('Arial', 'B', 7);
+            $pdf->SetTextColor($lightGrey[0], $lightGrey[1], $lightGrey[2]);
+            $pdf->Cell(35, 5, strtoupper($label), 0, 0, 'L');
+            
+            $pdf->SetFont('Arial', 'B', 9);
+            $pdf->SetTextColor($darkGrey[0], $darkGrey[1], $darkGrey[2]);
+            $pdf->Cell(35, 5, $value, 0, 1, 'R');
+            
+            $pdf->SetDrawColor(245, 245, 245);
+            $pdf->Line(15, $y + 6, 85, $y + 6);
+        };
+
+        $drawDetail($pdf, 'Meeting With', $visit['host_name'] ?? 'N/A', $detailY);
+        $drawDetail($pdf, 'Department', $visit['department'] ?? 'General', $detailY + 8);
+        
+        $visitDate = !empty($visit['created_at']) ? date('d M Y', strtotime($visit['created_at'])) : date('d M Y');
+        $visitTime = !empty($visit['created_at']) ? date('h:i A', strtotime($visit['created_at'])) : date('H:i');
+        
+        $drawDetail($pdf, 'Date', $visitDate, $detailY + 16);
+        $drawDetail($pdf, 'Time', $visitTime, $detailY + 24);
+
+        // 7. Dynamic QR Code & Powered By
+        $qrData = $visit['visit_code'] ?? $visit_id;
+        $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qrData);
+        
+        // Add QR using local path caching (optional) or direct URL
+        $pdf->Image($qrUrl, 15, 122, 18, 18, 'PNG');
+        
+        $pdf->SetXY(35, 128);
+        $pdf->SetFont('Arial', 'B', 7);
         $pdf->SetTextColor(200, 200, 200);
-        $pdf->Cell(80, 5, strtoupper($company_name), 0, 1, 'C');
+        $pdf->Cell(50, 5, 'POWERED BY VISITPILOT VMS', 0, 0, 'C');
 
+        // Output and Save
         $pdf->Output('F', $pdfAbsPath);
-
-        return BASE_URL . $pdfFileRelative;
+        
+        log_pass_msg("SUCCESS: Pass generated at " . $pdfFileRelative);
+        return $pdfFileRelative;
 
     } catch (Exception $e) {
-        error_log("PDF Generation failed: " . $e->getMessage());
-        return null;
+        log_pass_msg("CRITICAL ERROR: " . $e->getMessage());
+        return false;
     }
 }
