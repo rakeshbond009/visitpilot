@@ -16,24 +16,23 @@ foreach ($required as $field) {
     }
 }
 
-try {
-    $pdo->beginTransaction();
-
-    // 1. Handle Photo Save if provided
+    // 1. Handle Photo Save if provided (Moved OUTSIDE transaction for speed)
     $photo_path = '';
     if (!empty($data['photo_data'])) {
         $photo_data = explode(',', $data['photo_data']);
         if (isset($photo_data[1])) {
             $content = base64_decode($photo_data[1]);
             $filename = 'uploads/photos/' . uniqid() . '.jpg';
-            // Path relative to root (from api/visitor/ we go up twice)
-            if (!is_dir('../../uploads/photos/')) {
-                mkdir('../../uploads/photos/', 0777, true);
+            $pAbs = '../../uploads/photos/';
+            if (!is_dir($pAbs)) {
+                mkdir($pAbs, 0777, true);
             }
             file_put_contents('../../' . $filename, $content);
             $photo_path = $filename;
         }
     }
+
+    $pdo->beginTransaction();
 
     // 2. Check if visitor exists
     $stmt = $pdo->prepare("SELECT id, id_proof_type, id_proof_number FROM visitors WHERE mobile = ?");
@@ -45,13 +44,10 @@ try {
 
     if ($visitor) {
         $visitor_id = $visitor['id'];
-
-        // PRESERVE ID PROOF: If existing visitor has ID proof and new request is empty, keep the old one
         if (empty($id_proof_type) && !empty($visitor['id_proof_type'])) {
             $id_proof_type = $visitor['id_proof_type'];
             $id_proof_number = $visitor['id_proof_number'];
         }
-        // Update details including photo if changed
         $sql = "UPDATE visitors SET name=?, email=?, address=?, id_proof_type=?, id_proof_number=?";
         $params = [
             $data['name'],
@@ -60,27 +56,17 @@ try {
             $id_proof_type,
             $id_proof_number
         ];
-
         if ($photo_path) {
             $sql .= ", photo_path=?";
             $params[] = $photo_path;
         }
         $sql .= " WHERE id=?";
         $params[] = $visitor_id;
-
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
     } else {
         $stmt = $pdo->prepare("INSERT INTO visitors (name, mobile, email, address, id_proof_type, id_proof_number, photo_path) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $data['name'],
-            $data['mobile'],
-            $data['email'] ?? '',
-            $data['address'] ?? '',
-            $id_proof_type,
-            $id_proof_number,
-            $photo_path
-        ]);
+        $stmt->execute([$data['name'], $data['mobile'], $data['email'] ?? '', $data['address'] ?? '', $id_proof_type, $id_proof_number, $photo_path]);
         $visitor_id = $pdo->lastInsertId();
     }
 
@@ -91,146 +77,74 @@ try {
     $access_area = $data['access_area'] ?? 'Not Assigned';
     $assets = $data['assets_carried'] ?? 'None';
     $members = $data['members'] ?? [];
-    if (!is_array($members))
-        $members = [];
     $total_visitors = 1 + count($members);
 
     if ($invitation_id) {
         $visit_id = $invitation_id;
-        // Fetch visit code
-        $vStmt = $pdo->prepare("SELECT visit_code FROM visits WHERE id = ?");
-        $vStmt->execute([$visit_id]);
-        $visit_code = $vStmt->fetchColumn();
-
-        // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
-        // matching the web flow for invitations as requested.
-        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
-        $stmt->execute([
-            $assets,
-            $id_proof_type,
-            $id_proof_number,
-            $access_area,
-            $photo_path,
-            $total_visitors,
-            $current_time,
-            $user_id,
-            $visit_id
-        ]);
+        $stmt = $pdo->prepare("SELECT visit_code FROM visits WHERE id = ?");
+        $stmt->execute([$visit_id]);
+        $visit_code = $stmt->fetchColumn();
+        $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='approved', visitor_id=?, visit_photo=?, purpose=?, check_in_time=?, id_proof_type=?, id_proof_number=?, access_area=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
+        $stmt->execute([$visitor_id, $photo_path, $data['purpose'], $current_time, $id_proof_type, $id_proof_number, $access_area, $total_visitors, $current_time, $user_id, $visit_id]);
     } else {
-        // Create New Visit with pending status (requires host approval)
         $visit_code = generateVisitCode();
         $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
-
-        $stmt->execute([
-            $visitor_id,
-            $photo_path,
-            $data['employee_id'],
-            $data['purpose'],
-            $visit_code,
-            $access_area,
-            $assets,
-            $id_proof_type,
-            $id_proof_number,
-            $total_visitors,
-            $current_time,
-            $user_id
-        ]);
+        $stmt->execute([$visitor_id, $photo_path, $data['employee_id'], $data['purpose'], $visit_code, $access_area, $assets, $id_proof_type, $id_proof_number, $total_visitors, $current_time, $user_id]);
         $visit_id = $pdo->lastInsertId();
     }
 
-    // 4. Handle Accompanying Members
     if (!empty($members)) {
-        // Clear existing members if any (for invited visits)
         $pdo->prepare("DELETE FROM visit_members WHERE visit_id = ?")->execute([$visit_id]);
-
         $stmtMem = $pdo->prepare("INSERT INTO visit_members (visit_id, name) VALUES (?, ?)");
         foreach ($members as $memName) {
-            if (!empty(trim($memName))) {
-                $stmtMem->execute([$visit_id, trim($memName)]);
-            }
+            if (!empty(trim($memName))) $stmtMem->execute([$visit_id, trim($memName)]);
         }
     }
 
-    // COMMIT EARLY: Save DB state before long external calls (QR, Notifications)
     $pdo->commit();
 
-    // Send FAST response to Android first
-    sendAsyncResponse('success', 'Visitor registered successfully', [
+    // INSTANT RESPONSE TO ANDROID APP
+    sendAsyncResponse('success', 'Visitor registered', [
         'visit_id' => $visit_id,
         'visit_code' => $visit_code,
-        'qr_code_url' => null,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
+        'status' => $invitation_id ? 'approved' : 'pending'
     ]);
 
-    // Continue heavy processing in background
-    // Generate and Save QR Code if not exists
-    $qr_code_path = '';
+    // BACKGROUND PROCESSING (Android won't see this)
     if ($visit_code) {
         $qr_api_url = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit_code);
-
         $ch = curl_init($qr_api_url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_SSL_VERIFYPEER => false, CURLOPT_TIMEOUT => 2]);
         $qr_image = curl_exec($ch);
         curl_close($ch);
-
         if ($qr_image) {
             $qr_filename = 'uploads/qrcodes/' . $visit_code . '.png';
-            if (!is_dir('../../uploads/qrcodes/')) {
-                mkdir('../../uploads/qrcodes/', 0777, true);
-            }
+            if (!is_dir('../../uploads/qrcodes/')) mkdir('../../uploads/qrcodes/', 0777, true);
             file_put_contents('../../' . $qr_filename, $qr_image);
-            $qr_code_path = $qr_filename;
-            $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_code_path, $visit_id]);
+            $pdo->prepare("UPDATE visits SET qr_code_path = ? WHERE id = ?")->execute([$qr_filename, $visit_id]);
         }
     }
 
-    // GENERATE PDF PASS IMMEDIATELY (Will use local QR just saved above for speed)
-    require_once dirname(__DIR__, 2) . '/includes/pass_pdf_helper.php';
-    $pdfUrl = generatePassPdf($visit_id, $pdo);
+    require_once '../../includes/pass_pdf_helper.php';
+    generatePassPdf($visit_id, $pdo);
 
-    // 5. SEND PUSH NOTIFICATION & WHATSAPP
     try {
-        require_once dirname(__DIR__, 2) . '/includes/push_helper.php';
+        require_once '../../includes/push_helper.php';
+        require_once '../../includes/whatsapp_helper.php';
 
-        $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?");
-        $stmt->execute([$visitor_id]);
+        $stmt = $pdo->prepare("SELECT * FROM visitors WHERE id = ?"); $stmt->execute([$visitor_id]);
         $visitor = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        $pushData = [
-            'visitor_id' => (string) $visitor_id,
-            'visit_id' => (string) $visit_id,
-            'visitor_name' => (string) $visitor['name'],
-            'visitor_mobile' => (string) $visitor['mobile'],
-            'purpose' => (string) $data['purpose'],
-            'company' => (string) ($visitor['address'] ?? ($visitor['company'] ?? 'General Visitor')),
-            'photo_url' => $photo_path ? BASE_URL . $photo_path : '',
-            'type' => 'visitor_arrival',
-            'assets_carried' => (string) ($data['assets_carried'] ?? 'None')
-        ];
-
-        sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$visitor['name']} is waiting for your approval.", $pushData);
-
-        // WhatsApp Automation
-        require_once '../../includes/whatsapp_helper.php';
-        $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
-        $hStmt->execute([$data['employee_id']]);
+        $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?"); $hStmt->execute([$data['employee_id']]);
         $host = $hStmt->fetch(PDO::FETCH_ASSOC);
+
+        $pushData = ['visit_id' => (string) $visit_id, 'visitor_name' => $visitor['name'], 'type' => 'visitor_arrival'];
+        sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$visitor['name']} has arrived.", $pushData);
+
         if ($host && !empty($host['mobile'])) {
-            sendWhatsAppNotification(
-                $host['mobile'],
-                "Visitor {$visitor['name']} has arrived to meet you.",
-                'visitor_arrival_host_alert',
-                ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]
-            );
+            sendWhatsAppNotification($host['mobile'], "Visitor arrived.", 'visitor_arrival_host_alert', ["*{$host['name']}*", "*{$visitor['name']}*", "*{$data['purpose']}*"]);
         }
-    } catch (Exception $e) {
-        error_log("Notification System Error: " . $e->getMessage());
-    }
+    } catch (Exception $e) { }
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
