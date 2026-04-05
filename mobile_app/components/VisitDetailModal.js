@@ -142,7 +142,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                 <View style={styles.timelineItem}>
                                     <View style={[styles.timelineDot, { backgroundColor: '#3b82f6' }]} />
                                     <View>
-                                        <Text style={styles.timelineTitle}>Registered</Text>
+                                        <Text style={styles.timelineTitle}>Registered{visit.created_by_name ? ` by ${visit.created_by_name}` : ''}</Text>
                                         <Text style={styles.timelineDate}>{formatDate(visit.created_at)}</Text>
                                     </View>
                                 </View>

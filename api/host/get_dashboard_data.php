@@ -19,10 +19,11 @@ if (!$host_employee_id) {
 }
 
 // Pending Visitors List
-$sql_pending = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department
+$sql_pending = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department, u.full_name as created_by_name
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
+                LEFT JOIN users u ON v.created_by = u.id
                 WHERE v.employee_id = ? AND v.approval_status = 'pending'
                 ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_pending);
@@ -30,10 +31,11 @@ $stmt->execute([$host_employee_id]);
 $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Today's Walk-in Visitors
-$sql_today = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department
+$sql_today = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department, u.full_name as created_by_name
               FROM visits v 
               JOIN visitors vis ON v.visitor_id = vis.id 
               LEFT JOIN employees e ON v.employee_id = e.id
+              LEFT JOIN users u ON v.created_by = u.id
               WHERE v.employee_id = ? AND DATE(v.created_at) = CURDATE() AND v.is_invited = 0
               ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_today);
@@ -41,10 +43,11 @@ $stmt->execute([$host_employee_id]);
 $today_visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Active Invitations
-$sql_invites = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department
+$sql_invites = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department, u.full_name as created_by_name
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
+                LEFT JOIN users u ON v.created_by = u.id
                 WHERE v.employee_id = ? AND v.is_invited = 1 AND (v.status = 'pending' OR v.status = 'approved') AND v.visit_date >= CURDATE()
                 ORDER BY v.visit_date ASC";
 $stmt = $pdo->prepare($sql_invites);
@@ -75,10 +78,11 @@ $stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND sta
 $stmt->execute([$host_employee_id]);
 $rejected_count = (int) $stmt->fetchColumn();
 
-$sql_rejected = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department
+$sql_rejected = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department, u.full_name as created_by_name
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
+                LEFT JOIN users u ON v.created_by = u.id
                 WHERE v.employee_id = ? AND v.status IN ('rejected', 'cancelled')
                 ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_rejected);

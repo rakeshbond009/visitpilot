@@ -31,10 +31,11 @@ try {
         if (isset($photo_data[1])) {
             $content  = base64_decode($photo_data[1]);
             $filename = 'uploads/photos/' . uniqid() . '.jpg';
-            if (!is_dir('../../uploads/photos/')) {
-                mkdir('../../uploads/photos/', 0777, true);
+            $targetDir = dirname(__DIR__, 2) . '/uploads/photos/';
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0777, true);
             }
-            file_put_contents('../../' . $filename, $content);
+            file_put_contents(dirname(__DIR__, 2) . '/' . $filename, $content);
             $photo_path = $filename;
         }
     }
