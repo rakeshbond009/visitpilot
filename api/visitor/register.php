@@ -144,10 +144,7 @@ try {
     // ✅ COMMIT DB — data is safe before dispatching
     $pdo->commit();
 
-    // ⚡ STEP 1: Dispatch background job FIRST (before responding)
-    //    dispatchBackgroundTask writes a job file & fires a non-blocking cURL
-    //    to background_worker.php — client does NOT wait for any of this
-    dispatchBackgroundTask('register_visitor', [
+    $bgPayload = [
         'visit_id'       => $visit_id,
         'visitor_id'     => $visitor_id,
         'visit_code'     => $visit_code,
@@ -159,15 +156,21 @@ try {
         'visitor_address'=> $visitorRow['address'] ?? '',
         'assets'         => $assets,
         'sync_dahua'     => $needsDahuaSync,
-    ]);
+    ];
 
-    // ⚡ STEP 2: Respond instantly — sendInstantResponse calls exit() after sending
+    // ⚡ STEP 1: Apache/LSAPI — write job file + fire cURL (no-op on Hostinger FastCGI)
+    dispatchBackgroundTask('register_visitor', $bgPayload);
+
+    // ⚡ STEP 2: Respond — exits on Apache, RETURNS on Hostinger FastCGI
     sendInstantResponse('success', 'Visitor registered successfully', [
         'visit_id'        => $visit_id,
         'visit_code'      => $visit_code,
         'status'          => $invitation_id ? 'approved' : 'pending',
         'approval_status' => $invitation_id ? 'approved' : 'pending'
     ]);
+
+    // ⚡ STEP 3: Hostinger FastCGI only — runs inline after client disconnected
+    runJobInline('register_visitor', $bgPayload, $pdo);
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {

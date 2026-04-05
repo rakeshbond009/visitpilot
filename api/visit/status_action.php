@@ -26,11 +26,13 @@ try {
         $stmt->execute([$user_id, $id]);
         logAction($pdo, $_SESSION['user_id'] ?? 0, "Approved visit ID: $id status_action");
 
-        // ⚡ STEP 1: Dispatch background job FIRST — then respond
-        dispatchBackgroundTask('approve_visit', ['visit_id' => $id]);
-
-        // ⚡ STEP 2: Instant response (calls exit internally)
+        $bgPayload = ['visit_id' => $id];
+        // ⚡ STEP 1: Apache/LSAPI path
+        dispatchBackgroundTask('approve_visit', $bgPayload);
+        // ⚡ STEP 2: Respond (exits on Apache, returns on FastCGI)
         sendInstantResponse('success', 'Visit Approved', ['visit_id' => $id]);
+        // ⚡ STEP 3: Hostinger FastCGI inline path
+        runJobInline('approve_visit', $bgPayload, $pdo);
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
@@ -48,30 +50,34 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $reason, $id]);
 
-        // ⚡ STEP 1: Dispatch background job FIRST — then respond
-        dispatchBackgroundTask('cancel_invite', [
+        $bgPayload = [
             'visit_id'       => $id,
             'visitor_name'   => $visitor_info['name']      ?? '',
             'visitor_mobile' => $visitor_info['mobile']    ?? '',
             'host_name'      => $visitor_info['host_name'] ?? 'your host',
-        ]);
-
-        // ⚡ STEP 2: Instant response (calls exit internally)
+        ];
+        // ⚡ STEP 1: Apache/LSAPI path
+        dispatchBackgroundTask('cancel_invite', $bgPayload);
+        // ⚡ STEP 2: Respond
         sendInstantResponse('success', 'Invitation has been cancelled and visitor notified.');
+        // ⚡ STEP 3: Hostinger FastCGI inline path
+        runJobInline('cancel_invite', $bgPayload, $pdo);
 
     } elseif ($action === 'reject') {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
 
-        // ⚡ STEP 1: Dispatch background job FIRST — then respond
-        dispatchBackgroundTask('reject_visit', [
+        $bgPayload = [
             'visit_id' => $id,
             'reason'   => $reason,
-        ]);
-
-        // ⚡ STEP 2: Instant response (calls exit internally)
+        ];
+        // ⚡ STEP 1: Apache/LSAPI path
+        dispatchBackgroundTask('reject_visit', $bgPayload);
+        // ⚡ STEP 2: Respond
         sendInstantResponse('success', 'Visit Rejected');
+        // ⚡ STEP 3: Hostinger FastCGI inline path
+        runJobInline('reject_visit', $bgPayload, $pdo);
 
     } elseif ($action === 'checkin') {
         // Check if visit is approved
