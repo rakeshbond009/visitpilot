@@ -578,10 +578,10 @@ export default function HostDashboard({ navigation }) {
 
                 <TouchableOpacity
                     style={[styles.statCard, { backgroundColor: '#fee2e2' }]} // similar to statPurple but red/pink for rejected
-                    onPress={() => showDataModal('Rejected/Cancelled', 'rejected')}
+                    onPress={() => showDataModal('Rejected Visits/Invites', 'rejected')}
                 >
                     <Text style={[styles.statValue, { color: '#ef4444' }]}>{stats.rejected || 0}</Text>
-                    <Text style={[styles.statLabel, { color: '#ef4444' }]}>Rejected/Cancelled</Text>
+                    <Text style={[styles.statLabel, { color: '#ef4444' }]}>Rejected Visits/Invites</Text>
                 </TouchableOpacity>
             </View>
 
