@@ -237,21 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    // Handle Dahua Settings Save
-    if (isset($_POST['save_dahua'])) {
-        $settings = [
-            'dahua_app_id' => $_POST['dahua_app_id'],
-            'dahua_app_secret' => $_POST['dahua_app_secret'],
-            'dahua_device_sns' => $_POST['dahua_device_sns']
-        ];
 
-        $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
-        foreach ($settings as $key => $val) {
-            $stmt->execute([$key, $val]);
-        }
-        logAction($pdo, $_SESSION['user_id'], "Updated Dahua API Configuration");
-        $msg = "Dahua API configuration saved!";
-    }
 
     // Handle WhatsApp Settings Save
     if (isset($_POST['save_whatsapp'])) {
@@ -430,9 +416,7 @@ $email_defaults = [
     'tenant_mobile' => '',
     'tenant_email' => '',
     'tenant_gst' => '',
-    'dahua_app_id' => '',
-    'dahua_app_secret' => '',
-    'dahua_device_sns' => '',
+
     'whatsapp_access_token' => '',
     'whatsapp_phone_number_id' => '',
     'whatsapp_waba_id' => '',
@@ -476,7 +460,7 @@ $tabs = [
     'settings_departments' => ['id' => 'departments', 'title' => 'Departments', 'icon' => 'bi-building'],
     'settings_access' => ['id' => 'access_areas', 'title' => 'Access Area', 'icon' => 'bi-geo-alt'],
     'settings_email' => ['id' => 'email', 'title' => 'Email Config', 'icon' => 'bi-envelope-gear'],
-    'settings_dahua' => ['id' => 'dahua', 'title' => 'Dahua Integration', 'icon' => 'bi-shield-lock'],
+
     'settings_whatsapp' => ['id' => 'whatsapp', 'title' => 'WhatsApp Config', 'icon' => 'bi-whatsapp'],
     'settings_ai' => ['id' => 'ai', 'title' => 'AI Integration', 'icon' => 'bi-robot'],
     'settings_registration' => ['id' => 'registration', 'title' => 'Visitor Form Config', 'icon' => 'bi-ui-checks'],
@@ -1248,91 +1232,7 @@ $active_tab_id = false;
         <?php
     endif; ?>
 
-    <!-- Tab: Dahua (SUPER ADMIN ONLY) -->
-    <?php if (canView('settings_dahua')): ?>
-        <div class="tab-pane fade <?php echo ($active_tab_id === 'dahua') ? 'show active' : ''; ?>" id="dahua"
-            role="tabpanel">
-            <div class="row g-4">
-                <div class="col-lg-6">
-                    <div class="card shadow-sm rounded-4 border-0 hover-shadow transition-all">
-                        <div class="card-header bg-dark text-white py-3 border-0 rounded-top-4">
-                            <h5 class="mb-0 fw-bold"><i class="bi bi-shield-lock me-2"></i>Dahua Cloud Integration</h5>
-                        </div>
-                        <div class="card-body p-4">
-                            <div class="p-3 mb-4 rounded-4 bg-light border-start border-4 border-primary">
-                                <p class="text-muted small mb-0">Synchronize visitor biometrics and QR access tokens
-                                    directly to your Dahua DoLynk hardware endpoints via secure API.</p>
-                            </div>
-                            <form method="POST">
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold small text-uppercase text-muted">Cloud App Identifier
-                                        (Client ID)</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light border-0"><i
-                                                class="bi bi-fingerprint text-dark"></i></span>
-                                        <input type="text" name="dahua_app_id"
-                                            class="form-control border-0 bg-light py-2 rounded-end"
-                                            value="<?php echo htmlspecialchars($config['dahua_app_id']); ?>"
-                                            placeholder="Open Platform App ID">
-                                    </div>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold small text-uppercase text-muted">App Secret Key</label>
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-light border-0"><i
-                                                class="bi bi-key text-dark"></i></span>
-                                        <input type="password" name="dahua_app_secret"
-                                            class="form-control border-0 bg-light py-2 rounded-end"
-                                            value="<?php echo htmlspecialchars($config['dahua_app_secret']); ?>"
-                                            placeholder="Enter App Secret">
-                                    </div>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="form-label fw-bold small text-uppercase text-muted">Device Serial Numbers
-                                        (SN)</label>
-                                    <textarea name="dahua_device_sns"
-                                        class="form-control border-0 bg-light rounded-4 px-3 py-3" rows="3"
-                                        placeholder="Enter comma-separated Serial Numbers..."><?php echo htmlspecialchars($config['dahua_device_sns']); ?></textarea>
-                                    <small class="text-info mt-2 d-block"><i class="bi bi-info-circle me-1"></i> Data will
-                                        be synced only to the devices listed above.</small>
-                                </div>
-                                <div class="d-grid gap-2">
-                                    <button type="submit" name="save_dahua"
-                                        class="btn btn-dark fw-bold py-3 rounded-pill shadow-sm">
-                                        <i class="bi bi-hdd-network me-2"></i> Save Interface Configuration
-                                    </button>
-                                    <a href="../test_dahua.php" target="_blank"
-                                        class="btn btn-outline-primary fw-bold py-3 rounded-pill">
-                                        <i class="bi bi-cpu-fill me-2"></i> Launch Logic Diagnostic
-                                    </a>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-5">
-                    <div
-                        class="card border-0 rounded-4 bg-info bg-opacity-10 p-5 h-100 d-flex flex-column justify-content-center">
-                        <i class="bi bi-hdd-rack display-2 text-info opacity-25 mb-4"></i>
-                        <h4 class="fw-bold">Hardware Sync</h4>
-                        <p class="text-muted mb-4">Integrate with the physical world. Your visitor's face and QR code will
-                            be pushed to access control hardware for frictionless entry.</p>
-                        <div class="bg-white p-4 rounded-4 shadow-sm">
-                            <h6 class="fw-bold small text-uppercase mb-3">Integration Checklist</h6>
-                            <ul class="list-unstyled small mb-0">
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Register at
-                                    DoLynk Portal</li>
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Create Cloud
-                                    Project</li>
-                                <li><i class="bi bi-check-circle-fill text-success me-2"></i> Whitelist Application ID</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php
-    endif; ?>
+
 
     <!-- Tab WhatsApp Integration -->
     <?php if (canView('settings_whatsapp')): ?>

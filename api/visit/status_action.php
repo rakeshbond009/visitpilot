@@ -1,7 +1,6 @@
 <?php
-// api/visit/status_action.php - Dahua Enabled
+// api/visit/status_action.php
 require_once '../includes/api_header.php';
-require_once '../../includes/dahua_helper.php';
 
 $data = getPostData();
 
@@ -56,40 +55,7 @@ try {
             $responseData['visitor_mobile'] = $visit['mobile'];
         }
 
-        // --- DAHUA INTEGRATION (Sync on Approval) ---
-        try {
-            $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
-                $startTime = $visit['created_at'];
-                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
-
-                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns']);
-                $deviceSnsList = array_map('trim', $deviceSnsList);
-
-                $visitorData = [
-                    'visitor_id' => $visit['visitor_id'],
-                    'name' => $visit['visitor_name'],
-                    'face_path' => realpath('../../' . $visit['visit_photo']),
-                    'qr_code' => $visit['visit_code'],
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSnsList
-                ];
-
-                $syncResult = $dahua->syncVisitor($visitorData);
-
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
-                }
-            }
-        } catch (Exception $e) {
-            error_log("Dahua Integration Error: " . $e->getMessage());
-        }
         sendResponse('success', 'Visit Approved', $responseData);
 
     } elseif ($action === 'cancel') {

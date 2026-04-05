@@ -1,7 +1,6 @@
 <?php
 // api/visitor/register.php
 require_once '../includes/api_header.php';
-require_once '../../includes/dahua_helper.php';
 
 $data = getPostData();
 
@@ -152,7 +151,7 @@ try {
         }
     }
 
-    // COMMIT EARLY: Save DB state before long external calls (QR, Dahua, Notifications)
+    // COMMIT EARLY: Save DB state before long external calls (QR, Notifications)
     $pdo->commit();
 
     // Generate and Save QR Code if not exists
@@ -182,47 +181,7 @@ try {
         }
     }
 
-    // --- DAHUA INTEGRATION (Sync on Check-in/Entry) ---
-    try {
-        $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
 
-        // Safety Check: Only sync if visitor is approved AND either checked-in or manually approved
-        $checkStatusStmt = $pdo->prepare("SELECT status, approval_status FROM visits WHERE id = ?");
-        $checkStatusStmt->execute([$visit_id]);
-        $vStatus = $checkStatusStmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($vStatus && $vStatus['approval_status'] === 'approved' && in_array($vStatus['status'], ['checked_in', 'approved'])) {
-            if ($photo_path && !empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
-                $startTime = date('Y-m-d H:i:s');
-                $endTime = date('Y-m-d 23:59:59');
-
-                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns'] ?? '');
-                $deviceSnsList = array_map('trim', array_filter($deviceSnsList));
-
-                $visitorData = [
-                    'visitor_id' => $visitor_id,
-                    'name' => $data['name'],
-                    'face_path' => realpath('../../' . $photo_path),
-                    'qr_code' => $visit_code,
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSnsList
-                ];
-
-                $syncResult = $dahua->syncVisitor($visitorData);
-
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed (Register) for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success (Register/Entry) for Visit $visit_id");
-                }
-            }
-        }
-    } catch (Exception $e) {
-        error_log("Dahua Integration Error in Register: " . $e->getMessage());
-    }
 
     // 5. SEND PUSH NOTIFICATION & WHATSAPP
     try {

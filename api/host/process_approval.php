@@ -1,7 +1,6 @@
 <?php
 require_once '../../includes/db.php';
 require_once '../../includes/push_helper.php';
-require_once '../../includes/dahua_helper.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['host', 'employee', 'admin'])) {
@@ -57,53 +56,7 @@ if ($action == 'approve') {
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
-    // --- DAHUA INTEGRATION ---
-    try {
-        $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-
-        if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-            // Fetch full visit/visitor details for sync
-            $vStmt = $pdo->prepare("SELECT v.id as visitor_id, v.name, vs.visit_photo, vs.visit_code, vs.created_at 
-                                   FROM visitors v 
-                                   JOIN visits vs ON v.id = vs.visitor_id 
-                                   WHERE vs.id = ?");
-            $vStmt->execute([$visit_id]);
-            $v = $vStmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($v) {
-                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
-                $startTime = $v['created_at'];
-                // Set expiry to 12 hours after creation or end of day
-                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
-
-                $deviceSns = explode(',', $raw_settings['dahua_device_sns']);
-                $deviceSns = array_map('trim', $deviceSns);
-
-                $visitorData = [
-                    'visitor_id' => $v['visitor_id'],
-                    'name' => $v['name'],
-                    'face_path' => realpath('../../' . $v['visit_photo']),
-                    'qr_code' => $v['visit_code'],
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSns
-                ];
-
-                $syncResult = $dahua->syncVisitor($visitorData);
-
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed for Visit $visit_id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'], "Dahua Sync Success for Visit $visit_id");
-                }
-            }
-        }
-    } catch (Exception $e) {
-        error_log("Dahua Integration Error: " . $e->getMessage());
-    }
-
-    echo json_encode(['success' => true, 'message' => 'Visitor Approved and Synced to Security Terminals']);
+    echo json_encode(['success' => true, 'message' => 'Visitor Approved']);
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=NOW(), rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], $reason, $visit_id]);
