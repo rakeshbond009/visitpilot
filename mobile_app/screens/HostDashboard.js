@@ -510,20 +510,32 @@ export default function HostDashboard({ navigation }) {
 
                 {isPending && (
                     <View style={styles.cardActions}>
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.rejectButton]}
-                            onPress={(e) => { e.stopPropagation(); handleAction(item.id, 'reject', item.mobile, item.visitor_name); }}
-                        >
-                            <Icon name="close-circle-outline" size={20} color="#ef4444" style={{ marginRight: 6 }} />
-                            <Text style={[styles.actionButtonText, { color: '#ef4444' }]}>REJECT</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.approveButton]}
-                            onPress={(e) => { e.stopPropagation(); handleAction(item.id, 'approve', item.mobile, item.visitor_name); }}
-                        >
-                            <Icon name="check-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
-                            <Text style={[styles.actionButtonText, { color: '#fff' }]}>APPROVE</Text>
-                        </TouchableOpacity>
+                        {item.is_invited == 1 ? (
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.approveButton, { backgroundColor: '#10b981' }]}
+                                onPress={(e) => { e.stopPropagation(); handleAction(item.id, 'approve', item.mobile, item.visitor_name); }}
+                            >
+                                <Icon name="check-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+                                <Text style={[styles.actionButtonText, { color: '#fff' }]}>ACKNOWLEDGE ARRIVAL</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <>
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.rejectButton]}
+                                    onPress={(e) => { e.stopPropagation(); handleAction(item.id, 'reject', item.mobile, item.visitor_name); }}
+                                >
+                                    <Icon name="close-circle-outline" size={20} color="#ef4444" style={{ marginRight: 6 }} />
+                                    <Text style={[styles.actionButtonText, { color: '#ef4444' }]}>REJECT</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.approveButton]}
+                                    onPress={(e) => { e.stopPropagation(); handleAction(item.id, 'approve', item.mobile, item.visitor_name); }}
+                                >
+                                    <Icon name="check-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+                                    <Text style={[styles.actionButtonText, { color: '#fff' }]}>APPROVE</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 )}
             </TouchableOpacity>

@@ -94,7 +94,7 @@ function generatePassPdf($visit_id, $pdo)
         $potentialPaths = [
             !empty($visit['visit_photo']) ? $visit['visit_photo'] : '',
             !empty($visit['photo_path']) ? $visit['photo_path'] : '',
-            'uploads/visitors/dummy.png'
+            'uploads/visitors/default.png'
         ];
         
         foreach($potentialPaths as $p) {
