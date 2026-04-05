@@ -175,46 +175,30 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                             </TouchableOpacity>
                                         )}
 
-                                        {userRole === 'host' && (
+                                        {visit.status === 'pending' && userRole === 'host' && (
                                             <>
-                                                {/* For Regular Visits - Pending Approval at Guest Gate */}
-                                                {visit.is_invited != 1 && visit.status === 'pending' && (
-                                                    <>
-                                                        <TouchableOpacity
-                                                            style={[styles.modalActionBtn, styles.rejectBtn]}
-                                                            onPress={() => onAction(visit.id, 'reject')}
-                                                        >
-                                                            <Text style={styles.modalActionText}>Reject</Text>
-                                                        </TouchableOpacity>
-                                                        <TouchableOpacity
-                                                            style={[styles.modalActionBtn, styles.approveBtn]}
-                                                            onPress={() => onAction(visit.id, 'approve')}
-                                                        >
-                                                            <Text style={styles.modalActionText}>Approve</Text>
-                                                        </TouchableOpacity>
-                                                    </>
-                                                )}
-
-                                                {/* For Arrived Invitations - Entered at Gate, Waiting for Host Node */}
-                                                {visit.is_invited == 1 && visit.status === 'approved' && visit.approval_status === 'pending' && (
-                                                    <TouchableOpacity
-                                                        style={[styles.modalActionBtn, styles.approveBtn, { width: '100%' }]}
-                                                        onPress={() => onAction(visit.id, 'approve')}
-                                                    >
-                                                        <Text style={styles.modalActionText}>Acknowledge Appointment</Text>
-                                                    </TouchableOpacity>
-                                                )}
-
-                                                {/* For Scheduled Invitations - Not yet arrived at Gate */}
-                                                {visit.is_invited == 1 && visit.status === 'pending' && (
-                                                    <TouchableOpacity
-                                                        style={[styles.modalActionBtn, styles.rejectBtn, { width: '100%' }]}
-                                                        onPress={() => onAction(visit.id, 'cancel')}
-                                                    >
-                                                        <Text style={styles.modalActionText}>Cancel Appointment</Text>
-                                                    </TouchableOpacity>
-                                                )}
+                                                <TouchableOpacity
+                                                    style={[styles.modalActionBtn, styles.rejectBtn]}
+                                                    onPress={() => onAction(visit.id, 'reject')}
+                                                >
+                                                    <Text style={styles.modalActionText}>Reject</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={[styles.modalActionBtn, styles.approveBtn]}
+                                                    onPress={() => onAction(visit.id, 'approve')}
+                                                >
+                                                    <Text style={styles.modalActionText}>Approve</Text>
+                                                </TouchableOpacity>
                                             </>
+                                        )}
+
+                                        {visit.status === 'approved' && visit.is_invited == 1 && userRole === 'host' && (
+                                            <TouchableOpacity
+                                                style={[styles.modalActionBtn, styles.rejectBtn]}
+                                                onPress={() => onAction(visit.id, 'cancel')}
+                                            >
+                                                <Text style={styles.modalActionText}>Cancel Invite</Text>
+                                            </TouchableOpacity>
                                         )}
 
                                         {visit.status === 'approved' && (

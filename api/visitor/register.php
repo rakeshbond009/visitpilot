@@ -258,11 +258,8 @@ try {
             'assets_carried' => (string) ($data['assets_carried'] ?? 'None')
         ];
 
-        // Send Push Notification
-        $title = $invitation_id ? "Scheduled Visitor Arrived" : "New Visitor Arrival";
-        $body = $invitation_id ? "{$visitor['name']} has arrived for their scheduled visit." : "{$visitor['name']} is waiting for your approval.";
-        
-        sendPushNotification($pdo, $data['employee_id'], $title, $body, $pushData);
+        // Send to Role/Employee
+        sendPushNotification($pdo, $data['employee_id'], "New Visitor Arrival", "{$visitor['name']} is waiting for your approval.", $pushData);
 
         // WhatsApp Automation
         require_once '../../includes/whatsapp_helper.php';

@@ -60,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 file_put_contents('../' . $qr_filename, $qr_image);
             }
 
-            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned')");
-            $stmt->execute([$visitor_id, $host_employee_id, $v_purpose, $v_date, $visit_code, $qr_filename]);
+            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, NOW())");
+            $stmt->execute([$visitor_id, $host_employee_id, $v_purpose, $v_date, $visit_code, $qr_filename, $_SESSION['user_id'], $_SESSION['user_id']]);
             $visit_id = $pdo->lastInsertId();
 
             $pdo->commit();
