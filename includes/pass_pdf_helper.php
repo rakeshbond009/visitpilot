@@ -20,11 +20,17 @@ function generatePassPdf($visit_id, $pdo)
         $stmt->execute([$visit_id]);
         $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$visit)
+        if (!$visit) {
             return null;
-            
+        }
+
         $pdfFileRelative = "uploads/passes/Pass_" . $visit['visit_code'] . ".pdf";
         $pdfAbsPath = __DIR__ . '/../' . $pdfFileRelative;
+
+        $passDir = dirname($pdfAbsPath);
+        if (!is_dir($passDir)) {
+            mkdir($passDir, 0777, true);
+        }
 
         // Check if it already exists
         if (file_exists($pdfAbsPath)) {
