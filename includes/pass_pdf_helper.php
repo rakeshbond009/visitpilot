@@ -138,7 +138,7 @@ function generatePassPdf($visit_id, $pdo)
 
         // Footer
         $pdf->SetY(145);
-        $pdf->SetFont('Arial', 'I', 7);
+        $pdf->SetFont('Arial', '', 7);
         $pdf->SetTextColor(150, 150, 150);
         $pdf->Cell(80, 5, 'Powered by VisitPilot VMS', 0, 1, 'C');
 
