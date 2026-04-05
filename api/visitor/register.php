@@ -1,7 +1,6 @@
 <?php
 // api/visitor/register.php
 require_once '../includes/api_header.php';
-require_once '../includes/async_dispatch.php';
 
 $data = getPostData();
 
@@ -145,36 +144,134 @@ try {
         $needsDahuaSync = ($chkStmt->fetchColumn() === 'approved');
     }
 
-    // ✅ COMMIT DB — data is safe before dispatching
+    // ✅ COMMIT DB — data is safe before sending response
     $pdo->commit();
 
-    $bgPayload = [
-        'visit_id'       => $visit_id,
-        'visitor_id'     => $visitor_id,
-        'visit_code'     => $visit_code,
-        'photo_path'     => $photo_path,
-        'employee_id'    => $data['employee_id'],
-        'purpose'        => $data['purpose'],
-        'visitor_name'   => $visitorRow['name']    ?? $data['name'],
-        'visitor_mobile' => $visitorRow['mobile']  ?? $data['mobile'],
-        'visitor_address'=> $visitorRow['address'] ?? '',
-        'assets'         => $assets,
-        'sync_dahua'     => $needsDahuaSync,
-    ];
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ⚡ STEP 1: Send response to client IMMEDIATELY
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ignore_user_abort(true);
+    set_time_limit(120);
 
-    // ⚡ STEP 1: Apache/LSAPI — write job file + fire cURL (no-op on Hostinger FastCGI)
-    dispatchBackgroundTask('register_visitor', $bgPayload);
-
-    // ⚡ STEP 2: Respond — exits on Apache, RETURNS on Hostinger FastCGI
-    sendInstantResponse('success', 'Visitor registered successfully', [
-        'visit_id'        => $visit_id,
-        'visit_code'      => $visit_code,
-        'status'          => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
+    $responseBody = json_encode([
+        'status'  => 'success',
+        'message' => 'Visitor registered successfully',
+        'data'    => [
+            'visit_id'        => $visit_id,
+            'visit_code'      => $visit_code,
+            'status'          => $invitation_id ? 'approved' : 'pending',
+            'approval_status' => $invitation_id ? 'approved' : 'pending',
+        ]
     ]);
 
-    // ⚡ STEP 3: Hostinger FastCGI only — runs inline after client disconnected
-    runJobInline('register_visitor', $bgPayload, $pdo);
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Length: ' . strlen($responseBody));
+    header('Connection: close');
+    echo $responseBody;
+    flush();
+
+    if (function_exists('fastcgi_finish_request')) {
+        fastcgi_finish_request(); // Client disconnected — Hostinger FastCGI
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ⚡ STEP 2: Background work (client already got response)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    $traceLog = __DIR__ . '/register_push_trace.log';
+    $tlog = function($msg) use ($traceLog) {
+        file_put_contents($traceLog, date('[H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+
+    $visitor_name   = $visitorRow['name']    ?? $data['name'];
+    $visitor_mobile = $visitorRow['mobile']  ?? $data['mobile'];
+    $visitor_address= $visitorRow['address'] ?? '';
+    $host_employee_id = $data['employee_id'];
+
+    // 1. FCM Push to Host
+    try {
+        $tlog("Starting FCM push to host employee_id: $host_employee_id");
+        require_once dirname(__DIR__) . '/../includes/push_helper.php';
+        $photoUrl = $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '';
+        sendPushNotification($pdo, $host_employee_id,
+            "New Visitor Waiting",
+            "$visitor_name is at the gate for {$data['purpose']}. Tap to open.",
+            [
+                'visit_id'       => (string)$visit_id,
+                'visitor_name'   => $visitor_name,
+                'visitor_mobile' => $visitor_mobile,
+                'visitor_photo'  => $photoUrl,
+                'company'        => $visitor_address ?: 'General Visitor',
+                'purpose'        => $data['purpose'],
+                'assets_carried' => $assets,
+            ]
+        );
+        $tlog("FCM push completed for host $host_employee_id");
+    } catch (Throwable $e) {
+        $tlog("FCM PUSH ERROR: " . $e->getMessage());
+    }
+
+    // 2. WhatsApp to Host
+    try {
+        require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
+        $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
+        $hStmt->execute([$host_employee_id]);
+        $hostRow = $hStmt->fetch(PDO::FETCH_ASSOC);
+        if ($hostRow && !empty($hostRow['mobile'])) {
+            sendWhatsAppNotification(
+                $hostRow['mobile'],
+                "Visitor $visitor_name has arrived to meet you.",
+                'visitor_arrival_host_alert',
+                ["*{$hostRow['name']}*", "*{$visitor_name}*", "*{$data['purpose']}*"]
+            );
+            $tlog("WhatsApp sent to host " . $hostRow['mobile']);
+        }
+    } catch (Throwable $e) {
+        $tlog("WhatsApp ERROR: " . $e->getMessage());
+    }
+
+    // 3. QR Code generation
+    try {
+        if ($visit_code) {
+            $ch = curl_init("https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit_code));
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+                                    CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 10]);
+            $img = curl_exec($ch); curl_close($ch);
+            if ($img) {
+                $qrDir = dirname(__DIR__) . '/../uploads/qrcodes/';
+                if (!is_dir($qrDir)) @mkdir($qrDir, 0777, true);
+                file_put_contents($qrDir . $visit_code . '.png', $img);
+                $pdo->prepare("UPDATE visits SET qr_code_path=? WHERE id=?")
+                    ->execute(['uploads/qrcodes/' . $visit_code . '.png', $visit_id]);
+                $tlog("QR code generated for $visit_code");
+            }
+        }
+    } catch (Throwable $e) {
+        $tlog("QR ERROR: " . $e->getMessage());
+    }
+
+    // 4. Dahua sync (invitation flow only)
+    if ($needsDahuaSync) {
+        try {
+            require_once dirname(__DIR__) . '/../includes/dahua_helper.php';
+            $s = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+            if (!empty($s['dahua_app_id']) && !empty($s['dahua_app_secret']) && $photo_path) {
+                $face = realpath(dirname(__DIR__) . '/../' . $photo_path);
+                if ($face) {
+                    $dahua = new DahuaHelper($s['dahua_app_id'], $s['dahua_app_secret']);
+                    $dahua->syncVisitor([
+                        'visitor_id' => $visitor_id, 'name' => $visitor_name, 'face_path' => $face,
+                        'qr_code' => $visit_code, 'start_time' => date('Y-m-d H:i:s'),
+                        'end_time' => date('Y-m-d 23:59:59'),
+                        'device_sns' => array_map('trim', array_filter(explode(',', $s['dahua_device_sns'] ?? '')))
+                    ]);
+                    $tlog("Dahua sync complete");
+                }
+            }
+        } catch (Throwable $e) {
+            $tlog("Dahua ERROR: " . $e->getMessage());
+        }
+    }
 
 } catch (PDOException $e) {
     if ($pdo->inTransaction()) {
