@@ -19,8 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$host_employee_id) {
         $error = "System Error: Your user account is not linked to an Employee record. Please contact Admin.";
-    }
-    else {
+    } else {
         try {
             $pdo->beginTransaction();
 
@@ -37,8 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt = $pdo->prepare("UPDATE visitors SET email = ? WHERE id = ?");
                     $stmt->execute([$v_email, $visitor_id]);
                 }
-            }
-            else {
+            } else {
                 $stmt = $pdo->prepare("INSERT INTO visitors (name, mobile, email) VALUES (?, ?, ?)");
                 $stmt->execute([$v_name, $v_mobile, $v_email]);
                 $visitor_id = $pdo->lastInsertId();
@@ -81,8 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $v_date_fmt = date('d-M-Y', strtotime($v_date));
             $waMessage = "Hello {$v_name}, you have been invited for a visit on {$v_date_fmt}. Your pass code is: {$visit_code}.";
             sendWhatsAppNotification($v_mobile, $waMessage, 'visitor_meet_notify', ["*{$v_name}*", "*{$v_date_fmt}*", "*{$visit_code}*"]);
-        }
-        catch (Exception $e) {
+        } catch (Exception $e) {
             $pdo->rollBack();
             $error = "Error: " . $e->getMessage();
         }
@@ -96,7 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Handle Success View from Redirect
 if (isset($_GET['success']) && isset($_GET['visit_id'])) {
-    $visit_id = (int)$_GET['visit_id'];
+    $visit_id = (int) $_GET['visit_id'];
     $stmt = $pdo->prepare("SELECT v.*, vis.name, vis.mobile, vis.email FROM visits v 
                            JOIN visitors vis ON v.visitor_id = vis.id 
                            WHERE v.id = ? AND v.employee_id = ?");
@@ -120,62 +117,83 @@ if (isset($_GET['success']) && isset($_GET['visit_id'])) {
 $purposes = $pdo->query("SELECT purpose_name FROM visit_purposes ORDER BY purpose_name")->fetchAll(PDO::FETCH_COLUMN);
 ?>
 
-        <style>
-            @media print {
-                body * { visibility: hidden; }
-                #printable-pass, #printable-pass * { visibility: visible; }
-                #printable-pass {
-                    position: absolute;
-                    left: 0;
-                    right: 0;
-                    top: 0;
-                    margin: auto;
-                    width: 500px !important;
-                    border: 1px solid #eee !important;
-                    box-shadow: none !important;
-                }
-                .btn, .btn-link, .card-header i, .navbar, footer, #mainNav, .d-grid { display: none !important; }
-                body { background: white !important; }
-            }
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
 
-            #fullPageLoader {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(255, 255, 255, 0.9);
-                backdrop-filter: blur(8px);
-                z-index: 99999;
-                display: none;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-            }
-        </style>
+        #printable-pass,
+        #printable-pass * {
+            visibility: visible;
+        }
 
-        <div id="fullPageLoader">
-            <div class="spinner-border text-success shadow-sm" style="width: 4rem; height: 4rem; border-width: 0.4rem;" role="status">
-                <span class="visually-hidden">Loading...</span>
+        #printable-pass {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            margin: auto;
+            width: 500px !important;
+            border: 1px solid #eee !important;
+            box-shadow: none !important;
+        }
+
+        .btn,
+        .btn-link,
+        .card-header i,
+        .navbar,
+        footer,
+        #mainNav,
+        .d-grid {
+            display: none !important;
+        }
+
+        body {
+            background: white !important;
+        }
+    }
+
+    #fullPageLoader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(8px);
+        z-index: 99999;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+
+<div id="fullPageLoader">
+    <div class="spinner-border text-success shadow-sm" style="width: 4rem; height: 4rem; border-width: 0.4rem;"
+        role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <div class="mt-4 text-center">
+        <h4 class="fw-bold text-success mb-1">Creating Invitation...</h4>
+        <p class="text-muted small px-3">Please wait while we generate the pass and notify the visitor.</p>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <?php if ($error): ?>
+            <div class="alert alert-danger shadow-sm rounded-3">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> <?php echo $error; ?>
             </div>
-            <div class="mt-4 text-center">
-                <h4 class="fw-bold text-success mb-1">Creating Invitation...</h4>
-                <p class="text-muted small px-3">Please wait while we generate the pass and notify the visitor.</p>
-            </div>
-        </div>
+            <?php
+        endif; ?>
 
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <?php if ($error): ?>
-                    <div class="alert alert-danger shadow-sm rounded-3">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i> <?php echo $error; ?>
-                    </div>
-                <?php
-endif; ?>
-
-                <?php if ($success): ?>
-                    <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4 animate__animated animate__fadeIn" id="printable-pass">
-                        <div class="card-header bg-success text-white text-center py-4">
+        <?php if ($success): ?>
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4 animate__animated animate__fadeIn"
+                id="printable-pass">
+                <div class="card-header bg-success text-white text-center py-4">
                     <i class="bi bi-check-circle-fill display-4 d-block mb-2"></i>
                     <h3 class="fw-bold mb-0">Invitation Created!</h3>
                 </div>
@@ -186,9 +204,9 @@ endif; ?>
 
                     <div class="bg-light rounded-4 p-4 d-inline-block mb-4 border">
                         <?php
-    $local_qr = "../" . $invite_details['qr'];
-    $display_qr = (file_exists($local_qr)) ? $local_qr : "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($invite_details['code']);
-?>
+                        $local_qr = "../" . $invite_details['qr'];
+                        $display_qr = (file_exists($local_qr)) ? $local_qr : "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($invite_details['code']);
+                        ?>
                         <img src="<?php echo $display_qr; ?>" alt="QR" class="img-fluid mb-3" style="max-width: 180px;">
                         <div class="h4 fw-bold text-primary mb-1"><?php echo $invite_details['code']; ?></div>
                         <div class="small fw-bold text-muted text-uppercase mb-2">Visitor Pass Code</div>
@@ -198,7 +216,8 @@ endif; ?>
                     </div>
 
                     <div class="d-grid gap-2 col-md-8 mx-auto">
-                        <button class="btn btn-success fw-bold py-3" id="btn-share-wa" onclick="sharePassAutomated(<?php echo $invite_details['id']; ?>, this)">
+                        <button class="btn btn-success fw-bold py-3" id="btn-share-wa"
+                            onclick="sharePassAutomated(<?php echo $invite_details['id']; ?>, this)">
                             <i class="bi bi-whatsapp me-2"></i> Share on WhatsApp
                         </button>
                         <button class="btn btn-outline-primary" onclick="window.print()">
@@ -248,8 +267,8 @@ endif; ?>
                 }
             </script>
 
-        <?php
-else: ?>
+            <?php
+        else: ?>
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-header bg-white border-0 py-3">
                     <h4 class="fw-bold mb-0"><i class="bi bi-person-plus-fill text-success me-2"></i>Invite Visitor</h4>
@@ -263,19 +282,21 @@ else: ?>
                     ">
                         <div class="row g-3">
                             <div class="col-md-12">
-                                <label class="form-label fw-bold">Visitor Name <span id="visitor-status" class="badge bg-success d-none ms-2">Registered</span></label>
-                                <input type="text" name="name" id="visitor_name" class="form-control form-control-lg rounded-3"
-                                    placeholder="Enter Full Name" required>
+                                <label class="form-label fw-bold">Visitor Name <span id="visitor-status"
+                                        class="badge bg-success d-none ms-2">Registered</span></label>
+                                <input type="text" name="name" id="visitor_name"
+                                    class="form-control form-control-lg rounded-3" placeholder="Enter Full Name" required>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Mobile Number</label>
-                                <input type="tel" name="mobile" id="visitor_mobile" class="form-control form-control-lg rounded-3"
-                                    placeholder="10-digit mobile" required maxlength="10" pattern="[0-9]{10}">
+                                <input type="tel" name="mobile" id="visitor_mobile"
+                                    class="form-control form-control-lg rounded-3" placeholder="10-digit mobile" required
+                                    maxlength="10" pattern="[0-9]{10}">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Email (Optional)</label>
-                                <input type="email" name="email" id="visitor_email" class="form-control form-control-lg rounded-3"
-                                    placeholder="email@address.com">
+                                <input type="email" name="email" id="visitor_email"
+                                    class="form-control form-control-lg rounded-3" placeholder="email@address.com">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Scheduled Date</label>
@@ -288,8 +309,8 @@ else: ?>
                                     <?php foreach ($purposes as $p): ?>
                                         <option value="<?php echo htmlspecialchars($p); ?>"><?php echo htmlspecialchars($p); ?>
                                         </option>
-                                    <?php
-    endforeach; ?>
+                                        <?php
+                                    endforeach; ?>
 
                                 </select>
                             </div>
@@ -304,7 +325,7 @@ else: ?>
                     </form>
                 </div>
                 <script>
-document.getElementById('visitor_mobile').addEventListener('input', function(e) {
+                    document.getElementById('visitor_mobile').addEventListener('input', function (e) {
                         const mobile = e.target.value;
                         if (mobile.length === 10) {
                             fetch(`api/get_visitor_by_mobile.php?mobile=${mobile}`)
@@ -349,8 +370,8 @@ document.getElementById('visitor_mobile').addEventListener('input', function(e) 
                     });
                 </script>
             </div>
-        <?php
-endif; ?>
+            <?php
+        endif; ?>
     </div>
 </div>
 

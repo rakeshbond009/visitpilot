@@ -752,3 +752,27 @@
 [2026-04-04 22:22:57] CALL: Template visitor_arrival_host_alert to 919873028739
 [2026-04-04 22:22:57] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Practical Test Visitor*"},{"type":"text","text":"*System Test*"}]}]}}
 [2026-04-04 22:22:58] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-04-05 19:51:52] CALL: Template visitor_meet_notify to 919873028739
+[2026-04-05 19:51:52] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*05-Apr-2026*"},{"type":"text","text":"*2BA2846A*"}]}]}}
+[2026-04-05 19:51:54] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-04-05 19:52:11] CALL: Template invite_cancelled to 919873028739
+[2026-04-05 19:52:11] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"invite_cancelled","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"Rakesh Verma"},{"type":"text","text":"John Doe"}]}]}}
+[2026-04-05 19:52:12] SUCCESS (200): Template invite_cancelled sent to 919873028739 (Lang: en)
+[2026-04-05 19:57:35] CALL: Template visitor_meet_notify to 919873028739
+[2026-04-05 19:57:35] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*05-Apr-2026*"},{"type":"text","text":"*C5692BE3*"}]}]}}
+[2026-04-05 19:57:36] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-04-05 19:57:47] CALL: Template invite_cancelled to 919873028739
+[2026-04-05 19:57:47] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"invite_cancelled","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"Rakesh Verma"},{"type":"text","text":"John Doe"}]}]}}
+[2026-04-05 19:57:47] SUCCESS (200): Template invite_cancelled sent to 919873028739 (Lang: en)
+[2026-04-05 20:21:38] CALL: Template visitor_meet_notify to 919873028739
+[2026-04-05 20:21:38] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*05-Apr-2026*"},{"type":"text","text":"*5CEDC13A*"}]}]}}
+[2026-04-05 20:21:40] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-04-05 20:21:54] CALL: Template invite_cancelled to 919873028739
+[2026-04-05 20:21:54] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"invite_cancelled","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"Rakesh Verma"},{"type":"text","text":"John Doe"}]}]}}
+[2026-04-05 20:21:55] SUCCESS (200): Template invite_cancelled sent to 919873028739 (Lang: en)
+[2026-04-05 20:44:20] CALL: Template visitor_meet_notify to 919873028739
+[2026-04-05 20:44:20] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_meet_notify","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*05-Apr-2026*"},{"type":"text","text":"*8FF8FFF0*"}]}]}}
+[2026-04-05 20:44:21] SUCCESS (200): Template visitor_meet_notify sent to 919873028739 (Lang: en)
+[2026-04-05 20:44:31] CALL: Template invite_cancelled to 919873028739
+[2026-04-05 20:44:31] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"invite_cancelled","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"Rakesh Verma"},{"type":"text","text":"John Doe"}]}]}}
+[2026-04-05 20:44:31] SUCCESS (200): Template invite_cancelled sent to 919873028739 (Lang: en)

@@ -200,12 +200,15 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
+    // ⚡ FIX: Fetch token ONCE before the loop (was fetched per-user = N extra HTTP calls)
+    $accessToken = getGoogleAccessToken($serviceAccount);
+    if (!$accessToken) {
+        $log("CRITICAL ERROR: Failed to fetch Google Access Token for Role: $role");
+        return false;
+    }
+
     foreach ($users as $user) {
         $log("Targeting User ID: {$user['user_id']} (Role: {$user['role']})");
-
-        $accessToken = getGoogleAccessToken($serviceAccount);
-        if (!$accessToken)
-            continue;
 
         $message = [
             'message' => [
@@ -213,7 +216,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                 'data' => array_merge([
                     'title' => (string) $title,
                     'body' => (string) $body,
-                    'type' => 'visit_update', // Different type for updates
+                    'type' => 'visit_update',
                     'is_call_priority' => 'false',
                     'visitId' => (string) ($data['visit_id'] ?? ''),
                     'click_action' => 'visit_update_action'
@@ -242,6 +245,8 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json'

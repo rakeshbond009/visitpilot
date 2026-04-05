@@ -1,7 +1,9 @@
 <?php
 // api/visit/status_action.php - Dahua Enabled
 require_once '../includes/api_header.php';
+require_once '../includes/async_dispatch.php';
 require_once '../../includes/dahua_helper.php';
+
 
 $data = getPostData();
 
@@ -24,73 +26,11 @@ try {
         $stmt->execute([$user_id, $id]);
         logAction($pdo, $_SESSION['user_id'] ?? 0, "Approved visit ID: $id status_action");
 
-        // ⚡ DECOUPLE: Send success to app immediately and continue background sync/notifications
-        sendAsyncResponse('success', 'Visit Approved', ['visit_id' => $id]);
+        // ⚡ STEP 1: Dispatch background job FIRST — then respond
+        dispatchBackgroundTask('approve_visit', ['visit_id' => $id]);
 
-        // 5. BACKGROUND TASKS START HERE
-
-        // --- NOTIFICATIONS (NEW) ---
-        try {
-            require_once '../../includes/push_helper.php';
-            require_once '../../includes/whatsapp_helper.php';
-
-            // Get visitor details
-            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name, v.created_by FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
-            $stmt->execute([$id]);
-            $visit = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($visit) {
-                // Check if PDF exists (strict lookup only, no fallback generation)
-                require_once '../../includes/pass_pdf_helper.php';
-                $pdfUrl = generatePassPdf($id, $pdo);
-
-                // Send WhatsApp (will Safety Abort inside the helper if $pdfUrl is null)
-                sendWhatsAppNotification($visit['mobile'], "Your visit is approved", 'visit_approval_visitor_notify', ["*{$visit['visitor_name']}*"], $pdfUrl);
-
-                // Push to Security
-                sendPushNotificationToRole($pdo, 'security', 'Visit Approved', "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.", [
-                    'visit_id' => (string) $id,
-                    'type' => 'approval_status'
-                ]);
-            }
-        } catch (Throwable $e) {
-            error_log("Notification error in approve: " . $e->getMessage());
-        }
-
-        // --- DAHUA INTEGRATION (Sync on Approval) ---
-        try {
-            $raw_settings = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-
-            if (!empty($raw_settings['dahua_app_id']) && !empty($raw_settings['dahua_app_secret'])) {
-                $dahua = new DahuaHelper($raw_settings['dahua_app_id'], $raw_settings['dahua_app_secret']);
-
-                $startTime = $visit['created_at'];
-                $endTime = date('Y-m-d 23:59:59', strtotime($startTime));
-
-                $deviceSnsList = explode(',', $raw_settings['dahua_device_sns']);
-                $deviceSnsList = array_map('trim', $deviceSnsList);
-
-                $visitorData = [
-                    'visitor_id' => $visit['visitor_id'],
-                    'name' => $visit['visitor_name'],
-                    'face_path' => realpath('../../' . $visit['visit_photo']),
-                    'qr_code' => $visit['visit_code'],
-                    'start_time' => $startTime,
-                    'end_time' => $endTime,
-                    'device_sns' => $deviceSnsList
-                ];
-
-                $syncResult = $dahua->syncVisitor($visitorData);
-
-                if (isset($syncResult['success']) && !$syncResult['success']) {
-                    error_log("Dahua Sync Failed for Visit $id: " . ($syncResult['error'] ?? 'Unknown Error'));
-                } else {
-                    logAction($pdo, $_SESSION['user_id'] ?? 0, "Dahua Sync Success for Visit $id");
-                }
-            }
-        } catch (Exception $e) {
-            error_log("Dahua Integration Error: " . $e->getMessage());
-        }
+        // ⚡ STEP 2: Instant response (calls exit internally)
+        sendInstantResponse('success', 'Visit Approved', ['visit_id' => $id]);
 
     } elseif ($action === 'cancel') {
         // Fetch visitor details before canceling for notification
@@ -108,63 +48,30 @@ try {
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $reason, $id]);
 
-        // ⚡ DECOUPLE: Send success to app immediately
-        sendAsyncResponse('success', 'Invitation has been cancelled and visitor notified.');
+        // ⚡ STEP 1: Dispatch background job FIRST — then respond
+        dispatchBackgroundTask('cancel_invite', [
+            'visit_id'       => $id,
+            'visitor_name'   => $visitor_info['name']      ?? '',
+            'visitor_mobile' => $visitor_info['mobile']    ?? '',
+            'host_name'      => $visitor_info['host_name'] ?? 'your host',
+        ]);
 
-        if ($visitor_info && !empty($visitor_info['mobile'])) {
-            try {
-                require_once '../../includes/whatsapp_helper.php';
-                sendWhatsAppNotification(
-                    $visitor_info['mobile'],
-                    "Your meeting has been cancelled.",
-                    'invite_cancelled',
-                    [$visitor_info['name'] ?? 'Visitor', $visitor_info['host_name'] ?? 'your host']
-                );
-            } catch (Throwable $waErr) {
-                error_log("invite_cancelled WA error: " . $waErr->getMessage());
-            }
-
-            try {
-                require_once '../../includes/push_helper.php';
-                sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled', "Host {$visitor_info['host_name']} CANCELLED invitation for {$visitor_info['name']}.", [
-                    'visit_id' => (string) $id,
-                    'type' => 'approval_status'
-                ]);
-            } catch (Throwable $pushErr) {
-            }
-        }
+        // ⚡ STEP 2: Instant response (calls exit internally)
+        sendInstantResponse('success', 'Invitation has been cancelled and visitor notified.');
 
     } elseif ($action === 'reject') {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
 
-        // ⚡ DECOUPLE: Send success to app immediately
-        sendAsyncResponse('success', 'Visit Rejected');
+        // ⚡ STEP 1: Dispatch background job FIRST — then respond
+        dispatchBackgroundTask('reject_visit', [
+            'visit_id' => $id,
+            'reason'   => $reason,
+        ]);
 
-        // --- NOTIFICATIONS (NEW) ---
-        try {
-            require_once '../../includes/whatsapp_helper.php';
-            require_once '../../includes/push_helper.php';
-
-            $stmt = $pdo->prepare("SELECT v.*, vis.mobile, vis.name as visitor_name, e.name as host_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id LEFT JOIN employees e ON v.employee_id = e.id WHERE v.id = ?");
-            $stmt->execute([$id]);
-            $visit = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($visit) {
-                // WhatsApp to visitor
-                $reason = $data['reason'] ?? 'Host declined the visit.';
-                sendWhatsAppNotification($visit['mobile'], "Your visit request has been declined.", 'visit_rejection_visitor_notify', ["*{$visit['visitor_name']}*", "*{$reason}*"]);
-
-                // Push to Security
-                sendPushNotificationToRole($pdo, 'security', 'Visit Rejected', "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.", [
-                    'visit_id' => (string) $id,
-                    'type' => 'approval_status'
-                ]);
-            }
-        } catch (Exception $e) {
-            error_log("Notification error in reject: " . $e->getMessage());
-        }
+        // ⚡ STEP 2: Instant response (calls exit internally)
+        sendInstantResponse('success', 'Visit Rejected');
 
     } elseif ($action === 'checkin') {
         // Check if visit is approved
