@@ -70,10 +70,20 @@ $stmt = $pdo->prepare($duration_sql);
 $stmt->execute([$host_employee_id]);
 $avg_minutes = (int) $stmt->fetchColumn();
 
-// 3. Scheduled for Today (Invited)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND is_invited = 1 AND visit_date = CURDATE() AND status IN ('pending', 'approved')");
+// 3. Rejected Visits
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'rejected'");
 $stmt->execute([$host_employee_id]);
-$scheduled_today = (int) $stmt->fetchColumn();
+$rejected_count = (int) $stmt->fetchColumn();
+
+$sql_rejected = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department
+                FROM visits v 
+                JOIN visitors vis ON v.visitor_id = vis.id 
+                LEFT JOIN employees e ON v.employee_id = e.id
+                WHERE v.employee_id = ? AND v.status = 'rejected'
+                ORDER BY v.created_at DESC";
+$stmt = $pdo->prepare($sql_rejected);
+$stmt->execute([$host_employee_id]);
+$rejected_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // 4. AI Best Slot
 $traffic_sql = "SELECT HOUR(created_at) as hour, COUNT(*) as count 
@@ -123,7 +133,8 @@ echo json_encode([
     'latest_pending' => !empty($pending_list) ? $pending_list[0] : null,
     'completed_meetings' => $meetings_completed,
     'avg_meeting_time' => $avg_minutes . "m",
-    'scheduled_today' => $scheduled_today,
+    'rejected_count' => $rejected_count,
+    'rejected_list' => $rejected_list,
     'best_time' => $best_slot_formatted,
     'insights' => $insights,
     'frequent_visitors' => $frequent_visitors

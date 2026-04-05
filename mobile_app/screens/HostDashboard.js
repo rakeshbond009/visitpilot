@@ -61,8 +61,9 @@ export default function HostDashboard({ navigation }) {
     const [pendingVisits, setPendingVisits] = useState([]);
     const [todayVisits, setTodayVisits] = useState([]);
     const [scheduledVisits, setScheduledVisits] = useState([]);
+    const [rejectedVisits, setRejectedVisits] = useState([]);
     const [activeInvites, setActiveInvites] = useState([]);
-    const [stats, setStats] = useState({ pending: 0, today: 0, invites: 0, completed: 0, avg_time: '0m', scheduled_today: 0 });
+    const [stats, setStats] = useState({ pending: 0, today: 0, invites: 0, completed: 0, avg_time: '0m', rejected: 0 });
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -192,11 +193,11 @@ export default function HostDashboard({ navigation }) {
                         invites: result.invite_count || 0,
                         completed: result.completed_meetings || 0,
                         avg_time: result.avg_meeting_time || '0m',
-                        scheduled_today: result.scheduled_today || 0
+                        rejected: result.rejected_count || 0
                     });
                     setPendingVisits(result.pending_list || []);
                     setTodayVisits(result.today_visitors || []);
-                    setScheduledVisits(result.scheduled_list || []);
+                    setRejectedVisits(result.rejected_list || []);
                     setActiveInvites(result.active_invites || []);
 
                     if (result.best_time) {
@@ -576,11 +577,11 @@ export default function HostDashboard({ navigation }) {
                 ) : <View style={[styles.statCard, styles.statDisabled]} />}
 
                 <TouchableOpacity
-                    style={[styles.statCard, styles.statPurple]}
-                    onPress={() => showDataModal('Check-in Pending', 'scheduled')}
+                    style={[styles.statCard, { backgroundColor: '#fee2e2' }]} // similar to statPurple but red/pink for rejected
+                    onPress={() => showDataModal('Rejected Visits', 'rejected')}
                 >
-                    <Text style={styles.statValue}>{stats.scheduled_today || 0}</Text>
-                    <Text style={styles.statLabel}>Check-in Pending</Text>
+                    <Text style={[styles.statValue, { color: '#ef4444' }]}>{stats.rejected || 0}</Text>
+                    <Text style={[styles.statLabel, { color: '#ef4444' }]}>Rejected Visits</Text>
                 </TouchableOpacity>
             </View>
 
@@ -1432,12 +1433,12 @@ export default function HostDashboard({ navigation }) {
                 visible={dataModalVisible}
                 onClose={() => setDataModalVisible(false)}
                 title={dataModalTitle}
-                color={dataModalType === 'pending' ? '#f59e0b' : (dataModalType === 'invites' ? '#3b82f6' : (dataModalType === 'scheduled' ? '#8b5cf6' : '#10b981'))}
+                color={dataModalType === 'pending' ? '#f59e0b' : (dataModalType === 'invites' ? '#3b82f6' : (dataModalType === 'rejected' ? '#ef4444' : '#10b981'))}
                 visits={(() => {
                     if (dataModalType === 'pending') return pendingVisits;
                     if (dataModalType === 'today') return todayVisits;
                     if (dataModalType === 'invites') return activeInvites;
-                    if (dataModalType === 'scheduled') return scheduledVisits;
+                    if (dataModalType === 'rejected') return rejectedVisits;
                     return [];
                 })()}
                 onVisitPress={(visit) => fetchVisitDetails(visit.id)}

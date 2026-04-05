@@ -192,7 +192,7 @@ const VisitDetailModal = ({ visible, onClose, visit, onAction, userRole }) => {
                                             </>
                                         )}
 
-                                        {visit.status === 'approved' && visit.is_invited == 1 && userRole === 'host' && (
+                                        {visit.status === 'pending' && visit.is_invited == 1 && userRole === 'host' && (
                                             <TouchableOpacity
                                                 style={[styles.modalActionBtn, styles.rejectBtn]}
                                                 onPress={() => onAction(visit.id, 'cancel')}

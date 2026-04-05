@@ -262,10 +262,10 @@ $stmt->execute([$host_employee_id]);
 $avg_minutes = (int) $stmt->fetchColumn();
 $avg_duration = $avg_minutes > 0 ? $avg_minutes . "m" : "0m";
 
-// 3. Scheduled for Today (Invited)
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND is_invited = 1 AND visit_date = CURDATE() AND status IN ('pending', 'approved')");
+// 3. Rejected Visits
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM visits WHERE employee_id = ? AND status = 'rejected'");
 $stmt->execute([$host_employee_id]);
-$scheduled_today = (int) $stmt->fetchColumn();
+$rejected_count = (int) $stmt->fetchColumn();
 ?>
 
 <div class="row mb-4">
@@ -329,14 +329,12 @@ $scheduled_today = (int) $stmt->fetchColumn();
                 </div>
 
                 <div class="p-3 bg-white rounded-3 mt-1 border">
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-calendar-check text-primary fs-4 me-3"></i>
+                    <div class="d-flex align-items-center cursor-pointer" onclick="showDetails('rejected')">
+                        <i class="bi bi-x-circle text-danger fs-4 me-3"></i>
                         <div>
-                            <span class="d-block fw-bold text-dark">Scheduled Today</span>
-                            <small class="text-muted">You have
-                                <?php echo $scheduled_today; ?> invited guests
-                                arriving
-                                today.
+                            <span class="d-block fw-bold text-dark">Rejected Visits</span>
+                            <small class="text-muted">You have rejected
+                                <span id="host-stat-rejected"><?php echo $rejected_count; ?></span> visits.
                             </small>
                         </div>
                     </div>
@@ -565,6 +563,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
                 document.getElementById('host-stat-pending').innerText = data.pending_count;
                 document.getElementById('host-stat-invites').innerText = data.invite_count || 0;
                 document.getElementById('host-stat-today').innerText = data.today_count;
+                if(document.getElementById('host-stat-rejected')) document.getElementById('host-stat-rejected').innerText = data.rejected_count || 0;
 
                 // Removed Dashboard Alert Logic (Per User Request)
                 const alertCont = document.getElementById('pending-alert-container');
@@ -633,7 +632,8 @@ $scheduled_today = (int) $stmt->fetchColumn();
         const titleMap = {
             'pending': 'Pending Approval Requests',
             'invites': 'Your Active Invitations',
-            'today': 'Today\'s Walk-in Visitors'
+            'today': 'Today\'s Walk-in Visitors',
+            'rejected': 'Rejected Visits'
         };
         const tbody = document.getElementById('modalTableBody');
         const thead = document.querySelector('#detailsListModal thead tr');
@@ -669,6 +669,7 @@ $scheduled_today = (int) $stmt->fetchColumn();
         if (type === 'pending') list = currentDashboardData.pending_list || [];
         if (type === 'invites') list = currentDashboardData.active_invites || [];
         if (type === 'today') list = currentDashboardData.today_visitors || [];
+        if (type === 'rejected') list = currentDashboardData.rejected_list || [];
 
         document.getElementById('modalTitle').innerText = titleMap[type] || 'Details';
         document.getElementById('recordCount').innerText = list.length + ' record(s)';
