@@ -1,4 +1,5 @@
 <?php
+// ANTIGRAVITY_UPDATE_SUCCESS
 require_once 'header.php';
 
 if ($_SESSION['role'] !== 'host' && $_SESSION['role'] !== 'employee' && $_SESSION['role'] !== 'admin') {
