@@ -116,13 +116,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 // Handle Disable User (Login Only)
 if (isset($_GET['disable_user'])) {
-    $stmt = $pdo->prepare("DELETE FROM users WHERE employee_id=?");
-    $stmt->execute([$_GET['disable_user']]);
+    $id = (int)$_GET['disable_user'];
+    try {
+        // Fetch details for enriched logging before removal
+        $uInfo = $pdo->prepare("SELECT full_name, username FROM users WHERE employee_id = ?");
+        $uInfo->execute([$id]);
+        $u = $uInfo->fetch();
+        $performer = $u ? "{$u['full_name']} (@{$u['username']})" : "Employee ID: $id";
 
-    logAction($pdo, $_SESSION['user_id'], "Revoked user access for employee ID: {$_GET['disable_user']}");
+        $stmt = $pdo->prepare("DELETE FROM users WHERE employee_id=?");
+        $stmt->execute([$id]);
 
-    header("Location: employees.php?revoke_success=1");
-    exit;
+        logAction($pdo, $_SESSION['user_id'], "Revoked user access for employee: $performer");
+
+        header("Location: employees.php?revoke_success=1");
+        exit;
+    } catch (Exception $e) { $error = $e->getMessage(); }
 }
 
 // Handle Grant User (Create Login for Existing)
@@ -155,7 +164,7 @@ if (isset($_GET['grant_user'])) {
             $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?)");
             $uStmt->execute([$username, $hashed, $emp_data['name'], $id, $emp_data['department'], $emp_data['email'], $emp_data['mobile']]);
 
-            logAction($pdo, $_SESSION['user_id'], "Granted user access to employee: {$emp_data['name']} (ID: $id)");
+            logAction($pdo, $_SESSION['user_id'], "Granted login access to employee: {$emp_data['name']} (@$username)");
             
             header("Location: employees.php?new_user=" . urlencode($username) . "&new_pass=" . urlencode($default_pass));
             exit;

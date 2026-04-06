@@ -292,16 +292,21 @@ function loadUserPermissions()
     $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $userRow = $stmt->fetch();
+
     if ($userRow) {
         $_SESSION['role'] = $userRow['role'];
         $_SESSION['full_name'] = $userRow['full_name'];
         $_SESSION['permissions_locked'] = (bool) $userRow['permissions_locked'];
+    } else {
+        // If the user record is missing (revoked), force an immediate logout
+        destroyPersistentSession();
+        redirect(BASE_URL . 'index.php?msg=access_revoked');
     }
 
     // 1. Fetch User Explicit Permissions
     $stmt = $pdo->prepare("SELECT permission_key FROM user_permissions WHERE user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
-    $_SESSION['my_perms'] = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $_SESSION['my_perms'] = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
     // 3. Fetch Role Defaults
     $role_lookup = $_SESSION['role'];
