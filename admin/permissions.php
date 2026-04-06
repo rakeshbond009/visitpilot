@@ -685,17 +685,17 @@ require_once 'header.php';
                                 <td class="text-end">
                                     <!-- Quick Status Toggle -->
                                     <?php if ($u['status'] == 'active'): ?>
-                                        <a href="?toggle_status=<?php echo $u['id']; ?>&status=inactive" 
+                                        <button type="button" 
                                            class="btn btn-sm btn-outline-danger" title="Deactivate"
-                                           onclick="return confirm('Deactivate this user? They will be logged out immediately.')">
+                                           onclick="toggleUserStatus(<?php echo $u['id']; ?>, 'inactive')">
                                             <i class="bi bi-slash-circle"></i>
-                                        </a>
+                                        </button>
                                     <?php else: ?>
-                                        <a href="?toggle_status=<?php echo $u['id']; ?>&status=active" 
+                                        <button type="button" 
                                            class="btn btn-sm btn-outline-success" title="Activate"
-                                           onclick="return confirm('Re-activate this user?')">
+                                           onclick="toggleUserStatus(<?php echo $u['id']; ?>, 'active')">
                                             <i class="bi bi-check-circle"></i>
-                                        </a>
+                                        </button>
                                     <?php endif; ?>
 
                                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
@@ -1027,6 +1027,28 @@ endforeach; ?>
         </form>
     </div>
 </div>
+
+<script>
+function toggleUserStatus(uid, status) {
+    var title = status === 'active' ? 'Activate User?' : 'Deactivate User?';
+    var text = status === 'active' 
+        ? 'This will restore login access for the user.' 
+        : 'Deactivating this user will log them out immediately and prevent further access.';
+    var confirmBtn = status === 'active' ? 'Yes, Activate' : 'Yes, Deactivate';
+    var icon = status === 'active' ? 'success' : 'warning';
+
+    AppDialog.confirm({
+        title: title,
+        text: text,
+        confirmText: confirmBtn,
+        icon: icon
+    }).then(function(confirmed) {
+        if (confirmed) {
+            window.location.href = 'permissions.php?toggle_status=' + uid + '&status=' + status;
+        }
+    });
+}
+</script>
 
 <?php if ($success || $error): ?>
     <script>

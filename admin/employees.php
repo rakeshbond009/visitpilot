@@ -246,18 +246,17 @@ require_once 'header.php';
                                         <i class="bi bi-slash-circle-fill"></i>
                                     </button>
                                 <?php else: ?>
-                                    <a href="?grant_user=<?php echo $emp['id']; ?>" class="btn btn-sm btn-outline-success ms-1 border-0" 
-                                       title="Re-activate Login" onclick="return confirm('Do you want to re-enable login for this employee?')">
+                                    <button type="button" class="btn btn-sm btn-outline-success ms-1 border-0" 
+                                       title="Re-activate Login" onclick="confirmGrant(<?php echo $emp['id']; ?>, 'reactivate')">
                                         <i class="bi bi-check-circle-fill"></i>
-                                    </a>
+                                    </button>
                                 <?php endif; ?>
                             <?php else: ?>
                                 <span class="badge bg-secondary mb-1">No Login</span>
-                                <a href="?grant_user=<?php echo $emp['id']; ?>" class="btn btn-sm btn-outline-primary py-0 px-2 d-block" 
-                                   title="Grant Access" 
-                                   onclick="return confirm('Do you want to create a login account for this employee?')">
+                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 d-block" 
+                                   title="Grant Access" onclick="confirmGrant(<?php echo $emp['id']; ?>, 'grant')">
                                    <i class="bi bi-person-plus-fill"></i> Enable Access
-                                </a>
+                                </button>
                             <?php endif; ?>
                         </td>
                         <td>
@@ -363,6 +362,23 @@ require_once 'header.php';
         }).then(function (confirmed) {
             if (confirmed) {
                 window.location.href = 'employees.php?disable_user=' + id;
+            }
+        });
+    }
+
+    function confirmGrant(id, type) {
+        var dialogText = type === 'reactivate' 
+            ? 'Do you want to re-enable login for this employee? Their old credentials will be restored.'
+            : 'Do you want to create a login account for this employee?';
+            
+        AppDialog.confirm({
+            title: 'Grant Access?',
+            text: dialogText,
+            confirmText: 'Yes, Enable Access',
+            icon: 'info'
+        }).then(function (confirmed) {
+            if (confirmed) {
+                window.location.href = 'employees.php?grant_user=' + id;
             }
         });
     }
