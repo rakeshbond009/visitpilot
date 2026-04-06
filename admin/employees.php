@@ -117,11 +117,11 @@ if (isset($_GET['disable_user'])) {
 
         if ($u) {
             $performer = "{$u['full_name']} (@{$u['username']})";
-            $stmt = $pdo->prepare("DELETE FROM users WHERE employee_id=?");
+            $stmt = $pdo->prepare("UPDATE users SET status='inactive' WHERE employee_id=?");
             $stmt->execute([$id]);
             
             if ($stmt->rowCount() > 0) {
-                logAction($pdo, $_SESSION['user_id'], "Revoked user access for employee: $performer");
+                logAction($pdo, $_SESSION['user_id'], "Deactivated login access for employee: $performer");
             }
         }
         redirect("employees.php?revoke_success=1");
@@ -137,12 +137,18 @@ if (isset($_GET['grant_user'])) {
         $emp_data = $emp->fetch();
 
         if ($emp_data) {
-            // SAFE-CHECK: Only proceed if this employee doesn't already have an account 
-            // (prevents duplicate accounts on page refresh)
-            $existing = $pdo->prepare("SELECT id FROM users WHERE employee_id = ?");
+            // SAFE-CHECK: If user already exists, just re-activate them
+            $existing = $pdo->prepare("SELECT id, status FROM users WHERE employee_id = ?");
             $existing->execute([$id]);
-            if ($existing->fetch()) {
-                redirect("employees.php?msg=" . urlencode("account_already_exists"));
+            $u_row = $existing->fetch();
+            if ($u_row) {
+                if ($u_row['status'] == 'inactive') {
+                    $pdo->prepare("UPDATE users SET status='active' WHERE id=?")->execute([$u_row['id']]);
+                    logAction($pdo, $_SESSION['user_id'], "Re-activated login access for employee: {$emp_data['name']}");
+                    redirect("employees.php?msg=" . urlencode("Login access re-enabled."));
+                } else {
+                    redirect("employees.php?msg=" . urlencode("Account is already active."));
+                }
             }
 
             // Generate Username Logic (Same as Add Flow)
@@ -232,12 +238,19 @@ require_once 'header.php';
                         <td>
                             <?php if ($emp['user_id']): ?>
                                 <span class="badge bg-<?php echo ($emp['user_status'] == 'active') ? 'info' : 'secondary'; ?>">
-                                    <?php echo ($emp['user_status'] == 'active') ? 'Active Login' : 'Login Disabled'; ?>
+                                <?php echo ($emp['user_status'] == 'active') ? 'Active Login' : 'Login Disabled'; ?>
                                 </span>
-                                <button type="button" class="btn btn-sm btn-outline-danger ms-1 border-0" title="Revoke Login"
-                                    onclick="confirmRevoke(<?php echo $emp['id']; ?>)">
-                                    <i class="bi bi-slash-circle-fill"></i>
-                                </button>
+                                <?php if ($emp['user_status'] == 'active'): ?>
+                                    <button type="button" class="btn btn-sm btn-outline-danger ms-1 border-0" title="Deactivate Login"
+                                        onclick="confirmRevoke(<?php echo $emp['id']; ?>)">
+                                        <i class="bi bi-slash-circle-fill"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <a href="?grant_user=<?php echo $emp['id']; ?>" class="btn btn-sm btn-outline-success ms-1 border-0" 
+                                       title="Re-activate Login" onclick="return confirm('Do you want to re-enable login for this employee?')">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    </a>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <span class="badge bg-secondary mb-1">No Login</span>
                                 <a href="?grant_user=<?php echo $emp['id']; ?>" class="btn btn-sm btn-outline-primary py-0 px-2 d-block" 
@@ -343,9 +356,9 @@ require_once 'header.php';
 <script>
     function confirmRevoke(id) {
         AppDialog.confirm({
-            title: 'Revoke Access?',
-            text: 'Are you sure you want to disable login for this employee? The employee record will remain, but the user account will be deleted.',
-            confirmText: 'Yes, Revoke',
+            title: 'Deactivate Access?',
+            text: 'Are you sure you want to disable login for this employee? The employee record will remain, and the user account will be marked as inactive.',
+            confirmText: 'Yes, Deactivate',
             icon: 'warning'
         }).then(function (confirmed) {
             if (confirmed) {
@@ -396,8 +409,8 @@ require_once 'header.php';
         <?php elseif (isset($_GET['revoke_success'])): ?>
             AppDialog.show({
                 icon: 'success',
-                title: 'Access Revoked!',
-                text: 'The user account for this employee has been disabled.'
+                title: 'Access Deactivated!',
+                text: 'The login account for this employee has been set to inactive.'
             });
         <?php elseif (isset($_GET['msg'])): ?>
             AppDialog.show({
