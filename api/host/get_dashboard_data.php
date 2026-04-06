@@ -31,24 +31,24 @@ $stmt->execute([$host_employee_id]);
 $pending_list = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Today's Walk-in Visitors
-$sql_today = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department, u.full_name as created_by_name
+$sql_today = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, v.photo_path, e.department, u.full_name as created_by_name
               FROM visits v 
               JOIN visitors vis ON v.visitor_id = vis.id 
               LEFT JOIN employees e ON v.employee_id = e.id
               LEFT JOIN users u ON v.created_by = u.id
-              WHERE v.employee_id = ? AND DATE(v.created_at) = CURDATE() AND v.is_invited = 0
+              WHERE v.employee_id = ? AND (DATE(v.created_at) = CURDATE() OR v.visit_date = CURDATE()) AND v.status IN ('approved', 'checked_in', 'checked_out')
               ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_today);
 $stmt->execute([$host_employee_id]);
 $today_visitors = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Active Invitations
-$sql_invites = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, vis.photo_path, e.department, u.full_name as created_by_name
+$sql_invites = "SELECT v.*, v.visit_photo, vis.name as visitor_name, vis.mobile, v.photo_path, e.department, u.full_name as created_by_name
                 FROM visits v 
                 JOIN visitors vis ON v.visitor_id = vis.id 
                 LEFT JOIN employees e ON v.employee_id = e.id
                 LEFT JOIN users u ON v.created_by = u.id
-                WHERE v.employee_id = ? AND v.is_invited = 1 AND (v.status = 'pending' OR v.status = 'approved') AND v.visit_date >= CURDATE()
+                WHERE v.employee_id = ? AND v.is_invited = 1 AND v.status = 'pending' AND v.visit_date >= CURDATE()
                 ORDER BY v.visit_date ASC";
 $stmt = $pdo->prepare($sql_invites);
 $stmt->execute([$host_employee_id]);
