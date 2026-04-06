@@ -48,6 +48,16 @@ Notifications.setNotificationHandler({
     }),
 });
 
+Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    staysActiveInBackground: true,
+    interruptionModeIOS: 1,
+    playsInSilentModeIOS: true,
+    shouldDuckAndroid: true,
+    interruptionModeAndroid: 1,
+    playThroughEarpieceAndroid: false
+});
+
 const BACKGROUND_TASK_TIMEOUT = 10000;
 
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
@@ -133,18 +143,8 @@ function AppContent() {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
-
-        if (!visit_id && data.body) {
-            try {
-                const parsedBody = JSON.parse(data.body);
-                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
-                data = { ...data, ...parsedBody };
-            } catch (e) { }
-        }
-
         return {
-            visit_id: visit_id,
+            visit_id: String(visit_id || ""),
             name: data.visitor_name || data.name || data.title || "Unknown Visitor",
             mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
             photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
@@ -268,7 +268,10 @@ function AppContent() {
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+            // DON'T show the arrival overlay for routine status updates (only for arrivals/calls)
+            // Exclude if sender is the current user to prevent self-notification
+            const isSelf = data?.sender_id && data.sender_id === currentUserId;
+            if (!isSelf && data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             }
         });

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const VisitDetailScreen = ({ route, navigation }) => {
     const { visit_id } = route.params;
@@ -59,7 +58,7 @@ const VisitDetailScreen = ({ route, navigation }) => {
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
             {/* Header with Background */}
-            <LinearGradient colors={['#004e92', '#000428']} style={styles.header}>
+            <View style={[styles.header, { backgroundColor: '#004e92' }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
                     <MaterialCommunityIcons name="arrow-left" size={28} color="white" />
                 </TouchableOpacity>
@@ -67,12 +66,12 @@ const VisitDetailScreen = ({ route, navigation }) => {
                 <TouchableOpacity style={styles.shareBtn} onPress={() => {}}>
                     <MaterialCommunityIcons name="share-variant" size={24} color="white" />
                 </TouchableOpacity>
-            </LinearGradient>
+            </View>
 
             {/* Profile Section */}
             <View style={styles.profileSection}>
                 <Image 
-                    source={visit?.visitor_photo ? { uri: visit.visitor_photo } : require('../../assets/placeholder.png')} 
+                    source={visit?.visitor_photo ? { uri: visit.visitor_photo } : { uri: 'https://via.placeholder.com/150' }} 
                     style={styles.avatar} 
                 />
                 <Text style={styles.visitorName}>{visit?.visitor_name || "Unknown Visitor"}</Text>
