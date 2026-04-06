@@ -167,45 +167,31 @@ function getGoogleAccessToken($serviceAccount)
     }
 }
 
-function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [], $exclude_user_id = null)
+function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
 {
-    // --- CONSOLIDATED DEBUG LOGGING ---
-    $logFile = __DIR__ . '/../approval_debug.log';
+    // --- DEBUG LOGGING ---
+    $logFile = __DIR__ . '/push_debug.log';
     $log = function ($msg) use ($logFile) {
-        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[PushRoleHelper] " . $msg . "\n", FILE_APPEND);
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
     };
 
-    $log("Attempting push for Role: $role. Title: $title. Exclude User ID: " . ($exclude_user_id ?? 'None'));
+    $log("Attempting push for Role: $role. Title: $title");
 
     // Fetch users by role
-    $sql = "
+    $stmt = $pdo->prepare("
         SELECT u.id as user_id, ud.fcm_token, u.role 
         FROM users u 
         JOIN user_devices ud ON u.id = ud.user_id 
         WHERE u.role = ? 
         AND ud.fcm_token IS NOT NULL
-    ";
-    if ($exclude_user_id) {
-        $sql .= " AND u.id != ?";
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$role, $exclude_user_id]);
-    } else {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute([$role]);
-    }
+    ");
+    $stmt->execute([$role]);
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fallback (Backward Compatibility)
     if (empty($users)) {
-        $sql = "SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.role = ? AND u.fcm_token IS NOT NULL";
-        if ($exclude_user_id) {
-            $sql .= " AND u.id != ?";
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$role, $exclude_user_id]);
-        } else {
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute([$role]);
-        }
+        $stmt = $pdo->prepare("SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.role = ? AND u.fcm_token IS NOT NULL");
+        $stmt->execute([$role]);
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -323,10 +309,9 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [], $exc
  */
 function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
 {
-    // --- CONSOLIDATED DEBUG LOGGING ---
-    $logFile = __DIR__ . '/../approval_debug.log';
+    $logFile = __DIR__ . '/push_debug.log';
     $log = function ($msg) use ($logFile) {
-        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[PushHelper] " . $msg . "\n", FILE_APPEND);
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
     };
 
     $log("Attempting push for Specific User ID: $user_id. Title: $title");
@@ -364,7 +349,6 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         return false;
 
     foreach ($users as $user) {
-        $log("Targeting Token: " . substr($user['fcm_token'], 0, 15) . "... for User $user_id");
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
@@ -372,18 +356,17 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                     'title' => (string) $title,
                     'body' => (string) $body,
                 ],
-                'data' => [
+                'data' => array_merge([
                     'title' => (string) $title,
                     'body' => (string) $body,
                     'type' => 'visit_update',
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
-                ],
+                    'click_action' => 'visit_update_action'
+                ], $data),
                 'android' => [
                     'priority' => 'high',
-                    'ttl' => '0s',
                     'notification' => [
-                        'sound' => 'default',
-                        'channel_id' => 'visit_status_v1'
+                        'click_action' => 'visit_update_action'
                     ]
                 ]
             ]
@@ -393,8 +376,6 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json'
@@ -403,16 +384,8 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         $res = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        $log("FCM RESPONSE for Direct User $user_id [HTTP $httpCode]: $res");
-
-        // --- AUTOMATED CLEANUP ---
-        if ($httpCode === 404) {
-            $log("PURGING stale token for User $user_id");
-            $pdo->prepare("DELETE FROM user_devices WHERE fcm_token = ?")->execute([$user['fcm_token'] ?? '']);
-            $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE fcm_token = ? AND id = ?")->execute([$user['fcm_token'] ?? '', $user_id]);
-        }
+        $log("FCM RESPONSE for User $user_id: $res");
     }
     return true;
 }

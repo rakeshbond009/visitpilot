@@ -33,7 +33,6 @@ import RegisterVisitor from './screens/RegisterVisitor';
 import VisitorReports from './screens/VisitorReports';
 import EmployeeReport from './screens/EmployeeReport';
 import MyVisitorsHistory from './screens/MyVisitorsHistory';
-import VisitDetailScreen from './screens/VisitDetailScreen';
 import ComingSoon from './screens/ComingSoon';
 
 // Context
@@ -46,16 +45,6 @@ Notifications.setNotificationHandler({
         shouldPlaySound: true,
         shouldSetBadge: true,
     }),
-});
-
-Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    staysActiveInBackground: true,
-    interruptionModeIOS: 1,
-    playsInSilentModeIOS: true,
-    shouldDuckAndroid: true,
-    interruptionModeAndroid: 1,
-    playThroughEarpieceAndroid: false
 });
 
 const BACKGROUND_TASK_TIMEOUT = 10000;
@@ -83,12 +72,6 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
             OverlayPermissionModule.wakeUpApp();
         }
 
-        await Notifications.setNotificationChannelAsync('visit_status_v1', {
-            name: 'Visit Status Updates',
-            importance: Notifications.AndroidImportance.DEFAULT,
-            sound: 'default',
-        });
-
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: payload.title || "Visitor Arrival",
@@ -105,7 +88,6 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
 });
 
 const Stack = createStackNavigator();
-const navigationRef = React.createRef();
 
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
@@ -143,8 +125,18 @@ function AppContent() {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
+        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
+
+        if (!visit_id && data.body) {
+            try {
+                const parsedBody = JSON.parse(data.body);
+                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
+                data = { ...data, ...parsedBody };
+            } catch (e) { }
+        }
+
         return {
-            visit_id: String(visit_id || ""),
+            visit_id: visit_id,
             name: data.visitor_name || data.name || data.title || "Unknown Visitor",
             mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
             photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
@@ -268,38 +260,16 @@ function AppContent() {
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
-            // DON'T show the arrival overlay for routine status updates (only for arrivals/calls)
-            // Exclude if sender is the current user to prevent self-notification
-            const isSelf = data?.sender_id && data.sender_id === currentUserId;
-            if (!isSelf && data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             }
         });
 
-        // Centralized Deep Link Handler
-        const handleDeepLink = (raw) => {
-            const data = standardizeArrivalData(raw);
-            const visitId = String(data?.visit_id || raw?.visit_id || "");
-            
-            if (visitId || (raw?.title && raw.title.includes('Visit'))) {
-                // If navigation isn't ready, wait a beat
-                if (!navigationRef.current) {
-                    setTimeout(() => handleDeepLink(raw), 300);
-                    return;
-                }
-                
-                navigationRef.current.navigate('VisitDetail', { 
-                    visit_id: visitId || "0" 
-                });
-            } else {
-                console.log("[Navigation] No Visit ID found in payload keys:", Object.keys(raw || {}));
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
+            const data = standardizeArrivalData(r.notification.request.content.data);
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
-        };
-
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            const raw = response.notification.request.content;
-            console.log("[Push Tap] Response received:", raw.title);
-            handleDeepLink(raw);
         });
 
         return () => {
@@ -359,7 +329,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking} ref={navigationRef}>
+            <NavigationContainer linking={linking}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />
@@ -370,7 +340,6 @@ function AppContent() {
                     <Stack.Screen name="Reports" component={VisitorReports} />
                     <Stack.Screen name="EmployeeReport" component={EmployeeReport} />
                     <Stack.Screen name="MyVisitorsHistory" component={MyVisitorsHistory} />
-                    <Stack.Screen name="VisitDetail" component={VisitDetailScreen} />
                     <Stack.Screen name="Departments" component={ComingSoon} initialParams={{ screenName: 'Departments' }} />
                     <Stack.Screen name="Tenants" component={ComingSoon} initialParams={{ screenName: 'Tenants' }} />
                 </Stack.Navigator>
