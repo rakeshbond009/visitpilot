@@ -27,7 +27,9 @@ try {
     if ($user && password_verify($password, $user['password'])) {
         
         // --- SYSTEM QUOTA CHECK: Mobile Device Limit (Set by Super Admin) ---
-        $device_id = $data['device_id'] ?? null;
+        // Fallback: If device_id is missing, use fcm_token as the unique identifier
+        $device_id = $data['device_id'] ?? ($data['fcm_token'] ?? null);
+        
         if ($device_id && !empty($tenant) && $tenant !== 'none') {
             global $master_pdo;
             if ($master_pdo) {
@@ -46,8 +48,9 @@ try {
                     if ($device_rec['status'] === 'blocked') {
                         sendResponse('error', "Device Authorization Revoked: This mobile hardware has been blocked by the system administrator. Access denied.");
                     }
-                    // Update heartbeat for active device
-                    $master_pdo->prepare("UPDATE tenant_devices SET last_login = NOW() WHERE id = ?")->execute([$device_rec['id']]);
+                    // Update heartbeat and latest device name for active device
+                    $updStmt = $master_pdo->prepare("UPDATE tenant_devices SET last_login = NOW(), device_name = ? WHERE id = ?");
+                    $updStmt->execute([$data['device_name'] ?? 'Android Device', $device_rec['id']]);
                 } else {
                     // New phone: Check if the client has any ACTIVE slots left in their quota
                     $dCount = $master_pdo->prepare("SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = ? AND status = 'active'");

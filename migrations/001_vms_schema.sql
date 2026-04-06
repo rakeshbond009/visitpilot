@@ -129,12 +129,17 @@ CREATE TABLE IF NOT EXISTS `visit_members` (
 
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_key` varchar(50) DEFAULT 'system',
   `user_id` int(11) DEFAULT NULL,
-  `action` varchar(255) NOT NULL,
+  `performed_by` varchar(255) DEFAULT NULL COMMENT 'Human readable name/username',
+  `action` text NOT NULL,
+  `old_value` JSON DEFAULT NULL COMMENT 'State before change',
+  `new_value` JSON DEFAULT NULL COMMENT 'State after change',
   `ip_address` varchar(45) DEFAULT NULL,
-  `tenant_key` varchar(50) DEFAULT 'master',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_tenant` (`tenant_key`),
+  KEY `idx_audit_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `system_settings` (
@@ -209,3 +214,53 @@ CREATE TABLE IF NOT EXISTS `user_sessions` (
 -- Seed purposes
 INSERT IGNORE INTO `visit_purposes` (`purpose_name`) VALUES 
 ('Interview'), ('Meeting'), ('Delivery'), ('Personal'), ('Maintenance');
+
+-- ==========================================================
+-- MASTER PLATFORM TABLES (Multi-Tenant Routing & Global Controls)
+-- ==========================================================
+
+-- 1. Tenant Registry: Stores database credentials and quotas for each client.
+CREATE TABLE IF NOT EXISTS `tenants` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_key` varchar(50) NOT NULL,
+  `db_host` varchar(100) NOT NULL DEFAULT 'localhost',
+  `db_name` varchar(100) NOT NULL,
+  `db_user` varchar(100) NOT NULL,
+  `db_pass` varchar(100) NOT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `max_devices` int(11) DEFAULT 5 COMMENT 'Mobile hardware quota set by Super Admin',
+  `schema_version` int(11) DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `tenant_key` (`tenant_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2. Global Mobile Device Registry: Enforces quotas and hardware blocking.
+CREATE TABLE IF NOT EXISTS `tenant_devices` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_key` varchar(50) NOT NULL,
+  `device_id` varchar(255) NOT NULL,
+  `device_name` varchar(255) DEFAULT NULL,
+  `status` enum('active','blocked') DEFAULT 'active' COMMENT 'Blocked devices are denied login and do not count towards quota',
+  `last_login` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_tenant_device` (`tenant_key`, `device_id`),
+  CONSTRAINT `fk_device_tenant` FOREIGN KEY (`tenant_key`) REFERENCES `tenants` (`tenant_key`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. Global Audit Logs: Centralized trail for all administrative actions.
+CREATE TABLE IF NOT EXISTS `audit_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_key` varchar(50) DEFAULT 'system',
+  `user_id` int(11) DEFAULT NULL,
+  `performed_by` varchar(255) DEFAULT NULL COMMENT 'Human readable name/username',
+  `action` text NOT NULL,
+  `old_value` JSON DEFAULT NULL COMMENT 'State before change',
+  `new_value` JSON DEFAULT NULL COMMENT 'State after change',
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_tenant` (`tenant_key`),
+  KEY `idx_audit_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
