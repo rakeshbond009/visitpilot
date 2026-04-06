@@ -267,6 +267,13 @@ function sendPushToUser($pdo, $user_id, $title, $body, $data = [])
         curl_close($ch);
 
         $log("Targeted FCM Response for User $user_id ($platform) [HTTP $httpCode]: $response");
+
+        // CLEANUP: If token is unregistered, remove it from the DB
+        if ($httpCode === 404 || strpos($response, 'UNREGISTERED') !== false) {
+            $log("Token is INVALID/UNREGISTERED. Deleting from DB: " . (string)$device['fcm_token']);
+            $pdo->prepare("DELETE FROM user_devices WHERE fcm_token = ?")->execute([$device['fcm_token']]);
+            $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE fcm_token = ?")->execute([$device['fcm_token']]);
+        }
     }
     return true;
 }
