@@ -367,7 +367,7 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                     'notification' => [
                         'click_action' => 'visit_update_action',
                         'sound' => 'default',
-                        'channel_id' => 'default'
+                        'channel_id' => 'visit_status_v1'
                     ]
                 ]
             ]

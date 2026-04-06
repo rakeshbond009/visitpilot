@@ -72,6 +72,12 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
             OverlayPermissionModule.wakeUpApp();
         }
 
+        await Notifications.setNotificationChannelAsync('visit_status_v1', {
+            name: 'Visit Status Updates',
+            importance: Notifications.AndroidImportance.DEFAULT,
+            sound: 'default',
+        });
+
         await Notifications.scheduleNotificationAsync({
             content: {
                 title: payload.title || "Visitor Arrival",
@@ -79,6 +85,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
                 data: payload,
                 categoryIdentifier: 'visitor_arrival',
                 sound: true,
+                bypassDnd: true,
                 priority: Notifications.AndroidNotificationPriority.MAX,
             },
             trigger: null,
@@ -127,27 +134,13 @@ function AppContent() {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
-
-        if (!visit_id && data.body) {
-            try {
-                const parsedBody = JSON.parse(data.body);
-                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
-                data = { ...data, ...parsedBody };
-            } catch (e) { }
-        }
-
+        const normalizedData = raw.body && typeof raw.body === 'string' && raw.body.startsWith('{') ? JSON.parse(raw.body) : (raw.data || raw);
+        const finalVisitId = normalizedData.visit_id || normalizedData.visitId || normalizedData.id || raw.visit_id || raw.visitId || raw.id;
+        
         const result = {
-            visit_id: visit_id,
-            name: data.visitor_name || data.name || data.title || "Unknown Visitor",
-            mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
-            photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
-            company: data.company || data.organization || data.visitor_company || "General Visitor",
-            purpose: data.purpose || data.reason || data.body || "General Visit",
-            assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival"
+            visit_id: String(finalVisitId || ""),
+            type: normalizedData.type || raw.type || "visit_update"
         };
-        // Alert.alert("Standardized Result", JSON.stringify(result)); // Uncomment if raw data inspection is needed
         return result;
     };
 
@@ -167,12 +160,6 @@ function AppContent() {
                         interruptionModeAndroid: 1,
                         playThroughEarpieceAndroid: false
                     });
-
-                    const urls = [
-                        'https://www.soundjay.com/phone/telephone-ring-03a.mp3',
-                        'https://www.soundjay.com/phone/phone-calling-1.mp3',
-                        'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sample.mp3'
-                    ];
 
                     for (const url of urls) {
                         try {
@@ -296,21 +283,24 @@ function AppContent() {
             }
         });
 
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const data = standardizeArrivalData(r.notification.request.content.data);
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+            const raw = response.notification.request.content.data;
+            const data = standardizeArrivalData(raw);
+
+            // EMERGENCY DEBUG: Show the exact raw data of the tapped push to understand nesting
+            Alert.alert("Push Tapped (Raw Data)", JSON.stringify(raw).substring(0, 300));
+
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             } else if (data && data.type === 'visit_update') {
-                Alert.alert("Push Tapped", `Navigating to History for Visit ID: ${data.visit_id}`);
-                // Deep link to history
                 if (navigationRef.current) {
                     navigationRef.current.navigate('MyVisitorsHistory', { 
                         visit_id: String(data.visit_id),
                         autoOpenDetails: true 
                     });
-                } else {
-                    Alert.alert("Debug Error", "navigationRef.current is null! Cannot navigate.");
                 }
+            } else {
+                Alert.alert("Push Debug", `Unknown notification type: ${data.type || 'EMPTY'}. Full raw keys: ${Object.keys(raw).join(', ')}`);
             }
         });
 

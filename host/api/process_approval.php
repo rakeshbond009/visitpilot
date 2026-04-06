@@ -56,7 +56,15 @@ if ($action == 'approve') {
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
-    sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+    // --- DEBUG LOGGING ---
+    $logFile = '../../approval_debug.log';
+    $debug = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+    $debug("Processing APPROVAL for Visit $visit_id. Creator ID: " . ($creator_id ?? 'NONE'));
+
+    $push_security = sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+    $debug("Push to Security: " . ($push_security ? 'SENT' : 'FAILED'));
 
     $push_result = false;
     // Send Notification to Creator
