@@ -1,5 +1,6 @@
 <?php
-require_once 'header.php';
+require_once '../includes/db.php';
+requireLogin();
 
 // --- SUPER ADMIN SECURITY ---
 if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
@@ -9,7 +10,7 @@ if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
 
 $target_tenant = $_GET['tenant'] ?? '';
 
-// Handle Toggle Action
+// Handle Toggle Action (CRITICAL: Must be BEFORE any HTML output to avoid white page)
 if (isset($_GET['toggle']) && isset($_GET['id'])) {
     $id = (int)$_GET['id'];
     $new_status = $_GET['toggle'] === 'block' ? 'blocked' : 'active';
@@ -17,9 +18,13 @@ if (isset($_GET['toggle']) && isset($_GET['id'])) {
     $stmt = $master_pdo->prepare("UPDATE tenant_devices SET status = ? WHERE id = ?");
     $stmt->execute([$new_status, $id]);
     
+    // Redirect back to avoid white page and clarify state
     header("Location: tenant_devices.php?tenant=" . urlencode($target_tenant) . "&msg=Status Updated");
     exit;
 }
+
+// Now include UI
+require_once 'header.php';
 
 // Fetch Devices
 if ($target_tenant) {
@@ -93,12 +98,13 @@ if ($target_tenant) {
                             </td>
                             <td>
                                 <div class="fw-bold"><?php echo htmlspecialchars($d['device_name'] ?: 'Unknown Android'); ?></div>
-                                <div class="small text-muted font-monospace"><?php echo htmlspecialchars($d['device_id']); ?></div>
+                                <div class="small text-muted font-monospace text-truncate" style="max-width: 200px;"><?php echo htmlspecialchars($d['device_id']); ?></div>
                             </td>
                             <td class="text-center">
-                                <span class="badge bg-<?php echo ($d['status'] === 'active' ? 'success' : 'danger'); ?>-opacity text-<?php echo ($d['status'] === 'active' ? 'success' : 'danger'); ?> px-3 rounded-pill">
+                                <div class="badge bg-<?php echo ($d['status'] === 'active' ? 'success' : 'danger'); ?>-opacity text-<?php echo ($d['status'] === 'active' ? 'success' : 'danger'); ?> px-3 rounded-pill">
+                                    <i class="bi bi-<?php echo ($d['status'] === 'active' ? 'check-circle-fill' : 'slash-circle-fill'); ?> me-1"></i>
                                     <?php echo strtoupper($d['status']); ?>
-                                </span>
+                                </div>
                             </td>
                             <td class="small text-muted">
                                 <?php echo date('M d, Y H:i', strtotime($d['last_login'])); ?>
@@ -106,13 +112,13 @@ if ($target_tenant) {
                             <td class="text-end pe-4">
                                 <?php if ($d['status'] === 'active'): ?>
                                     <a href="tenant_devices.php?tenant=<?php echo urlencode($target_tenant); ?>&id=<?php echo $d['id']; ?>&toggle=block" 
-                                       class="btn btn-sm btn-danger rounded-pill px-3 shadow-xs" onclick="return confirm('Block this device from ALL future logins?')">
-                                        <i class="bi bi-slash-circle me-1"></i> Block Device
+                                       class="btn btn-sm btn-danger rounded-pill px-3 shadow-xs" onclick="return confirm('Immediately block all access for this hardware?')">
+                                        <i class="bi bi-slash-circle me-1"></i> Block
                                     </a>
                                 <?php else: ?>
                                     <a href="tenant_devices.php?tenant=<?php echo urlencode($target_tenant); ?>&id=<?php echo $d['id']; ?>&toggle=unblock" 
                                        class="btn btn-sm btn-success rounded-pill px-3 shadow-xs">
-                                        <i class="bi bi-check-circle me-1"></i> Authorize Device
+                                        <i class="bi bi-check-circle me-1"></i> Authorize
                                     </a>
                                 <?php endif; ?>
                             </td>

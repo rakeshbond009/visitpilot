@@ -593,3 +593,41 @@ if (isset($master_pdo)) {
 }
 
 require_once __DIR__ . '/datetime_helper.php';
+
+// 12. LIVE HARDWARE BLOCK CHECK (Instant Effect for Quota Enforcement)
+// Only check if user is logged in via a physical device or has a device_id in session
+if (isset($_SESSION['user_id']) && isset($_SESSION['device_id']) && isset($_SESSION['tenant_key'])) {
+    global $master_pdo;
+    if ($master_pdo) {
+        try {
+            $checkStmt = $master_pdo->prepare("SELECT status FROM tenant_devices WHERE tenant_key = ? AND device_id = ?");
+            $checkStmt->execute([$_SESSION['tenant_key'], $_SESSION['device_id']]);
+            $device_status = $checkStmt->fetchColumn();
+
+            if ($device_status === 'blocked') {
+                // 🛑 INSTANT LOCK: Hardware has been banned by System Admin
+                logAction(null, $_SESSION['user_id'], "ACCESS_DENIED: Hardware ".$_SESSION['device_id']." is blocked.");
+                session_unset();
+                session_destroy();
+                
+                // Clear cookies if persistent login is active
+                if (isset($_COOKIE['remember_token'])) {
+                    setcookie('remember_token', '', time() - 3600, '/');
+                }
+
+                if (strpos($_SERVER['REQUEST_URI'], '/api/') !== false) {
+                    header('Content-Type: application/json');
+                    die(json_encode([
+                        'status' => 'error', 
+                        'message' => 'Device Authorization Revoked: This hardware has been blocked by the system administrator. Access denied.'
+                    ]));
+                    exit;
+                } else {
+                    $redirect_url = BASE_URL . "index.php?error=device_blocked";
+                    header("Location: $redirect_url");
+                    exit;
+                }
+            }
+        } catch (Exception $e) { /* Fail silently if master DB is unavailable for check */ }
+    }
+}

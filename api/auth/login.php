@@ -90,6 +90,7 @@ try {
         $_SESSION['employee_id'] = $user['employee_id'];
         $_SESSION['department'] = $user['department'] ?? null;
         $_SESSION['tenant_key'] = $tenant; // Ensure tenant is in session
+        $_SESSION['device_id'] = $device_id; // CRITICAL: Link hardware ID to session for instant blocking
 
         // --- NEW: Update FCM token if provided ---
         if (array_key_exists('fcm_token', $data)) {

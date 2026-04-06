@@ -127,21 +127,6 @@ CREATE TABLE IF NOT EXISTS `visit_members` (
   CONSTRAINT `visit_members_ibfk_1` FOREIGN KEY (`visit_id`) REFERENCES `visits` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS `audit_logs` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tenant_key` varchar(50) DEFAULT 'system',
-  `user_id` int(11) DEFAULT NULL,
-  `performed_by` varchar(255) DEFAULT NULL COMMENT 'Human readable name/username',
-  `action` text NOT NULL,
-  `old_value` JSON DEFAULT NULL COMMENT 'State before change',
-  `new_value` JSON DEFAULT NULL COMMENT 'State after change',
-  `ip_address` varchar(45) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`),
-  KEY `idx_audit_tenant` (`tenant_key`),
-  KEY `idx_audit_user` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 CREATE TABLE IF NOT EXISTS `system_settings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `setting_key` varchar(100) NOT NULL,
