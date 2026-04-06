@@ -296,25 +296,30 @@ function AppContent() {
             }
         });
 
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-            const raw = response.notification.request.content.data;
+        // Centralized Deep Link Handler
+        const handleDeepLink = (raw) => {
             const data = standardizeArrivalData(raw);
-
-            // EMERGENCY DEBUG: Show the exact raw data of the tapped push to understand nesting
-            Alert.alert("Push Tapped (Raw Data)", JSON.stringify(raw).substring(0, 300));
-
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data); setShowOverlay(true);
-            } else if (data && (data.type === 'visit_update' || (raw.title && raw.title.includes('Visit')))) {
-                // NAVIGATION: GO DIRECTLY TO VISIT DETAILS SCREEN (Bypassing History Screen)
-                if (navigationRef.current) {
-                    navigationRef.current.navigate('VisitDetail', { 
-                        visit_id: String(data.visit_id || raw.visit_id || ""),
-                    });
+            const visitId = String(data?.visit_id || raw?.visit_id || "");
+            
+            if (visitId || (raw?.title && raw.title.includes('Visit'))) {
+                // If navigation isn't ready, wait a beat
+                if (!navigationRef.current) {
+                    setTimeout(() => handleDeepLink(raw), 300);
+                    return;
                 }
+                
+                navigationRef.current.navigate('VisitDetail', { 
+                    visit_id: visitId || "0" 
+                });
             } else {
-                Alert.alert("Push Debug", `Unknown notification structure for Tap. Type: ${data.type || 'N/A'}. Keys: ${Object.keys(raw).join(', ')}`);
+                console.log("[Navigation] No Visit ID found in payload keys:", Object.keys(raw || {}));
             }
+        };
+
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+            const raw = response.notification.request.content;
+            console.log("[Push Tap] Response received:", raw.title);
+            handleDeepLink(raw);
         });
 
         return () => {
