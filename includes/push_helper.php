@@ -405,6 +405,13 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         $log("FCM RESPONSE for Direct User $user_id [HTTP $httpCode]: $res");
+
+        // --- AUTOMATED CLEANUP ---
+        if ($httpCode === 404) {
+            $log("PURGING stale token for User $user_id");
+            $pdo->prepare("DELETE FROM user_devices WHERE fcm_token = ?")->execute([$user['fcm_token'] ?? '']);
+            $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE fcm_token = ? AND id = ?")->execute([$user['fcm_token'] ?? '', $user_id]);
+        }
     }
     return true;
 }
