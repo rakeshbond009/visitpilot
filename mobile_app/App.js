@@ -238,61 +238,66 @@ function AppContent() {
                 if (token) updateTokenOnServer(token);
             });
         }, 5000);
-
         const handleDeepLinkNotification = async (notifData) => {
             if (!notifData) return false;
+            console.log("[NOTIF] Handling data:", JSON.stringify(notifData));
             
-            // Dismiss all notifications when user interacts with one
             await Notifications.dismissAllNotificationsAsync().catch(() => { });
-
             const data = standardizeArrivalData(notifData);
             
-            // Priority 1: Arrival Overlay
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); 
                 setShowOverlay(true); 
                 return true;
             }
 
-            // Priority 2: Visit Details Navigation
             const visitId = notifData.visit_id || notifData.visitId || (data && data.visit_id);
             if (visitId) {
                 try {
                     const storedUser = await AsyncStorage.getItem('userData');
                     if (storedUser) {
                         const user = JSON.parse(storedUser);
-                        let targetScreen = 'MyVisitorsHistory';
-                        if (user.role === 'security') {
-                            targetScreen = 'SecurityDashboard';
-                        }
-                        
-                        // Small delay to ensure navigation is ready
-                        setTimeout(() => {
-                            navigate(targetScreen, { visit_id: visitId });
-                        }, 500);
+                        let targetScreen = user.role === 'security' ? 'SecurityDashboard' : 'MyVisitorsHistory';
+                        console.log(`[NOTIF] Redirecting to ${targetScreen} for visit ${visitId}`);
+                        setTimeout(() => navigate(targetScreen, { visit_id: visitId }), 500);
                         return true;
                     }
                 } catch (e) {
-                    console.error("Deep link handling error:", e);
+                    console.error("Deep link error:", e);
                 }
             }
             return false;
         };
 
+        const receivedSubscription = Notifications.addNotificationReceivedListener(notification => {
+            const data = notification.request.content.data;
+            console.log("[NOTIF] Foreground Arrival:", JSON.stringify(data));
+            const standardized = standardizeArrivalData(data);
+            if (standardized && (standardized.type === 'visitor_arrival' || standardized.is_call_priority === 'true')) {
+                setArrivalData(standardized);
+                setShowOverlay(true);
+            }
+        });
+
+        const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+            const data = response.notification.request.content.data;
+            console.log("[NOTIF] Interaction:", JSON.stringify(data));
+            handleDeepLinkNotification(data);
+        });
+
         const checkNotifications = async () => {
             try {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
-                    const handled = await handleDeepLinkNotification(response.notification.request.content.data);
-                    if (handled) return true;
+                    handleDeepLinkNotification(response.notification.request.content.data);
+                    return true;
                 }
 
                 const stored = await AsyncStorage.getItem('pending_arrival_call');
                 if (stored) {
-                    const data = JSON.parse(stored);
                     await AsyncStorage.removeItem('pending_arrival_call');
-                    const handled = await handleDeepLinkNotification(data);
-                    if (handled) return true;
+                    handleDeepLinkNotification(JSON.parse(stored));
+                    return true;
                 }
             } catch (e) { }
             return false;
@@ -301,24 +306,13 @@ function AppContent() {
         checkNotifications();
         const poll = setInterval(async () => {
             if (await checkNotifications()) clearInterval(poll);
-        }, 2000);
-        setTimeout(() => clearInterval(poll), 10000);
-
-        notificationListener.current = Notifications.addNotificationReceivedListener(n => {
-            const data = standardizeArrivalData(n.request.content.data);
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data); setShowOverlay(true);
-            }
-        });
-
-        responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            handleDeepLinkNotification(r.notification.request.content.data);
-        });
+        }, 3000);
+        setTimeout(() => clearInterval(poll), 15000);
 
         return () => {
             subscription.remove();
-            if (notificationListener.current) Notifications.removeNotificationSubscription(notificationListener.current);
-            if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+            receivedSubscription.remove();
+            responseSubscription.remove();
         };
     }, []);
 

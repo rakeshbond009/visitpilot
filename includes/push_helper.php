@@ -222,7 +222,6 @@ function sendPushToUser($pdo, $user_id, $title, $body, $data = [])
         $platform = strtolower($device['platform'] ?? 'android');
         
         // Use a consistent structure for both notification and data
-        // This ensures visibility in all states and proper clicking behavior
         $message = [
             'message' => [
                 'token' => (string) $device['fcm_token'],
@@ -245,21 +244,6 @@ function sendPushToUser($pdo, $user_id, $title, $body, $data = [])
                         'sound' => 'default',
                         'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
                     ]
-                ],
-                'apns' => [
-                    'payload' => [
-                        'aps' => [
-                            'alert' => [
-                                'title' => (string) $title,
-                                'body' => (string) $body,
-                            ],
-                            'sound' => 'default',
-                            'badge' => 1,
-                        ]
-                    ]
-                ],
-                'fcm_options' => [
-                    'analytics_label' => (string) ($data['type'] ?? 'visit_updates')
                 ]
             ]
         ];
