@@ -122,12 +122,16 @@ if (isset($_GET['disable_user'])) {
         $uInfo = $pdo->prepare("SELECT full_name, username FROM users WHERE employee_id = ?");
         $uInfo->execute([$id]);
         $u = $uInfo->fetch();
-        $performer = $u ? "{$u['full_name']} (@{$u['username']})" : "Employee ID: $id";
 
-        $stmt = $pdo->prepare("DELETE FROM users WHERE employee_id=?");
-        $stmt->execute([$id]);
-
-        logAction($pdo, $_SESSION['user_id'], "Revoked user access for employee: $performer");
+        if ($u) {
+            $performer = "{$u['full_name']} (@{$u['username']})";
+            $stmt = $pdo->prepare("DELETE FROM users WHERE employee_id=?");
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() > 0) {
+                logAction($pdo, $_SESSION['user_id'], "Revoked user access for employee: $performer");
+            }
+        }
 
         header("Location: employees.php?revoke_success=1");
         exit;
@@ -143,6 +147,15 @@ if (isset($_GET['grant_user'])) {
         $emp_data = $emp->fetch();
 
         if ($emp_data) {
+            // SAFE-CHECK: Only proceed if this employee doesn't already have an account 
+            // (prevents duplicate accounts on page refresh)
+            $existing = $pdo->prepare("SELECT id FROM users WHERE employee_id = ?");
+            $existing->execute([$id]);
+            if ($existing->fetch()) {
+                header("Location: employees.php?msg=account_already_exists");
+                exit;
+            }
+
             // Generate Username Logic (Same as Add Flow)
             $base_username = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '.', $emp_data['name']))); 
             $base_username = trim($base_username, '.');
