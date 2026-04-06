@@ -91,16 +91,20 @@ try {
     $stmt_master = $master_pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('company_name', 'company_logo')");
     if ($stmt_master) {
         $master_settings = $stmt_master->fetchAll(PDO::FETCH_KEY_PAIR);
-        if (!empty($master_settings['company_name'])) $company_name = $master_settings['company_name'];
-        if (!empty($master_settings['company_logo'])) $company_logo = $master_settings['company_logo'];
+        if (!empty($master_settings['company_name']))
+            $company_name = $master_settings['company_name'];
+        if (!empty($master_settings['company_logo']))
+            $company_logo = $master_settings['company_logo'];
     }
 
     // 2. Then try to override with Tenant Specific Branding
     $stmt_tenant = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('company_name', 'company_logo')");
     if ($stmt_tenant) {
         $tenant_settings = $stmt_tenant->fetchAll(PDO::FETCH_KEY_PAIR);
-        if (!empty($tenant_settings['company_name'])) $company_name = $tenant_settings['company_name'];
-        if (!empty($tenant_settings['company_logo'])) $company_logo = $tenant_settings['company_logo'];
+        if (!empty($tenant_settings['company_name']))
+            $company_name = $tenant_settings['company_name'];
+        if (!empty($tenant_settings['company_logo']))
+            $company_logo = $tenant_settings['company_logo'];
     }
 } catch (Exception $e) {
     // Fail silently, use defaults

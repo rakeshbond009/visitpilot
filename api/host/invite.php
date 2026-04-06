@@ -109,8 +109,7 @@ try {
         'visit_date' => $visit_date
     ]);
 
-}
-catch (PDOException $e) {
+} catch (PDOException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }

@@ -101,6 +101,7 @@ endforeach; ?>
                     <th style="width: 200px;">When (IST)</th>
                     <th style="width: 200px;">Performed By</th>
                     <th>Action Description</th>
+                    <th style="width: 150px;">Database</th>
                     <th class="pe-4" style="width: 150px;">IP Address</th>
                 </tr>
             </thead>
@@ -133,6 +134,9 @@ endforeach; ?>
                         <div class="p-2 rounded bg-light border-start border-3 border-primary small text-dark">
                             <?php echo htmlspecialchars($log['action']); ?>
                         </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-info-subtle text-info border border-info small"><?php echo htmlspecialchars($log['database_name'] ?? 'master'); ?></span>
                     </td>
                     <td class="pe-4">
                         <span class="badge bg-secondary-subtle text-secondary small"><?php echo htmlspecialchars($log['ip_address']); ?></span>

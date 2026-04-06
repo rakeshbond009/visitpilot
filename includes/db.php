@@ -525,9 +525,20 @@ function logAction($pdo, $user_id, $action)
     if (!$pdo)
         return;
     try {
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-        $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+        // Attempt to capture database name and IST timestamp
+        $db_name = $pdo->query('SELECT DATABASE()')->fetchColumn();
+        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address, database_name, created_at) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $db_name, current_datetime()]);
     } catch (Exception $e) {
+        // Fallback if database_name column doesn't exist yet
+        try {
+            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', current_datetime()]);
+        } catch (Exception $e2) {
+            // Last resort for legacy structure if my previous fixes were manually reverted
+            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
+            $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+        }
     }
 }
 

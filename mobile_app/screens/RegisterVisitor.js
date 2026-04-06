@@ -816,10 +816,7 @@ export default function RegisterVisitor({ navigation, route }) {
                                 <View style={styles.toggleRow}>
                                     <Switch
                                         value={otpEnabled}
-                                        onValueChange={(val) => {
-                                            onOtpToggleChange(val);
-                                            if (val && mobile.length === 10) sendOTP();
-                                        }}
+                                        onValueChange={onOtpToggleChange}
                                         disabled={isMandatory('otp_check')}
                                         trackColor={{ false: '#e2e8f0', true: '#93c5fd' }}
                                         thumbColor={otpEnabled ? '#3b82f6' : '#f4f3f4'}
