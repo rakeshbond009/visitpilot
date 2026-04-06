@@ -14,27 +14,22 @@ $data = json_decode(file_get_contents('php://input'), true);
 $fcm_token = !empty($data['fcm_token']) ? trim((string)$data['fcm_token']) : null;
 
 try {
-    // 1. If we have a session, we can definitely clear the token for this user
+    // 1. If we have a session, we can definitely clear the tokens for this user
     if (isset($_SESSION['user_id'])) {
         $user_id = $_SESSION['user_id'];
         
-        if ($fcm_token) {
-            // Clear specifically this token for this user
-            $stmt = $pdo->prepare("DELETE FROM user_devices WHERE user_id = ? AND fcm_token = ?");
-            $stmt->execute([$user_id, $fcm_token]);
-            
-            // Clear legacy column if it matches
-            $stmt_legacy = $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE id = ? AND fcm_token = ?");
-            $stmt_legacy->execute([$user_id, $fcm_token]);
-            
-            logAction($pdo, $user_id, "Mobile Logout: FCM token cleared ($fcm_token)");
-        } else {
-            // If no token provided, should we clear ALL tokens? Probably not, user might have other phones.
-            logAction($pdo, $user_id, "Logout: Session destroyed");
-        }
+        // AGGRESSIVE CLEANUP: Clear ALL tokens for this user upon logout
+        // This ensures no orphaned tokens remain in user_devices (Tenant DB)
+        $stmt = $pdo->prepare("DELETE FROM user_devices WHERE user_id = ?");
+        $stmt->execute([$user_id]);
+        
+        // Also clear the legacy column
+        $stmt_legacy = $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE id = ?");
+        $stmt_legacy->execute([$user_id]);
+
+        logAction($pdo, $user_id, "Logout: All FCM tokens and security entries cleared for User $user_id");
     } 
-    // 2. If NO session, but we have a token, we should still clear it from any user it belongs to
-    // This handles cases where the session expired but the app is now logging out.
+    // 2. If NO session (expired), but we have a token, clear that specific token
     elseif ($fcm_token) {
         $stmt = $pdo->prepare("DELETE FROM user_devices WHERE fcm_token = ?");
         $stmt->execute([$fcm_token]);
