@@ -289,18 +289,23 @@ function loadUserPermissions()
         return;
 
     // 0. Update Role and Lock Status (Real-time Sync)
-    $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked FROM users WHERE id = ?");
-    $stmt->execute([$_SESSION['user_id']]);
-    $userRow = $stmt->fetch();
+    // CRITICAL FIX: Only sync if we are NOT a Super Admin managing a tenant.
+    // If a Super Admin is managing a tenant, we MUST NOT overwrite their Master DB identity with Tenant DB data.
+    $is_super = $_SESSION['is_super'] ?? false;
+    if (!$is_super) {
+        $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked FROM users WHERE id = ?");
+        $stmt->execute([$_SESSION['user_id']]);
+        $userRow = $stmt->fetch();
 
-    if ($userRow) {
-        $_SESSION['role'] = $userRow['role'];
-        $_SESSION['full_name'] = $userRow['full_name'];
-        $_SESSION['permissions_locked'] = (bool) $userRow['permissions_locked'];
-    } else {
-        // If the user record is missing (revoked), force an immediate logout
-        destroyPersistentSession();
-        redirect(BASE_URL . 'index.php?msg=access_revoked');
+        if ($userRow) {
+            $_SESSION['role'] = $userRow['role'];
+            $_SESSION['full_name'] = $userRow['full_name'];
+            $_SESSION['permissions_locked'] = (bool) $userRow['permissions_locked'];
+        } else {
+            // If the user record is missing (revoked), force an immediate logout
+            destroyPersistentSession();
+            redirect(BASE_URL . 'index.php?msg=access_revoked');
+        }
     }
 
     // 1. Fetch User Explicit Permissions
