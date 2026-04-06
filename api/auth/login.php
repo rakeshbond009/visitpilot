@@ -48,9 +48,9 @@ try {
                     if ($device_rec['status'] === 'blocked') {
                         sendResponse('error', "Device Authorization Revoked: This mobile hardware has been blocked by the system administrator. Access denied.");
                     }
-                    // Update heartbeat and latest device name for active device
-                    $updStmt = $master_pdo->prepare("UPDATE tenant_devices SET last_login = NOW(), device_name = ? WHERE id = ?");
-                    $updStmt->execute([$data['device_name'] ?? 'Android Device', $device_rec['id']]);
+                    // Update heartbeat, user name, and latest device name for active device
+                    $updStmt = $master_pdo->prepare("UPDATE tenant_devices SET last_login = NOW(), device_name = ?, last_user_name = ? WHERE id = ?");
+                    $updStmt->execute([$data['device_name'] ?? 'Android Device', $user['full_name'], $device_rec['id']]);
                 } else {
                     // New phone: Check if the client has any ACTIVE slots left in their quota
                     $dCount = $master_pdo->prepare("SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = ? AND status = 'active'");
@@ -58,9 +58,9 @@ try {
                     if ((int)$dCount->fetchColumn() >= $max_devices) {
                         sendResponse('error', "Device Quota Reached: This company is limited to $max_devices active mobile devices. Please contact the system administrator to upgrade.");
                     }
-                    // Register the new phone as 'active'
-                    $master_pdo->prepare("INSERT INTO tenant_devices (tenant_key, device_id, device_name, status) VALUES (?, ?, ?, 'active')")
-                               ->execute([$tenant, $device_id, $data['device_name'] ?? 'Android Device']);
+                    // Register the new phone as 'active' with user name
+                    $master_pdo->prepare("INSERT INTO tenant_devices (tenant_key, device_id, device_name, last_user_name, status) VALUES (?, ?, ?, ?, 'active')")
+                               ->execute([$tenant, $device_id, $data['device_name'] ?? 'Android Device', $user['full_name']]);
                 }
             }
         }

@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS `tenant_devices` (
   `tenant_key` varchar(50) NOT NULL,
   `device_id` varchar(255) NOT NULL,
   `device_name` varchar(255) DEFAULT NULL,
+  `last_user_name` varchar(255) DEFAULT NULL COMMENT 'Name of the last user who logged in on this phone',
   `status` enum('active','blocked') DEFAULT 'active' COMMENT 'Blocked devices are denied login and do not count towards quota',
   `last_login` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),

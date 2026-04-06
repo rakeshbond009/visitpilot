@@ -81,15 +81,16 @@ if ($target_tenant) {
                 <thead class="bg-light">
                     <tr>
                         <th class="ps-4 small text-uppercase">Client</th>
-                        <th class="small text-uppercase">Device Name / ID</th>
+                        <th class="small text-uppercase">HW Name / ID</th>
+                        <th class="small text-uppercase">Last Used By</th>
                         <th class="small text-uppercase text-center">Status</th>
-                        <th class="small text-uppercase">Last Login</th>
+                        <th class="small text-uppercase">Activity</th>
                         <th class="text-end pe-4 small text-uppercase">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($devices)): ?>
-                        <tr><td colspan="5" class="p-5 text-center text-muted">No mobile devices registered yet.</td></tr>
+                        <tr><td colspan="6" class="p-5 text-center text-muted">No mobile devices registered yet.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($devices as $d): ?>
                         <tr>
@@ -97,8 +98,14 @@ if ($target_tenant) {
                                 <span class="fw-bold"><?php echo strtoupper($d['tenant_key']); ?></span>
                             </td>
                             <td>
-                                <div class="fw-bold"><?php echo htmlspecialchars($d['device_name'] ?: 'Unknown Android'); ?></div>
-                                <div class="small text-muted font-monospace text-truncate" style="max-width: 200px;"><?php echo htmlspecialchars($d['device_id']); ?></div>
+                                <div class="fw-bold text-truncate" title="<?php echo htmlspecialchars($d['device_name']); ?>" style="max-width: 150px;">
+                                    <?php echo htmlspecialchars($d['device_name'] ?: 'Android Device'); ?>
+                                </div>
+                                <div class="small text-muted font-monospace text-truncate" style="max-width: 120px;">ID: <?php echo htmlspecialchars($d['device_id']); ?></div>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark"><?php echo htmlspecialchars($d['last_user_name'] ?: '---'); ?></div>
+                                <div class="small text-muted">Active User</div>
                             </td>
                             <td class="text-center">
                                 <div class="badge bg-<?php echo ($d['status'] === 'active' ? 'success' : 'danger'); ?>-opacity text-<?php echo ($d['status'] === 'active' ? 'success' : 'danger'); ?> px-3 rounded-pill">
@@ -107,7 +114,8 @@ if ($target_tenant) {
                                 </div>
                             </td>
                             <td class="small text-muted">
-                                <?php echo date('M d, Y H:i', strtotime($d['last_login'])); ?>
+                                <i class="bi bi-clock-history me-1"></i>
+                                <?php echo date('M d, H:i', strtotime($d['last_login'])); ?>
                             </td>
                             <td class="text-end pe-4">
                                 <?php if ($d['status'] === 'active'): ?>
