@@ -231,17 +231,25 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
+                'notification' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                ],
                 'data' => array_merge([
                     'title' => (string) $title,
                     'body' => (string) $body,
                     'type' => 'visit_update',
                     'is_call_priority' => 'false',
-                    'visitId' => (string) ($data['visit_id'] ?? ''),
+                    'visit_id' => (string) ($data['visit_id'] ?? ''),
                     'click_action' => 'visit_update_action'
                 ], $data),
                 'android' => [
                     'priority' => 'high',
                     'ttl' => '0s',
+                    'notification' => [
+                        'click_action' => 'visit_update_action',
+                        'sound' => 'default'
+                    ]
                 ],
                 'apns' => [
                     'payload' => [
@@ -251,6 +259,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                                 'body' => (string) $body,
                             ],
                             'sound' => 'default',
+                            'category' => 'visit_update_action'
                         ]
                     ]
                 ]
@@ -291,6 +300,90 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                     ->execute([$user['user_id'], $user['fcm_token']]);
             }
         }
+    }
+    return true;
+}
+
+/**
+ * Send notification to a specific user by ID
+ */
+function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
+{
+    $logFile = __DIR__ . '/push_debug.log';
+    $log = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+
+    $log("Attempting push for Specific User ID: $user_id. Title: $title");
+
+    $stmt = $pdo->prepare("
+        SELECT u.id as user_id, ud.fcm_token, u.role, ud.platform 
+        FROM users u 
+        JOIN user_devices ud ON u.id = ud.user_id 
+        WHERE u.id = ? 
+        AND ud.fcm_token IS NOT NULL
+    ");
+    $stmt->execute([$user_id]);
+    $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (empty($users)) {
+        // Legacy check
+        $stmt = $pdo->prepare("SELECT id as user_id, fcm_token, role FROM users WHERE id = ? AND fcm_token IS NOT NULL");
+        $stmt->execute([$user_id]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    if (empty($users)) {
+        $log("No tokens found for User ID: $user_id");
+        return false;
+    }
+
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) return false;
+
+    $serviceAccount = json_decode(file_get_contents($certPath), true);
+    $projectId = $serviceAccount['project_id'];
+    $accessToken = getGoogleAccessToken($serviceAccount);
+    if (!$accessToken) return false;
+
+    foreach ($users as $user) {
+        $message = [
+            'message' => [
+                'token' => (string) $user['fcm_token'],
+                'notification' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                ],
+                'data' => array_merge([
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                    'type' => 'visit_update',
+                    'visit_id' => (string) ($data['visit_id'] ?? ''),
+                    'click_action' => 'visit_update_action'
+                ], $data),
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'click_action' => 'visit_update_action'
+                    ]
+                ]
+            ]
+        ];
+
+        $payloadJson = json_encode($message);
+        $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $accessToken,
+            'Content-Type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payloadJson);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $res = curl_exec($ch);
+        curl_close($ch);
+        $log("FCM RESPONSE for User $user_id: $res");
     }
     return true;
 }

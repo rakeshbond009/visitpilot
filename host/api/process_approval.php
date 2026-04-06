@@ -35,14 +35,16 @@ if (!$visit_id || !in_array($action, ['approve', 'reject'])) {
     exit;
 }
 
-// Verify this visit belongs to this host and is pending
-$stmt = $pdo->prepare("SELECT id FROM visits WHERE id = ? AND employee_id = ? AND approval_status = 'pending'");
+// Verify this visit belongs to this host and is pending, and get the creator
+$stmt = $pdo->prepare("SELECT id, created_by FROM visits WHERE id = ? AND employee_id = ? AND approval_status = 'pending'");
 $stmt->execute([$visit_id, $host_employee_id]);
-if (!$stmt->fetch()) {
+$visit_meta = $stmt->fetch();
+if (!$visit_meta) {
     http_response_code(403);
     echo json_encode(['success' => false, 'error' => 'Visit not found or already processed']);
     exit;
 }
+$creator_id = $visit_meta['created_by'];
 
 if ($action == 'approve') {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_by=?, approved_at=? WHERE id=?");
@@ -56,6 +58,11 @@ if ($action == 'approve') {
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
+    // Send Notification to Creator
+    if ($creator_id) {
+        sendPushNotificationToUser($pdo, $creator_id, "Visit Approved", "The visit for $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'visit_update']);
+    }
+
     echo json_encode(['success' => true, 'message' => 'Visitor Approved']);
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=?, rejection_reason=? WHERE id=?");
@@ -68,6 +75,11 @@ if ($action == 'approve') {
     $visitor_name = $stmt->fetchColumn();
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+
+    // Send Notification to Creator
+    if ($creator_id) {
+        sendPushNotificationToUser($pdo, $creator_id, "Visit Rejected", "The visit for $visitor_name has been rejected by the host. Reason: $reason", ['visit_id' => $visit_id, 'type' => 'visit_update']);
+    }
 
     echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }
