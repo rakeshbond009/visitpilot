@@ -164,6 +164,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_user_id'])) {
             $stmt->execute([$full_name, $department, $status, $old['employee_id']]);
         }
 
+        // --- SYNC Hardware Status ---
+        if ($old['status'] !== $status) {
+            toggleUserMobileAccess($id, $status);
+        }
+
         $msg_log = "Updated user $username (ID: $id): " . (empty($changes) ? "no profile changes" : implode(", ", $changes));
         logAction($pdo, $_SESSION['user_id'], $msg_log);
 
@@ -244,7 +249,10 @@ if (isset($_GET['toggle_status'])) {
                 $stmt->execute([$new_status, $uInfo['employee_id']]);
             }
             
-            logAction($pdo, $_SESSION['user_id'], "Quick toggled status for user @{$uInfo['username']} to $new_status");
+            // --- SYNC Hardware Status ---
+            toggleUserMobileAccess($uid, $new_status);
+            
+            logAction($pdo, $_SESSION['user_id'], "Quick toggled status for user @{$uInfo['username']} to $new_status (Synchronized mobile hardware: $new_status)");
             $pdo->commit();
             redirect("permissions.php?success=" . urlencode("User status updated to $new_status."));
         }

@@ -110,18 +110,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_GET['disable_user'])) {
     $id = (int)$_GET['disable_user'];
     try {
-        // Fetch details for enriched logging before removal
-        $uInfo = $pdo->prepare("SELECT full_name, username FROM users WHERE employee_id = ?");
-        $uInfo->execute([$id]);
-        $u = $uInfo->fetch();
+        // Fetch details        // Check if user account exists
+        $stmt = $pdo->prepare("SELECT id, full_name, username FROM users WHERE employee_id=?");
+        $stmt->execute([$id]);
+        $u = $stmt->fetch();
 
         if ($u) {
             $performer = "{$u['full_name']} (@{$u['username']})";
             $stmt = $pdo->prepare("UPDATE users SET status='inactive' WHERE employee_id=?");
             $stmt->execute([$id]);
             
+            // --- SYNC Hardware: Block any mobile hardware they were using ---
+            toggleUserMobileAccess($u['id'], 'inactive');
+            
             if ($stmt->rowCount() > 0) {
-                logAction($pdo, $_SESSION['user_id'], "Deactivated login access for employee: $performer");
+                logAction($pdo, $_SESSION['user_id'], "Deactivated login access and blocked mobile hardware for employee: $performer");
             }
         }
         redirect("employees.php?revoke_success=1");
@@ -144,7 +147,11 @@ if (isset($_GET['grant_user'])) {
             if ($u_row) {
                 if ($u_row['status'] == 'inactive') {
                     $pdo->prepare("UPDATE users SET status='active' WHERE id=?")->execute([$u_row['id']]);
-                    logAction($pdo, $_SESSION['user_id'], "Re-activated login access for employee: {$emp_data['name']}");
+                    
+                    // --- SYNC Hardware: Unblock mobile hardware ---
+                    toggleUserMobileAccess($u_row['id'], 'active');
+                    
+                    logAction($pdo, $_SESSION['user_id'], "Re-activated login access and restored mobile hardware for employee: {$emp_data['name']}");
                     redirect("employees.php?msg=" . urlencode("Login access re-enabled."));
                 } else {
                     redirect("employees.php?msg=" . urlencode("Account is already active."));

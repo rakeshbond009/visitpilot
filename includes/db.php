@@ -242,6 +242,50 @@ function isUserQuotaReached()
     }
 }
 
+/**
+ * Hardware Sync: Block or Unblock all mobile devices associated with a user.
+ * Triggered whenever a user's status is changed manually or via employee revoke.
+ */
+function toggleUserMobileAccess($user_id, $status)
+{
+    global $pdo, $master_pdo, $tenant_key;
+    if (!$pdo || !$master_pdo || !$tenant_key)
+        return;
+
+    try {
+        // 1. Identify all tokens/device IDs for this user in the tenant DB
+        $stmt = $pdo->prepare("SELECT fcm_token FROM user_devices WHERE user_id = ?");
+        $stmt->execute([$user_id]);
+        $tokens = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Include legacy token check
+        $stmt = $pdo->prepare("SELECT fcm_token FROM users WHERE id = ?");
+        $stmt->execute([$user_id]);
+        $legacy = $stmt->fetchColumn();
+        if ($legacy && !in_array($legacy, $tokens)) {
+            $tokens[] = $legacy;
+        }
+
+        if (!empty($tokens)) {
+            $new_device_status = ($status === 'active') ? 'active' : 'blocked';
+
+            // 2. Batch update device status in the Central Registry (Master DB)
+            $placeholders = implode(',', array_fill(0, count($tokens), '?'));
+            $msql = "UPDATE tenant_devices SET status = ? WHERE tenant_key = ? AND device_id IN ($placeholders)";
+
+            $params = array_merge([$new_device_status, $tenant_key], $tokens);
+            $mStmt = $master_pdo->prepare($msql);
+            $mStmt->execute($params);
+            
+            error_log("SYNC: Toggled mobile access to '$new_device_status' for User ID $user_id on " . count($tokens) . " devices.");
+        }
+    } catch (Exception $e) {
+        if (function_exists('log_db_msg')) {
+            log_db_msg("Device toggle error for User $user_id: " . $e->getMessage());
+        }
+    }
+}
+
 // 10. SECURE PERSISTENT AUTHENTICATION & PERMISSIONS
 function handlePersistentLogin()
 {
