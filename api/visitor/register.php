@@ -123,6 +123,9 @@ try {
         ]);
     } else {
         $visit_code = generateVisitCode();
+        // Trace creator attribution
+        file_put_contents(__DIR__ . '/register_push_trace.log', date('[Y-m-d H:i:s] ') . "Registering visit for visitor $visitor_id. Created by User ID: " . ($user_id ?? 'NULL') . "\n", FILE_APPEND);
+
         $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visitor_id,

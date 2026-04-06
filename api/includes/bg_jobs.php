@@ -110,13 +110,20 @@ function runJob_approveVisit($pdo, $payload) {
     // 3. FCM to creator (Security/Host who registered)
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        if (!empty($visit['created_by'])) {
-            sendPushToUser($pdo, $visit['created_by'], 'Visit Approved', 
+        $creator_id = $visit['created_by'] ?? 0;
+        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Approve Job: Visit $visit_id, Creator: $creator_id\n", FILE_APPEND);
+        
+        if (!empty($creator_id)) {
+            sendPushToUser($pdo, $creator_id, 'Visit Approved', 
                 "{$visit['visitor_name']} has been approved by {$visit['host_name']}.",
                 ['visit_id' => (string)$visit_id, 'type' => 'visit_approved']
             );
+        } else {
+            file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "SKIPPED FCM: created_by is empty for visit $visit_id\n", FILE_APPEND);
         }
-    } catch (Throwable $e) { error_log("[BG] FCM approve error: " . $e->getMessage()); }
+    } catch (Throwable $e) { 
+        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Approve FCM Error: " . $e->getMessage() . "\n", FILE_APPEND);
+    }
 
     // 4. Dahua
     bgHelper_syncDahua($pdo, $visit_id, $visit['visitor_id'], $visit['visitor_name'], $visit['visit_photo'] ?? '', $visit['visit_code'] ?? '');
@@ -146,13 +153,20 @@ function runJob_rejectVisit($pdo, $payload) {
     // 2. FCM to creator (Security/Host who registered)
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        if (!empty($visit['created_by'])) {
-            sendPushToUser($pdo, $visit['created_by'], 'Visit Rejected', 
+        $creator_id = $visit['created_by'] ?? 0;
+        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Reject Job: Visit $visit_id, Creator: $creator_id\n", FILE_APPEND);
+        
+        if (!empty($creator_id)) {
+            sendPushToUser($pdo, $creator_id, 'Visit Rejected', 
                 "{$visit['visitor_name']} was REJECTED by {$visit['host_name']}.",
                 ['visit_id' => (string)$visit_id, 'type' => 'visit_rejected', 'reason' => $reason]
             );
+        } else {
+            file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "SKIPPED Reject FCM: created_by empty for visit $visit_id\n", FILE_APPEND);
         }
-    } catch (Throwable $e) { error_log("[BG] FCM reject error: " . $e->getMessage()); }
+    } catch (Throwable $e) { 
+        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Reject FCM Error: " . $e->getMessage() . "\n", FILE_APPEND);
+    }
 }
 
 function runJob_cancelInvite($pdo, $payload) {
@@ -177,12 +191,17 @@ function runJob_cancelInvite($pdo, $payload) {
         $creator_id = $stmt->fetchColumn();
 
         if ($creator_id) {
+            file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Cancel Job: Visit $visit_id, Creator: $creator_id\n", FILE_APPEND);
             sendPushToUser($pdo, $creator_id, 'Invitation Cancelled',
                 "Host $host_name CANCELLED invitation for $visitor_name.",
                 ['visit_id' => (string)$visit_id, 'type' => 'visit_cancelled']
             );
+        } else {
+            file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "SKIPPED Cancel FCM: creator_id empty for visit $visit_id\n", FILE_APPEND);
         }
-    } catch (Throwable $e) { error_log("[BG] FCM cancel error: " . $e->getMessage()); }
+    } catch (Throwable $e) { 
+        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Cancel FCM Error: " . $e->getMessage() . "\n", FILE_APPEND);
+    }
 }
 
 // ── Shared helpers ──────────────────────────────────────────────────────────

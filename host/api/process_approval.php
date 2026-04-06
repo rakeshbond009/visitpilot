@@ -44,24 +44,31 @@ if (!$stmt->fetch()) {
     exit;
 }
 
-if ($action == 'approve') {
-    $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_by=?, approved_at=? WHERE id=?");
-    $stmt->execute([$_SESSION['user_id'], current_datetime(), $visit_id]);
-    logAction($pdo, $_SESSION['user_id'], "Approved visit ID: $visit_id via Popup");
-
-    // Send Targeted Notification to Creator
-    $stmt = $pdo->prepare("SELECT created_by, (SELECT name FROM visitors WHERE id = vs.visitor_id) as visitor_name FROM visits vs WHERE vs.id = ?");
-    $stmt->execute([$visit_id]);
-    $visit_data = $stmt->fetch();
-    $visitor_name = $visit_data['visitor_name'] ?? 'Visitor';
+if ($action == 'approve' || $action == 'reject') {
+    $status = ($action == 'approve') ? 'approved' : 'rejected';
     
-    if ($visit_data['created_by']) {
-        sendPushToUser($pdo, $visit_data['created_by'], 
-            ($action == 'approve' ? "Visitor Approved" : "Visitor Rejected"), 
-            "Visitor $visitor_name has been " . ($action == 'approve' ? "approved" : "rejected") . " by the host.", 
-            ['visit_id' => $visit_id, 'type' => ($action == 'approve' ? 'visit_approved' : 'visit_rejected')]
-        );
-    }
+    $stmt = $pdo->prepare("UPDATE visits SET approval_status=?, status=?, approved_by=?, approved_at=?, rejection_reason=? WHERE id=?");
+    $stmt->execute([$status, $status, $_SESSION['user_id'], current_datetime(), ($action == 'reject' ? $reason : null), $visit_id]);
+    
+    logAction($pdo, $_SESSION['user_id'], ($action == 'approve' ? "Approved" : "Rejected") . " visit ID: $visit_id via Popup");
 
-    echo json_encode(['success' => true, 'message' => ($action == 'approve' ? 'Visitor Approved' : 'Visitor Rejected')]);
+    // Unified Background Job (Handles PDF, WhatsApp, FCM to creator)
+    require_once '../../api/includes/async_dispatch.php';
+    require_once '../../api/includes/bg_jobs.php';
+    
+    $bgPayload = [
+        'visit_id' => $visit_id,
+        'reason' => $reason
+    ];
+
+    // Response FIRST for snappy UI
+    echo json_encode(['success' => true, 'message' => "Visitor " . ucfirst($status)]);
+    
+    // Execute logic in background (FCM, WhatsApp, PDF)
+    if ($action == 'approve') {
+        runJobInline('approve_visit', $bgPayload, $pdo);
+    } else {
+        runJobInline('reject_visit', $bgPayload, $pdo);
+    }
+    exit;
 }
