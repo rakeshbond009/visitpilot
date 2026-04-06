@@ -33,6 +33,7 @@ import RegisterVisitor from './screens/RegisterVisitor';
 import VisitorReports from './screens/VisitorReports';
 import EmployeeReport from './screens/EmployeeReport';
 import MyVisitorsHistory from './screens/MyVisitorsHistory';
+import VisitDetailScreen from './screens/VisitDetailScreen';
 import ComingSoon from './screens/ComingSoon';
 
 // Context
@@ -304,15 +305,15 @@ function AppContent() {
 
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.type === 'visit_update') {
+            } else if (data && (data.type === 'visit_update' || (raw.title && raw.title.includes('Visit')))) {
+                // NAVIGATION: GO DIRECTLY TO VISIT DETAILS SCREEN (Bypassing History Screen)
                 if (navigationRef.current) {
-                    navigationRef.current.navigate('MyVisitorsHistory', { 
-                        visit_id: String(data.visit_id),
-                        autoOpenDetails: true 
+                    navigationRef.current.navigate('VisitDetail', { 
+                        visit_id: String(data.visit_id || raw.visit_id || ""),
                     });
                 }
             } else {
-                Alert.alert("Push Debug", `Unknown notification type: ${data.type || 'EMPTY'}. Full raw keys: ${Object.keys(raw).join(', ')}`);
+                Alert.alert("Push Debug", `Unknown notification structure for Tap. Type: ${data.type || 'N/A'}. Keys: ${Object.keys(raw).join(', ')}`);
             }
         });
 
@@ -384,6 +385,7 @@ function AppContent() {
                     <Stack.Screen name="Reports" component={VisitorReports} />
                     <Stack.Screen name="EmployeeReport" component={EmployeeReport} />
                     <Stack.Screen name="MyVisitorsHistory" component={MyVisitorsHistory} />
+                    <Stack.Screen name="VisitDetail" component={VisitDetailScreen} />
                     <Stack.Screen name="Departments" component={ComingSoon} initialParams={{ screenName: 'Departments' }} />
                     <Stack.Screen name="Tenants" component={ComingSoon} initialParams={{ screenName: 'Tenants' }} />
                 </Stack.Navigator>

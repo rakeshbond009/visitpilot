@@ -92,6 +92,13 @@ export async function registerForPushNotificationsAsync(retryCount = 3, retryDel
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       bypassDnd: true,
     });
+    await Notifications.setNotificationChannelAsync('visit_status_v1', {
+      name: 'Visit Status Updates',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      shouldShowBadge: true,
+      vibrationPattern: [0, 250],
+      lightColor: '#FF231F7C',
+    });
   }
 
   if (!Device.isDevice) {
