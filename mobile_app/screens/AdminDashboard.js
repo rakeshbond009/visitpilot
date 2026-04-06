@@ -16,7 +16,8 @@ import {
     Image,
     Linking,
     TextInput,
-    Platform
+    Platform,
+    DeviceEventEmitter,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -328,6 +329,29 @@ export default function AdminDashboard({ navigation }) {
             return () => clearInterval(interval);
         }, [])
     );
+
+    // Handle notification tap: open VisitDetailModal directly
+    useEffect(() => {
+        const checkPendingVisit = async () => {
+            try {
+                const pendingId = await AsyncStorage.getItem('pending_visit_detail_id');
+                if (pendingId) {
+                    await AsyncStorage.removeItem('pending_visit_detail_id');
+                    fetchVisitDetails(pendingId);
+                }
+            } catch (e) { }
+        };
+        checkPendingVisit();
+
+        const sub = DeviceEventEmitter.addListener('openVisitDetail', ({ visit_id }) => {
+            if (visit_id) {
+                AsyncStorage.removeItem('pending_visit_detail_id').catch(() => {});
+                fetchVisitDetails(visit_id);
+            }
+        });
+
+        return () => sub.remove();
+    }, []);
 
     const onRefresh = async () => {
         setRefreshing(true);

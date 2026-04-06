@@ -33,7 +33,10 @@ import RegisterVisitor from './screens/RegisterVisitor';
 import VisitorReports from './screens/VisitorReports';
 import EmployeeReport from './screens/EmployeeReport';
 import MyVisitorsHistory from './screens/MyVisitorsHistory';
+// VisitDetailScreen removed — dashboards open VisitDetailModal directly via DeviceEventEmitter
 import ComingSoon from './screens/ComingSoon';
+
+const navigationRef = React.createRef();
 
 // Context
 import { PermissionProvider, usePermissions } from './context/PermissionContext';
@@ -258,17 +261,54 @@ function AppContent() {
         }, 2000);
         setTimeout(() => clearInterval(poll), 10000);
 
+        // FOREGROUND: Handle notification received while app is open
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
-            const data = standardizeArrivalData(n.request.content.data);
+            const raw = n.request.content;
+            const data = standardizeArrivalData(raw.data);
+
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                // Visitor arrival: show full-screen call overlay
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && data.type === 'visit_update') {
+                // Status update: emit event so active dashboard opens its VisitDetailModal
+                const visitId = String(data.visit_id || '');
+                if (visitId) {
+                    DeviceEventEmitter.emit('openVisitDetail', { visit_id: visitId });
+                } else {
+                    // Fallback: plain alert if no visit_id
+                    Alert.alert(
+                        raw.title || 'Visit Update',
+                        raw.body || 'Your visit status has been updated.',
+                        [{ text: 'OK', style: 'default' }]
+                    );
+                }
             }
         });
 
+        // BACKGROUND/KILLED TAP: Handle user tapping a notification
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const data = standardizeArrivalData(r.notification.request.content.data);
+            const raw = r.notification.request.content;
+            const data = standardizeArrivalData(raw.data);
+
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                // Visitor arrival tap: show call overlay
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && data.type === 'visit_update') {
+                // Status update tap: store visit_id so active dashboard opens its VisitDetailModal
+                const visitId = String(data.visit_id || '');
+                if (visitId) {
+                    // Persist for killed-state recovery (dashboard reads on focus)
+                    AsyncStorage.setItem('pending_visit_detail_id', visitId).catch(() => {});
+                    // Also emit immediately in case app is just in background and dashboard is mounted
+                    const tryEmit = (attempts = 0) => {
+                        DeviceEventEmitter.emit('openVisitDetail', { visit_id: visitId });
+                        // Re-emit a few times to ensure the mounted dashboard catches it
+                        if (attempts < 3) {
+                            setTimeout(() => tryEmit(attempts + 1), 600);
+                        }
+                    };
+                    tryEmit();
+                }
             }
         });
 
@@ -329,7 +369,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking}>
+            <NavigationContainer linking={linking} ref={navigationRef}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

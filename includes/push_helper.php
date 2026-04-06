@@ -365,8 +365,10 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                 ], $data),
                 'android' => [
                     'priority' => 'high',
+                    'ttl' => '0s',
                     'notification' => [
-                        'click_action' => 'visit_update_action'
+                        'click_action' => 'visit_update_action',
+                        'sound' => 'default'
                     ]
                 ]
             ]

@@ -17,6 +17,7 @@ import {
     Pressable,
     TextInput,
     Linking,
+    DeviceEventEmitter,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -243,6 +244,32 @@ export default function HostDashboard({ navigation }) {
             return () => clearInterval(interval);
         }, [loading])
     );
+
+    // Handle notification tap: open VisitDetailModal directly
+    useEffect(() => {
+        // Check AsyncStorage for a pending visit_id (set when app was killed/bg and notification was tapped)
+        const checkPendingVisit = async () => {
+            try {
+                const pendingId = await AsyncStorage.getItem('pending_visit_detail_id');
+                if (pendingId) {
+                    await AsyncStorage.removeItem('pending_visit_detail_id');
+                    fetchVisitDetails(pendingId);
+                }
+            } catch (e) { }
+        };
+        checkPendingVisit();
+
+        // Listen for real-time event (app in foreground or background)
+        const sub = DeviceEventEmitter.addListener('openVisitDetail', ({ visit_id }) => {
+            if (visit_id) {
+                // Clear AsyncStorage so other dashboards don't double-open
+                AsyncStorage.removeItem('pending_visit_detail_id').catch(() => {});
+                fetchVisitDetails(visit_id);
+            }
+        });
+
+        return () => sub.remove();
+    }, []);
 
     const fetchVisitDetails = async (visitId) => {
         try {
