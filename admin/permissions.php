@@ -223,6 +223,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['role_permission_update
     }
 }
 
+// Handle Status Toggle (Quick Action)
+if (isset($_GET['toggle_status'])) {
+    $uid = (int)$_GET['toggle_status'];
+    $new_status = sanitize($_GET['status'] ?? 'active');
+    
+    try {
+        $stmt = $pdo->prepare("SELECT employee_id, username FROM users WHERE id = ?");
+        $stmt->execute([$uid]);
+        $uInfo = $stmt->fetch();
+        
+        if ($uInfo) {
+            $pdo->beginTransaction();
+            
+            $stmt = $pdo->prepare("UPDATE users SET status=? WHERE id=?");
+            $stmt->execute([$new_status, $uid]);
+            
+            if ($uInfo['employee_id']) {
+                $stmt = $pdo->prepare("UPDATE employees SET status=? WHERE id=?");
+                $stmt->execute([$new_status, $uInfo['employee_id']]);
+            }
+            
+            logAction($pdo, $_SESSION['user_id'], "Quick toggled status for user @{$uInfo['username']} to $new_status");
+            $pdo->commit();
+            redirect("permissions.php?success=" . urlencode("User status updated to $new_status."));
+        }
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) { $pdo->rollBack(); }
+        $error = "Error toggling status: " . $e->getMessage();
+    }
+}
+
 // Capture success from GET
 if (isset($_GET['success'])) {
     $success = $_GET['success'];
@@ -652,6 +683,21 @@ require_once 'header.php';
                                     ?>
                                 </td>
                                 <td class="text-end">
+                                    <!-- Quick Status Toggle -->
+                                    <?php if ($u['status'] == 'active'): ?>
+                                        <a href="?toggle_status=<?php echo $u['id']; ?>&status=inactive" 
+                                           class="btn btn-sm btn-outline-danger" title="Deactivate"
+                                           onclick="return confirm('Deactivate this user? They will be logged out immediately.')">
+                                            <i class="bi bi-slash-circle"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="?toggle_status=<?php echo $u['id']; ?>&status=active" 
+                                           class="btn btn-sm btn-outline-success" title="Activate"
+                                           onclick="return confirm('Re-activate this user?')">
+                                            <i class="bi bi-check-circle"></i>
+                                        </a>
+                                    <?php endif; ?>
+
                                     <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
                                         data-bs-target="#permModal<?php echo $u['id']; ?>" title="Manage Permissions">
                                         <i class="bi bi-shield-lock"></i>
