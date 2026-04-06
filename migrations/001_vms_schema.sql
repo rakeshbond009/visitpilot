@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   `user_id` int(11) DEFAULT NULL,
   `action` varchar(255) NOT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
+  `tenant_key` varchar(50) DEFAULT 'master',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

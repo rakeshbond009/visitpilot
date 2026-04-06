@@ -522,23 +522,21 @@ function requireLogin()
 
 function logAction($pdo, $user_id, $action)
 {
-    if (!$pdo)
-        return;
+    global $master_pdo, $tenant_key;
+    // Always attempt centralized logging to the Master database
+    $log_db = $master_pdo ?? $pdo;
+    if (!$log_db) return;
+ 
     try {
-        // Attempt to capture database name and IST timestamp
-        $db_name = $pdo->query('SELECT DATABASE()')->fetchColumn();
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address, database_name, created_at) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $db_name, current_datetime()]);
+        $cur_tenant = $tenant_key ?? ($_SESSION['tenant_key'] ?? 'master');
+        $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
     } catch (Exception $e) {
-        // Fallback if database_name column doesn't exist yet
+        // Fallback for missing column or connection issues
         try {
-            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?)");
+            $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?)");
             $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', current_datetime()]);
-        } catch (Exception $e2) {
-            // Last resort for legacy structure if my previous fixes were manually reverted
-            $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-            $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
-        }
+        } catch (Exception $e2) {}
     }
 }
 

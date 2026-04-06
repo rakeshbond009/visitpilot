@@ -1,13 +1,14 @@
 <?php
 require_once 'header.php';
 
-if (!isset($_SESSION['is_super']) || !$_SESSION['is_super']) {
-    die("<div class='alert alert-danger m-5'><h3>Access Denied</h3><p>You do not have permission to view system audit logs. This area is restricted to Super Administrators only.</p><a href='" . $home_url . "' class='btn btn-primary'>Back to Dashboard</a></div>");
-}
+// Determine if user is Super Admin
+$is_super = (bool)($_SESSION['is_super'] ?? false);
+$current_tenant = $_SESSION['tenant_key'] ?? 'master';
 
-// Search and Filter parameters
 $search = sanitize($_GET['search'] ?? '');
 $user_filter = (int)($_GET['user_id'] ?? 0);
+// If not super-admin, always force the current tenant's key
+$tenant_filter = $is_super ? sanitize($_GET['tenant_key'] ?? '') : $current_tenant;
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -25,28 +26,33 @@ if ($user_filter) {
     $where .= " AND al.user_id = ? ";
     $params[] = $user_filter;
 }
+if ($tenant_filter) {
+    $where .= " AND al.tenant_key = ? ";
+    $params[] = $tenant_filter;
+}
 
-// Get total count
 $count_sql = "SELECT COUNT(*) FROM audit_logs al $where";
-$stmt = $pdo->prepare($count_sql);
+$stmt = $master_pdo->prepare($count_sql);
 $stmt->execute($params);
 $total = $stmt->fetchColumn();
 $total_pages = ceil($total / $per_page);
 
-// Get logs with user info
-$sql = "SELECT al.*, u.username, u.full_name 
+// Get logs from Master DB to see all tenants
+$sql = "SELECT al.*, u.username, u.full_name, t.company_name as tenant_name
         FROM audit_logs al 
         LEFT JOIN users u ON al.user_id = u.id 
+        LEFT JOIN tenants t ON al.tenant_key = t.tenant_key
         $where
         ORDER BY al.created_at DESC 
         LIMIT $per_page OFFSET $offset";
 
-$stmt = $pdo->prepare($sql);
+$stmt = $master_pdo->prepare($sql);
 $stmt->execute($params);
 $logs = $stmt->fetchAll();
 
 // Get users for filter
-$all_users = $pdo->query("SELECT id, full_name, username FROM users ORDER BY full_name")->fetchAll();
+$all_users = $master_pdo->query("SELECT id, full_name, username FROM users ORDER BY full_name")->fetchAll();
+$all_tenants = $master_pdo->query("SELECT tenant_key, company_name FROM tenants ORDER BY company_name")->fetchAll();
 ?>
 
 <div class="row align-items-center mb-4">
@@ -83,9 +89,25 @@ endforeach; ?>
                 </select>
             </div>
             <div class="col-md-3">
+                <?php if ($is_super): ?>
+                    <select name="tenant_key" class="form-select">
+                        <option value="">All Tenants</option>
+                        <?php foreach ($all_tenants as $t): ?>
+                            <option value="<?php echo $t['tenant_key']; ?>" <?php echo ($tenant_filter == $t['tenant_key']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($t['company_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php else: ?>
+                    <div class="form-control bg-light text-muted">
+                        <i class="bi bi-building me-1"></i> My Tenant Logs
+                    </div>
+                <?php endif; ?>
+            </div>
+            <div class="col-md-1">
                 <div class="btn-group w-100">
-                    <button type="submit" class="btn btn-primary">Filter</button>
-                    <a href="audit_logs.php" class="btn btn-outline-secondary">Reset</a>
+                    <button type="submit" class="btn btn-primary">Go</button>
+                    <a href="audit_logs.php" class="btn btn-outline-secondary">X</a>
                 </div>
             </div>
         </form>
@@ -97,11 +119,10 @@ endforeach; ?>
         <table class="table table-hover align-middle mb-0">
             <thead class="bg-light border-bottom">
                 <tr class="text-uppercase small fw-bold text-muted">
-                    <th class="ps-4" style="width: 80px;">ID</th>
                     <th style="width: 200px;">When (IST)</th>
                     <th style="width: 200px;">Performed By</th>
+                    <th style="width: 150px;">Tenant Name</th>
                     <th>Action Description</th>
-                    <th style="width: 150px;">Database</th>
                     <th class="pe-4" style="width: 150px;">IP Address</th>
                 </tr>
             </thead>
@@ -131,12 +152,12 @@ endforeach; ?>
     endif; ?>
                     </td>
                     <td>
+                        <span class="badge bg-info-subtle text-info border border-info small"><?php echo htmlspecialchars($log['tenant_name'] ?? 'Super User'); ?></span>
+                    </td>
+                    <td>
                         <div class="p-2 rounded bg-light border-start border-3 border-primary small text-dark">
                             <?php echo htmlspecialchars($log['action']); ?>
                         </div>
-                    </td>
-                    <td>
-                        <span class="badge bg-info-subtle text-info border border-info small"><?php echo htmlspecialchars($log['database_name'] ?? 'master'); ?></span>
                     </td>
                     <td class="pe-4">
                         <span class="badge bg-secondary-subtle text-secondary small"><?php echo htmlspecialchars($log['ip_address']); ?></span>
