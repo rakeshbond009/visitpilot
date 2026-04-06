@@ -401,6 +401,12 @@ require_once 'header.php';
                 text: '<?php echo htmlspecialchars($error); ?>'
             });
         <?php endif; ?>
+
+        // CLEAN URL: Remove success flags from address bar after displaying (prevents repetitive alerts on refresh)
+        if (typeof window.history.replaceState === 'function') {
+            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+        }
     });
 </script>
 
