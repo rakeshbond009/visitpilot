@@ -39,8 +39,9 @@ $stmt->execute($params);
 $total = $stmt->fetchColumn();
 $total_pages = ceil($total / $per_page);
 
-// Get logs (from Master DB for Super Admin visibility)
-$sql = "SELECT al.*, u.username, u.full_name 
+// Get logs (Prioritize recorded names over Master DB join IDs)
+$sql = "SELECT al.*, 
+        COALESCE(al.performed_by, CONCAT(u.full_name, ' (@', u.username, ')'), 'Unknown') as display_name
         FROM audit_logs al 
         LEFT JOIN users u ON al.user_id = u.id 
         $where
@@ -137,36 +138,40 @@ endforeach; ?>
                         <div class="small text-muted"><?php echo date('H:i:s', strtotime($log['created_at'])); ?></div>
                     </td>
                     <td>
-                        <?php if ($log['username']): ?>
+                        <?php if ($log['display_name']): ?>
                             <div class="d-flex align-items-center">
                                 <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
-                                    <?php echo strtoupper(substr($log['full_name'], 0, 1)); ?>
+                                    <?php echo strtoupper(substr($log['display_name'], 0, 1)); ?>
                                 </div>
-                                <div>
-                                    <div class="fw-bold"><?php echo htmlspecialchars($log['full_name']); ?></div>
-                                    <div class="small text-muted">@<?php echo htmlspecialchars($log['username']); ?></div>
+                                <div class="fw-bold text-dark">
+                                    <?php 
+                                    $d_name = $log['display_name'];
+                                    // Extract parts if stored as "Name (@user)"
+                                    if (strpos($d_name, ' (@') !== false) {
+                                        $parts = explode(' (@', $d_name);
+                                        echo htmlspecialchars($parts[0]);
+                                        echo ' <small class="text-muted">@' . str_replace(')', '', $parts[1]) . '</small>';
+                                    } else {
+                                        echo htmlspecialchars($d_name);
+                                    }
+                                    ?>
                                 </div>
                             </div>
-                        <?php
-    else: ?>
-                            <span class="badge bg-light text-secondary border">System</span>
-                        <?php
-    endif; ?>
-                    </td>
-                    <td>
-                        <span class="badge bg-secondary-subtle text-secondary border small text-uppercase"><?php echo htmlspecialchars($log['tenant_key'] ?? 'master'); ?></span>
-                    </td>
-                    <td>
-                        <div class="p-2 rounded bg-light border-start border-3 border-primary small text-dark">
-                            <?php echo htmlspecialchars($log['action']); ?>
-                        </div>
-                    </td>
-                    <td class="pe-4">
-                        <span class="badge bg-secondary-subtle text-secondary small"><?php echo htmlspecialchars($log['ip_address']); ?></span>
-                    </td>
-                </tr>
-                <?php
-endforeach; ?>
+                                <?php endif; ?>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary-subtle text-secondary border small text-uppercase"><?php echo htmlspecialchars($log['tenant_key'] ?? 'master'); ?></span>
+                        </td>
+                        <td>
+                            <div class="p-2 rounded bg-light border-start border-3 border-primary small text-dark">
+                                <?php echo htmlspecialchars($log['action']); ?>
+                            </div>
+                        </td>
+                        <td class="pe-4">
+                            <span class="badge bg-secondary-subtle text-secondary small"><?php echo htmlspecialchars($log['ip_address']); ?></span>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
                 <?php if (empty($logs)): ?>
                     <tr>
                         <td colspan="5" class="text-center py-5">

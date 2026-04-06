@@ -527,24 +527,39 @@ function requireLogin()
 function logAction($pdo, $user_id, $action)
 {
     global $master_pdo, $tenant_key;
-    // Standardize user identification (fallback to session or '0' for system)
+    
+    // 1. Identify User ID
     $final_user_id = $user_id ?: ($_SESSION['user_id'] ?? 0);
     
-    // Centralized logging: Always record to the Master database to allow Super Admin oversight
+    // 2. Identify User Name (Capture from session or look up in source DB)
+    $performed_by = "System";
+    if (isset($_SESSION['full_name'])) {
+        $performed_by = $_SESSION['full_name'] . " (@" . ($_SESSION['username'] ?? 'user') . ")";
+    } elseif ($final_user_id > 0 && $pdo) {
+        try {
+            $uStmt = $pdo->prepare("SELECT full_name, username FROM users WHERE id = ?");
+            $uStmt->execute([$final_user_id]);
+            $u = $uStmt->fetch();
+            if ($u) {
+                $performed_by = $u['full_name'] . " (@" . $u['username'] . ")";
+            }
+        } catch (Exception $e) {}
+    }
+
+    // Centralized logging: Always record to the Master database
     $log_db = $master_pdo ?? $pdo;
     if (!$log_db) return;
 
     try {
         $cur_tenant = $tenant_key ?? ($_SESSION['tenant_key'] ?? 'master');
-        $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
+        $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, performed_by, action, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$final_user_id, $performed_by, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
     } catch (Exception $e) {
-        // Fallback for older schema structures
+        // Fallback for older schema structures (Missing performed_by or tenant_key)
         try {
             $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?)");
             $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', current_datetime()]);
         } catch (Exception $e2) {
-            // Last resort for legacy databases
             $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
             $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
         }
