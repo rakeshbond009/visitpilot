@@ -9,76 +9,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Use default session
-session_start();
-
-// Sanitize function
-function sanitize($data)
-{
-    return htmlspecialchars(strip_tags(trim($data)));
-}
-
-// Handle tenant parameter from URL
-$target_tenant_key = $_GET['tenant'] ?? null;
-
-if ($target_tenant_key) {
-    // Store in a separate variable to avoid affecting main session
-    $isolated_tenant_key = sanitize($target_tenant_key);
-} else {
-    // Fall back to session tenant
-    require_once 'includes/db.php';
-    $isolated_tenant_key = $tenant_key;
-}
-
-// Connect to the specific tenant database
-$tenant_pdo = null;
-$tenant_info = null;
-
-// Get master connection first - Use proper environment detection
-$is_local = in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1']) ||
-    (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false);
-
-if ($is_local) {
-    $m_host = 'localhost';
-    $m_user = 'root';
-    $m_pass = '';
-    $m_db = 'vms_master';
-} else {
-    // Hosted environment
-    $m_host = 'localhost';
-    $m_user = 'u875321134_vms_master';
-    $m_pass = 'Eu8~ieQH?Wzc';
-    $m_db = 'u875321134_vms_master';
-}
-
-try {
-    $master_pdo = new PDO("mysql:host=$m_host;dbname=$m_db;charset=utf8mb4", $m_user, $m_pass);
-    $master_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-    // Get tenant info
-    $stmt = $master_pdo->prepare("SELECT * FROM tenants WHERE tenant_key = ? AND status = 'active'");
-    $stmt->execute([$isolated_tenant_key]);
-    $tenant_info = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($tenant_info) {
-        // Connect to tenant database
-        $tenant_pdo = new PDO(
-            "mysql:host={$tenant_info['db_host']};dbname={$tenant_info['db_name']};charset=utf8mb4",
-            $tenant_info['db_user'],
-            $tenant_info['db_pass']
-        );
-        $tenant_pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $tenant_pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-
-        // Use this connection for login
-        $pdo = $tenant_pdo;
-    } else {
-        die("Error: Tenant not found or inactive");
-    }
-} catch (PDOException $e) {
-    die("Database connection error: " . $e->getMessage());
-}
-
+require_once 'includes/db.php';
+$isolated_tenant_key = $tenant_key;
 $error = '';
 $success_msg = "Login to " . ucfirst($isolated_tenant_key);
 
@@ -129,13 +61,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
             $_SESSION['is_super'] = (bool) (($user['is_superadmin'] ?? $user['is_super']) ?? false);
             $_SESSION['tenant_key'] = $isolated_tenant_key; // Set the tenant context
 
-            // Log action (simple version without logAction function)
-            try {
-                $log_stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action) VALUES (?, ?)");
-                $log_stmt->execute([$user['id'], "User Login: $username (Tenant: $isolated_tenant_key)"]);
-            } catch (Exception $e) {
-                // Ignore logging errors
-            }
+            // Log action (integrated with centralized audit logs)
+            logAction($pdo, $user['id'], "User Login: $username (Tenant: $isolated_tenant_key)");
 
             if ($user['role'] == 'admin') {
                 header("Location: admin/dashboard.php");

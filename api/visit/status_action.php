@@ -67,6 +67,7 @@ try {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
+        logAction($pdo, $user_id, "Rejected visit ID: $id. Reason: $reason");
 
         $bgPayload = [
             'visit_id' => $id,
@@ -91,11 +92,13 @@ try {
 
         $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW(), checked_in_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
+        logAction($pdo, $user_id, "Visitor Check-in successful for visit ID: $id");
         sendResponse('success', 'Check-in successful');
 
     } elseif ($action === 'checkout') {
         $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW(), checked_out_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
+        logAction($pdo, $user_id, "Visitor Check-out successful for visit ID: $id");
         sendResponse('success', 'Check-out successful');
 
     } elseif ($action === 'qr_process') {

@@ -185,6 +185,9 @@ try {
     // ⚡ STEP 1: No-op job writing
     dispatchBackgroundTask('register_visitor', $bgPayload);
 
+    // Audit Log for Mobile Registration
+    logAction($pdo, $user_id, "Visitor Registered via Mobile: " . ($visitorRow['name'] ?? $data['name']) . " (Visit Code: $visit_code)");
+
     // ⚡ STEP 2: Respond IMMEDIATELY (flush / fastcgi_finish_request)
     sendInstantResponse('success', 'Visitor registered successfully', [
         'visit_id' => $visit_id,

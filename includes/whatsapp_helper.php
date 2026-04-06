@@ -305,13 +305,8 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
             $log_ok = "[" . date('Y-m-d H:i:s') . "] SUCCESS ($httpCode): Template $templateName sent to $mobile (Lang: $currentLangCode)\n";
             file_put_contents(__DIR__ . '/../whatsapp_log.txt', $log_ok, FILE_APPEND);
 
-            try {
-                $user_id = $_SESSION['user_id'] ?? null;
-                $msg = "WhatsApp Sent: Template [$templateName] to [$mobile] (Lang: $currentLangCode)";
-                $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-                $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
-            } catch (Exception $log_e) {
-            }
+            $msg = "WhatsApp Sent: Template [$templateName] to [$mobile] (Lang: $currentLangCode)";
+            logAction($pdo, $_SESSION['user_id'] ?? null, $msg);
 
             return true;
         }
@@ -330,13 +325,8 @@ function sendWhatsAppTemplate($mobile, $templateName, $parameters, $accessToken,
     $error_msg = "[" . date('Y-m-d H:i:s') . "] API ERROR ($lastHttpCode): $lastResponse | Template: $templateName\n";
     file_put_contents(__DIR__ . '/../whatsapp_log.txt', $error_msg, FILE_APPEND);
 
-    try {
-        $user_id = $_SESSION['user_id'] ?? null;
-        $msg = "WhatsApp FAILED: Template [$templateName] to [$mobile]. Error: $lastHttpCode";
-        $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-        $stmt->execute([$user_id, $msg, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
-    } catch (Exception $log_e) {
-    }
+    $msg = "WhatsApp FAILED: Template [$templateName] to [$mobile]. Error: $lastHttpCode";
+    logAction($pdo, $_SESSION['user_id'] ?? null, $msg);
 
     return false;
 }

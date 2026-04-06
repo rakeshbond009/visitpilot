@@ -118,6 +118,10 @@ try {
         // Return user data (excluding password)
         unset($user['password']);
         $user['session_id'] = session_id();
+
+        // Audit Log for Android/Mobile Login
+        logAction($pdo, $user['id'], "Mobile App Login Successful (Android)");
+
         sendResponse('success', 'Login successful', $user);
     } else {
         // Log failed login

@@ -39,12 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['change_password'])) {
             $msg_type = 'success';
 
             // Log the action
-            try {
-                $stmt = $pdo->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-                $stmt->execute([$_SESSION['user_id'], 'Password changed', $_SERVER['REMOTE_ADDR']]);
-            } catch (Exception $e) {
-                // Ignore audit log errors
-            }
+            logAction($pdo, $_SESSION['user_id'], "Password changed");
         }
     }
 }

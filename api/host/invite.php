@@ -102,6 +102,9 @@ try {
         sendWhatsAppNotification($data['mobile'], $waMessage, 'visitor_meet_notify', ["*{$data['name']}*", "*{$v_date_fmt}*", "*{$visit_code}*"]);
     }
 
+    // Audit Log for Mobile Invitation
+    logAction($pdo, $user_id, "Invitation Created via Mobile for: {$data['name']} (Visit Date: $visit_date)");
+
     sendResponse('success', 'Invitation created successfully', [
         'visit_code' => $visit_code,
         'qr_code' => $qr_filename,

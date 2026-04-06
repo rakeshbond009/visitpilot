@@ -496,6 +496,10 @@ function createPersistentSession($user_id)
 function destroyPersistentSession()
 {
     global $pdo;
+    if (isset($_SESSION['user_id'])) {
+        logAction($pdo, $_SESSION['user_id'], "User logged out");
+    }
+    
     if (isset($_COOKIE['vms_token'])) {
         $token = (string) $_COOKIE['vms_token'];
         if ($pdo) {
@@ -523,6 +527,9 @@ function requireLogin()
 function logAction($pdo, $user_id, $action)
 {
     global $master_pdo, $tenant_key;
+    // Standardize user identification (fallback to session or '0' for system)
+    $final_user_id = $user_id ?: ($_SESSION['user_id'] ?? 0);
+    
     // Centralized logging: Always record to the Master database to allow Super Admin oversight
     $log_db = $master_pdo ?? $pdo;
     if (!$log_db) return;
@@ -530,16 +537,16 @@ function logAction($pdo, $user_id, $action)
     try {
         $cur_tenant = $tenant_key ?? ($_SESSION['tenant_key'] ?? 'master');
         $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
+        $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
     } catch (Exception $e) {
         // Fallback for older schema structures
         try {
             $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', current_datetime()]);
+            $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', current_datetime()]);
         } catch (Exception $e2) {
             // Last resort for legacy databases
             $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-            $stmt->execute([$user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
+            $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
         }
     }
 }

@@ -51,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmt = $master_pdo->prepare("INSERT INTO tenants (tenant_key, db_host, db_name, db_user, db_pass, status) VALUES (?, ?, ?, ?, ?, ?)");
                 $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status]);
+                $new_id = $master_pdo->lastInsertId();
+                logAction($pdo, $_SESSION['user_id'], "Registed New Tenant: $key (ID: $new_id)");
 
                 // Generate random secure password for tenant admin
                 $random_password = bin2hex(random_bytes(8)); // 16 character random password
