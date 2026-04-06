@@ -168,6 +168,15 @@ if ($tenant) {
     $pdo = $master_pdo ?? null;
 }
 
+// SAFE SCHEMA SYNC: Ensure new quota/status columns exist
+if (isset($master_pdo)) {
+    try { $master_pdo->exec("ALTER TABLE tenants ADD COLUMN max_users INT DEFAULT 10 COMMENT 'User quota'"); } catch (Exception $e) {}
+}
+if (isset($pdo)) {
+    try { $pdo->exec("ALTER TABLE users ADD COLUMN status ENUM('active','inactive') DEFAULT 'active'"); } catch (Exception $e) {}
+    try { $pdo->exec("ALTER TABLE employees ADD COLUMN status ENUM('active','inactive') DEFAULT 'active'"); } catch (Exception $e) {}
+}
+
 /**
  * Returns a connection to the centralized support database (PDO for VMS)
  */
@@ -511,7 +520,7 @@ function destroyPersistentSession()
     if (isset($_SESSION['user_id'])) {
         logAction($pdo, $_SESSION['user_id'], "User logged out");
     }
-    
+
     if (isset($_COOKIE['vms_token'])) {
         $token = (string) $_COOKIE['vms_token'];
         if ($pdo) {
@@ -539,10 +548,10 @@ function requireLogin()
 function logAction($pdo, $user_id, $action, $old = null, $new = null)
 {
     global $master_pdo, $tenant_key;
-    
+
     // 1. Identify User ID
     $final_user_id = $user_id ?: ($_SESSION['user_id'] ?? 0);
-    
+
     // 2. Identify User Name (Capture from session or look up in source DB)
     $performed_by = "System";
     if (isset($_SESSION['full_name'])) {
@@ -555,12 +564,14 @@ function logAction($pdo, $user_id, $action, $old = null, $new = null)
             if ($u) {
                 $performed_by = $u['full_name'] . " (@" . $u['username'] . ")";
             }
-        } catch (Exception $e) {}
+        } catch (Exception $e) {
+        }
     }
 
     // Centralized logging: Always record to the Master database
     $log_db = $master_pdo ?? $pdo;
-    if (!$log_db) return;
+    if (!$log_db)
+        return;
 
     try {
         $cur_tenant = $tenant_key ?? ($_SESSION['tenant_key'] ?? 'master');
@@ -605,10 +616,10 @@ require_once __DIR__ . '/datetime_helper.php';
 // Only check if user is logged in
 if (isset($_SESSION['user_id']) && isset($_SESSION['tenant_key'])) {
     $is_api = (strpos($_SERVER['REQUEST_URI'], '/api/') !== false);
-    
+
     // --- FORCE STAMP: Only for mobile-facing roles (Security/Employee/Host) ---
     $is_web_admin = (isset($_SESSION['is_super']) && $_SESSION['is_super']) || (($_SESSION['role'] ?? '') === 'admin');
-    
+
     if ($is_api && !$is_web_admin && !isset($_SESSION['device_id'])) {
         session_unset();
         session_destroy();
@@ -627,7 +638,7 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['tenant_key'])) {
                     // 🛑 KICK!
                     session_unset();
                     session_destroy();
-                    
+
                     if ($is_api) {
                         header('Content-Type: application/json');
                         die(json_encode(['status' => 'error', 'message' => 'Device Blocked: Access has been revoked by the system administrator.']));
@@ -636,7 +647,8 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['tenant_key'])) {
                         exit;
                     }
                 }
-            } catch (Exception $e) {}
+            } catch (Exception $e) {
+            }
         }
     }
 }

@@ -142,9 +142,6 @@ $t_stmt = $master_pdo->query("SELECT t.*,
     (SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = t.tenant_key AND status = 'active') as active_devices 
     FROM tenants t ORDER BY t.id DESC");
 $tenants = $t_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// Since we can't easily query tenant DB counts in a join, we will fetch count separately as needed or pre-calculate
-// For the dashboard display, we'll just show the limit row from the Master DB and let the specific tenant page show current usage.
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -289,7 +286,7 @@ endif; ?>
 
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted text-uppercase">DB Host</label>
+                            <label class="form-label small fw-bold text-muted text-uppercase">Database Host</label>
                             <input type="text" name="db_host" id="t_host" class="form-control" value="localhost" required>
                         </div>
                         <div class="col-md-4">

@@ -20,28 +20,23 @@ $username = $data['username'];
 $password = $data['password'];
 
 try {
-    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, employee_id, department, permissions_locked, status FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, employee_id, department, permissions_locked FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
-        
-        // 🚨 NEW SECURITY CHECK: Check if account is ACTIVE
-        if (isset($user['status']) && $user['status'] === 'inactive') {
-            sendResponse('error', 'Account Deactivated: This user account has been disabled by the administrator. Please contact support.');
-        }
-        
+
         // --- SYSTEM QUOTA CHECK: Mobile Device Limit (Set by Super Admin) ---
         // Fallback: If device_id is missing, use fcm_token as the unique identifier
         $device_id = $data['device_id'] ?? ($data['fcm_token'] ?? null);
-        
+
         if ($device_id && !empty($tenant) && $tenant !== 'none') {
             global $master_pdo;
             if ($master_pdo) {
                 // Fetch the quota set by Super Admin
                 $tStmt = $master_pdo->prepare("SELECT max_devices FROM tenants WHERE tenant_key = ?");
                 $tStmt->execute([$tenant]);
-                $max_devices = (int)($tStmt->fetchColumn() ?: 5); 
+                $max_devices = (int) ($tStmt->fetchColumn() ?: 5);
 
                 // Check Device Registry (Status & Record)
                 $dCheck = $master_pdo->prepare("SELECT id, status FROM tenant_devices WHERE tenant_key = ? AND device_id = ?");
@@ -60,12 +55,12 @@ try {
                     // New phone: Check if the client has any ACTIVE slots left in their quota
                     $dCount = $master_pdo->prepare("SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = ? AND status = 'active'");
                     $dCount->execute([$tenant]);
-                    if ((int)$dCount->fetchColumn() >= $max_devices) {
+                    if ((int) $dCount->fetchColumn() >= $max_devices) {
                         sendResponse('error', "Device Quota Reached: This company is limited to $max_devices active mobile devices. Please contact the system administrator to upgrade.");
                     }
                     // Register the new phone as 'active' with user name
                     $master_pdo->prepare("INSERT INTO tenant_devices (tenant_key, device_id, device_name, last_user_name, status) VALUES (?, ?, ?, ?, 'active')")
-                               ->execute([$tenant, $device_id, $data['device_name'] ?? 'Android Device', $user['full_name']]);
+                        ->execute([$tenant, $device_id, $data['device_name'] ?? 'Android Device', $user['full_name']]);
                 }
             }
         }

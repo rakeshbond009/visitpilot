@@ -13,22 +13,21 @@ $msg = '';
 $error = '';
 $form_data = [];
 
-// Fetch Quota from Master DB
-$max_users = 10; // default
-if (isset($master_pdo) && isset($_SESSION['tenant_key'])) {
-    $qStmt = $master_pdo->prepare("SELECT max_users FROM tenants WHERE tenant_key = ?");
-    $qStmt->execute([$_SESSION['tenant_key']]);
-    $max_users = (int)($qStmt->fetchColumn() ?: 10);
-}
-
-// Fetch Current Active Count
-$active_count = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = sanitize($_POST['name']);
     $dept = sanitize($_POST['department']);
     $email = sanitize($_POST['email']);
     $mobile = sanitize($_POST['mobile']);
+
+    // Fetch Quota from Master DB
+    $max_users = 10; // default
+    if (isset($master_pdo) && isset($_SESSION['tenant_key'])) {
+        $qStmt = $master_pdo->prepare("SELECT max_users FROM tenants WHERE tenant_key = ?");
+        $qStmt->execute([$_SESSION['tenant_key']]);
+        $max_users = (int)($qStmt->fetchColumn() ?: 10);
+    }
+    // Fetch Current Active Count
+    $active_count = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
 
     // Store for form persistence on error
     $form_data = $_POST;
@@ -80,27 +79,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $emp_id = $pdo->lastInsertId();
 
                     // Auto-create User Logic
-                    $base_username = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '.', $name)));
+                    // Generate Username Logic
+                    $base_username = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '.', $name))); // john.doe
                     $base_username = trim($base_username, '.');
-                    if (strlen($base_username) < 3) $base_username = "user." . $base_username;
+                    if (strlen($base_username) < 3)
+                        $base_username = "user." . $base_username;
 
                     $username = $base_username;
                     $counter = 1;
                     while (true) {
                         $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
                         $check->execute([$username]);
-                        if ($check->fetchColumn() == 0) break;
-                        $username = $base_username . "." . $counter++;
+                        if ($check->fetchColumn() == 0)
+                            break;
+                        $username = $base_username . "." . $counter;
+                        $counter++;
                     }
 
                     $default_pass = "Welcome@123";
                     $hashed = password_hash($default_pass, PASSWORD_DEFAULT);
 
+
                     $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?)");
                     $uStmt->execute([$username, $hashed, $name, $emp_id, $dept, $email, $mobile]);
 
                     logAction($pdo, $_SESSION['user_id'], "Added employee: $name and created user: $username");
+
                     $pdo->commit();
+
+                    // Success redirect
                     header("Location: employees.php?new_user=" . urlencode($username) . "&new_pass=" . urlencode($default_pass));
                     exit;
                 }
@@ -142,6 +149,15 @@ if (isset($_GET['deactivate'])) {
 
 // Handle Activate
 if (isset($_GET['activate'])) {
+    // Re-fetch Quota for activation check
+    $max_users = 10;
+    if (isset($master_pdo) && isset($_SESSION['tenant_key'])) {
+        $qStmt = $master_pdo->prepare("SELECT max_users FROM tenants WHERE tenant_key = ?");
+        $qStmt->execute([$_SESSION['tenant_key']]);
+        $max_users = (int)($qStmt->fetchColumn() ?: 10);
+    }
+    $active_count = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
+
     if ($active_count >= $max_users) {
         header("Location: employees.php?error_msg=" . urlencode("Exceeds Quota! Cannot activate. Limit is $max_users."));
         exit;
@@ -170,12 +186,16 @@ if (isset($_GET['activate'])) {
 
 // Handle Grant User (Create Login for Existing)
 if (isset($_GET['grant_user'])) {
-    // 🚦 QUOTA CHECK: Enforce the limit here
+    // Re-fetch Quota
+    $active_count = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
+    $qStmt = $master_pdo->prepare("SELECT max_users FROM tenants WHERE tenant_key = ?");
+    $qStmt->execute([$_SESSION['tenant_key']]);
+    $max_users = (int)($qStmt->fetchColumn() ?: 10);
+
     if ($active_count >= $max_users) {
         header("Location: employees.php?error_msg=" . urlencode("User Quota Reached ($max_users). Please deactivate someone to enable new login accounts."));
         exit;
     }
-
     $id = (int)$_GET['grant_user'];
     try {
         $emp = $pdo->prepare("SELECT * FROM employees WHERE id = ?");
