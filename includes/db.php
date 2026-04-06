@@ -293,18 +293,20 @@ function loadUserPermissions()
     // If a Super Admin is managing a tenant, we MUST NOT overwrite their Master DB identity with Tenant DB data.
     $is_super = $_SESSION['is_super'] ?? false;
     if (!$is_super) {
-        $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked, status FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch();
+
+        // 🚨 INSTANT LOGOUT: If account is disabled, kick them out now!
+        if (!$userRow || (isset($userRow['status']) && $userRow['status'] === 'inactive')) {
+            destroyPersistentSession();
+            redirect(BASE_URL . 'index.php?msg=account_disabled');
+        }
 
         if ($userRow) {
             $_SESSION['role'] = $userRow['role'];
             $_SESSION['full_name'] = $userRow['full_name'];
             $_SESSION['permissions_locked'] = (bool) $userRow['permissions_locked'];
-        } else {
-            // If the user record is missing (revoked), force an immediate logout
-            destroyPersistentSession();
-            redirect(BASE_URL . 'index.php?msg=access_revoked');
         }
     }
 

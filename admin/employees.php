@@ -13,6 +13,17 @@ $msg = '';
 $error = '';
 $form_data = [];
 
+// Fetch Quota from Master DB
+$max_users = 10; // default
+if (isset($master_pdo) && isset($_SESSION['tenant_key'])) {
+    $qStmt = $master_pdo->prepare("SELECT max_users FROM tenants WHERE tenant_key = ?");
+    $qStmt->execute([$_SESSION['tenant_key']]);
+    $max_users = (int)($qStmt->fetchColumn() ?: 10);
+}
+
+// Fetch Current Active Count
+$active_count = (int)$pdo->query("SELECT COUNT(*) FROM employees WHERE status = 'active'")->fetchColumn();
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = sanitize($_POST['name']);
     $dept = sanitize($_POST['department']);
@@ -59,6 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 if ($existingEmp) {
                     $error = "An employee with the name '$name' and the same email/mobile already exists.";
+                } elseif ($active_count >= $max_users) {
+                    $error = "User Quota Reached! You can only have a maximum of $max_users active employees. Please deactivate an existing employee first.";
                 } else {
                     $pdo->beginTransaction();
 
@@ -67,35 +80,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $emp_id = $pdo->lastInsertId();
 
                     // Auto-create User Logic
-                    // Generate Username Logic
-                    $base_username = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '.', $name))); // john.doe
+                    $base_username = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '.', $name)));
                     $base_username = trim($base_username, '.');
-                    if (strlen($base_username) < 3)
-                        $base_username = "user." . $base_username;
+                    if (strlen($base_username) < 3) $base_username = "user." . $base_username;
 
                     $username = $base_username;
                     $counter = 1;
                     while (true) {
                         $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
                         $check->execute([$username]);
-                        if ($check->fetchColumn() == 0)
-                            break;
-                        $username = $base_username . "." . $counter;
-                        $counter++;
+                        if ($check->fetchColumn() == 0) break;
+                        $username = $base_username . "." . $counter++;
                     }
 
                     $default_pass = "Welcome@123";
                     $hashed = password_hash($default_pass, PASSWORD_DEFAULT);
 
-
                     $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?)");
                     $uStmt->execute([$username, $hashed, $name, $emp_id, $dept, $email, $mobile]);
 
                     logAction($pdo, $_SESSION['user_id'], "Added employee: $name and created user: $username");
-
                     $pdo->commit();
-
-                    // Success redirect
                     header("Location: employees.php?new_user=" . urlencode($username) . "&new_pass=" . urlencode($default_pass));
                     exit;
                 }
@@ -109,32 +114,68 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 
-// Handle Disable User (Login Only)
-if (isset($_GET['disable_user'])) {
-    $id = (int)$_GET['disable_user'];
+// Handle Deactivate (Instead of full delete/revoke)
+if (isset($_GET['deactivate'])) {
+    $id = (int)$_GET['deactivate'];
     try {
-        // Fetch details for enriched logging before removal
-        $uInfo = $pdo->prepare("SELECT full_name, username FROM users WHERE employee_id = ?");
-        $uInfo->execute([$id]);
-        $u = $uInfo->fetch();
+        $pdo->beginTransaction();
+        
+        // 1. Mark employee as inactive
+        $stmt = $pdo->prepare("UPDATE employees SET status = 'inactive' WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        // 2. Disable linked user account login (prevent login)
+        $uStmt = $pdo->prepare("UPDATE users SET status = 'inactive' WHERE employee_id = ?");
+        $uStmt->execute([$id]);
 
-        if ($u) {
-            $performer = "{$u['full_name']} (@{$u['username']})";
-            $stmt = $pdo->prepare("DELETE FROM users WHERE employee_id=?");
-            $stmt->execute([$id]);
-            
-            if ($stmt->rowCount() > 0) {
-                logAction($pdo, $_SESSION['user_id'], "Revoked user access for employee: $performer");
-            }
-        }
+        $empName = $pdo->query("SELECT name FROM employees WHERE id = $id")->fetchColumn();
+        logAction($pdo, $_SESSION['user_id'], "Deactivated employee: $empName (Quota released)");
 
-        header("Location: employees.php?revoke_success=1");
+        $pdo->commit();
+        header("Location: employees.php?deactivate_success=1");
         exit;
-    } catch (Exception $e) { $error = $e->getMessage(); }
+    } catch (Exception $e) { 
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $error = $e->getMessage(); 
+    }
+}
+
+// Handle Activate
+if (isset($_GET['activate'])) {
+    if ($active_count >= $max_users) {
+        header("Location: employees.php?error_msg=" . urlencode("Exceeds Quota! Cannot activate. Limit is $max_users."));
+        exit;
+    }
+
+    $id = (int)$_GET['activate'];
+    try {
+        $pdo->beginTransaction();
+        $stmt = $pdo->prepare("UPDATE employees SET status = 'active' WHERE id = ?");
+        $stmt->execute([$id]);
+        
+        $uStmt = $pdo->prepare("UPDATE users SET status = 'active' WHERE employee_id = ?");
+        $uStmt->execute([$id]);
+
+        $empName = $pdo->query("SELECT name FROM employees WHERE id = $id")->fetchColumn();
+        logAction($pdo, $_SESSION['user_id'], "Re-activated employee: $empName (Quota consumed)");
+
+        $pdo->commit();
+        header("Location: employees.php?activate_success=1");
+        exit;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $error = $e->getMessage(); 
+    }
 }
 
 // Handle Grant User (Create Login for Existing)
 if (isset($_GET['grant_user'])) {
+    // 🚦 QUOTA CHECK: Enforce the limit here
+    if ($active_count >= $max_users) {
+        header("Location: employees.php?error_msg=" . urlencode("User Quota Reached ($max_users). Please deactivate someone to enable new login accounts."));
+        exit;
+    }
+
     $id = (int)$_GET['grant_user'];
     try {
         $emp = $pdo->prepare("SELECT * FROM employees WHERE id = ?");
@@ -188,16 +229,21 @@ if (isset($_GET['grant_user'])) {
     }
 }
 
-// Fetch Employees with User Status
-$employees = $pdo->query("SELECT e.*, u.id as user_id FROM employees e LEFT JOIN users u ON e.id = u.employee_id WHERE e.status='active' ORDER BY e.name")->fetchAll();
+// Fetch Employees (Show both active and inactive for management)
+$employees = $pdo->query("SELECT e.*, u.id as user_id FROM employees e LEFT JOIN users u ON e.id = u.employee_id ORDER BY e.status, e.name asc")->fetchAll();
 
 require_once 'header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Employee Management</h3>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#empModal" onclick="clearForm()">
-        <i class="bi bi-plus-lg"></i> Add New Employee
+    <div>
+        <h3 class="mb-0">Employee Management</h3>
+        <span class="badge bg-<?php echo ($active_count >= $max_users) ? 'danger' : 'primary'; ?>-opacity text-<?php echo ($active_count >= $max_users) ? 'danger' : 'primary'; ?>">
+            <i class="bi bi-people-fill me-1"></i> Active Quota: <?php echo $active_count; ?> / <?php echo $max_users; ?>
+        </span>
+    </div>
+    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#empModal" onclick="clearForm()" <?php echo ($active_count >= $max_users) ? 'disabled title="Quota Reached"' : ''; ?>>
+        <i class="bi bi-plus-lg me-1"></i> Add New Employee
     </button>
 </div>
 
@@ -247,11 +293,23 @@ require_once 'header.php';
                             <?php endif; ?>
                         </td>
                         <td>
-                            <button class="btn btn-sm btn-info text-white"
-                                onclick="editEmp(<?php echo htmlspecialchars(json_encode($emp)); ?>)">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-primary"
+                                    onclick="editEmp(<?php echo htmlspecialchars(json_encode($emp)); ?>)" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <?php if ($emp['status'] == 'active'): ?>
+                                    <button class="btn btn-sm btn-outline-warning"
+                                        onclick="confirmDeactivate(<?php echo $emp['id']; ?>)" title="Deactivate">
+                                        <i class="bi bi-person-x-fill"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <button class="btn btn-sm btn-outline-success"
+                                        onclick="confirmActivate(<?php echo $emp['id']; ?>)" title="Activate">
+                                        <i class="bi bi-person-check-fill"></i>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -329,15 +387,28 @@ require_once 'header.php';
 </div>
 
 <script>
-    function confirmRevoke(id) {
+    function confirmDeactivate(id) {
         AppDialog.confirm({
-            title: 'Revoke Access?',
-            text: 'Are you sure you want to disable login for this employee? The employee record will remain, but the user account will be deleted.',
-            confirmText: 'Yes, Revoke',
+            title: 'Deactivate Employee?',
+            text: 'This will free up one slot in your user quota. The employee will no longer be able to login.',
+            confirmText: 'Yes, Deactivate',
             icon: 'warning'
         }).then(function (confirmed) {
             if (confirmed) {
-                window.location.href = 'employees.php?disable_user=' + id;
+                window.location.href = 'employees.php?deactivate=' + id;
+            }
+        });
+    }
+
+    function confirmActivate(id) {
+        AppDialog.confirm({
+            title: 'Re-activate Employee?',
+            text: 'This will consume one slot in your user quota.',
+            confirmText: 'Yes, Activate',
+            icon: 'info'
+        }).then(function (confirmed) {
+            if (confirmed) {
+                window.location.href = 'employees.php?activate=' + id;
             }
         });
     }
@@ -379,11 +450,23 @@ require_once 'header.php';
                 title: 'Updated!',
                 text: 'Employee details and linked user account updated successfully.'
             });
-        <?php elseif (isset($_GET['revoke_success'])): ?>
+        <?php elseif (isset($_GET['deactivate_success'])): ?>
             AppDialog.show({
                 icon: 'success',
-                title: 'Access Revoked!',
-                text: 'The user account for this employee has been disabled.'
+                title: 'Deactivated!',
+                text: 'Employee is now inactive and quota slot is released.'
+            });
+        <?php elseif (isset($_GET['activate_success'])): ?>
+            AppDialog.show({
+                icon: 'success',
+                title: 'Activated!',
+                text: 'Employee is now active.'
+            });
+        <?php elseif (isset($_GET['error_msg'])): ?>
+            AppDialog.show({
+                icon: 'error',
+                title: 'Quota Error',
+                text: '<?php echo htmlspecialchars($_GET['error_msg']); ?>'
             });
         <?php elseif (isset($_GET['msg'])): ?>
             AppDialog.show({

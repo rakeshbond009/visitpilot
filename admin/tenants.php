@@ -45,14 +45,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($id) {
                 $max_devices = (int)($_POST['max_devices'] ?? 5);
-                $stmt = $master_pdo->prepare("UPDATE tenants SET tenant_key=?, db_host=?, db_name=?, db_user=?, db_pass=?, status=?, max_devices=? WHERE id=?");
-                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $max_devices, $id]);
-                logAction($pdo, $_SESSION['user_id'], "Updated Tenant: $key (ID: $id, Quota: $max_devices)");
+                $max_users = (int)($_POST['max_users'] ?? 10);
+                $stmt = $master_pdo->prepare("UPDATE tenants SET tenant_key=?, db_host=?, db_name=?, db_user=?, db_pass=?, status=?, max_devices=?, max_users=? WHERE id=?");
+                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $max_devices, $max_users, $id]);
+                logAction($pdo, $_SESSION['user_id'], "Updated Tenant: $key (ID: $id, Quota: $max_devices dev, $max_users users)");
                 $_SESSION['tenant_msg'] = "Tenant '$key' config updated.";
             } else {
                 $max_devices = (int)($_POST['max_devices'] ?? 5);
-                $stmt = $master_pdo->prepare("INSERT INTO tenants (tenant_key, db_host, db_name, db_user, db_pass, status, max_devices) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $max_devices]);
+                $max_users = (int)($_POST['max_users'] ?? 10);
+                $stmt = $master_pdo->prepare("INSERT INTO tenants (tenant_key, db_host, db_name, db_user, db_pass, status, max_devices, max_users) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $max_devices, $max_users]);
                 $new_id = $master_pdo->lastInsertId();
                 logAction($pdo, $_SESSION['user_id'], "Registed New Tenant: $key (ID: $new_id, Quota: $max_devices)");
 
@@ -140,6 +142,9 @@ $t_stmt = $master_pdo->query("SELECT t.*,
     (SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = t.tenant_key AND status = 'active') as active_devices 
     FROM tenants t ORDER BY t.id DESC");
 $tenants = $t_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Since we can't easily query tenant DB counts in a join, we will fetch count separately as needed or pre-calculate
+// For the dashboard display, we'll just show the limit row from the Master DB and let the specific tenant page show current usage.
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -198,8 +203,8 @@ endif; ?>
                             </div>
                         </td>
                         <td class="fw-bold text-primary">
-                            <i class="bi bi-phone me-1"></i>
-                            <?php echo (int)($t['active_devices'] ?? 0); ?> / <?php echo (int)($t['max_devices'] ?? 5); ?>
+                            <div class="small mb-1"><i class="bi bi-phone me-1"></i> Devices: <?php echo (int)($t['active_devices'] ?? 0); ?> / <?php echo (int)($t['max_devices'] ?? 5); ?></div>
+                            <div class="small"><i class="bi bi-people me-1"></i> Users Max: <?php echo (int)($t['max_users'] ?? 10); ?></div>
                         </td>
                         <td>
                             <span class="badge bg-dark rounded-pill">v<?php echo $t['schema_version'] ?? '0'; ?></span>
@@ -283,14 +288,17 @@ endif; ?>
                     </div>
 
                     <div class="row g-3">
-                        <div class="col-md-7">
-                            <label class="form-label small fw-bold text-muted text-uppercase">Database Host</label>
-                            <input type="text" name="db_host" id="t_host" class="form-control" value="localhost"
-                                required>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">DB Host</label>
+                            <input type="text" name="db_host" id="t_host" class="form-control" value="localhost" required>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <label class="form-label small fw-bold text-muted text-uppercase">Mobile Quota</label>
                             <input type="number" name="max_devices" id="t_max_devices" class="form-control fw-bold" value="5" min="1" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted text-uppercase">User Quota</label>
+                            <input type="number" name="max_users" id="t_max_users" class="form-control fw-bold" value="10" min="1" required>
                         </div>
                     </div>
                     <div class="mt-3">
@@ -381,6 +389,7 @@ endif; ?>
         document.getElementById('t_db').value = ''; 
         document.getElementById('t_user').value = 'root';
         document.getElementById('t_max_devices').value = '5';
+        document.getElementById('t_max_users').value = '10';
 
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         document.getElementById('t_pass').value = isLocal ? '' : generateRandomPass(10);
@@ -399,6 +408,7 @@ endif; ?>
         document.getElementById('t_pass').value = t.db_pass;
         document.getElementById('t_status').value = t.status;
         document.getElementById('t_max_devices').value = t.max_devices || 5;
+        document.getElementById('t_max_users').value = t.max_users || 10;
 
         new bootstrap.Modal(document.getElementById('tenantModal')).show();
     }

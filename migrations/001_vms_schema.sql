@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `mobile` varchar(20) DEFAULT NULL,
   `bg_mode` tinyint(1) DEFAULT 0,
   `fcm_token` text DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   KEY `employee_id` (`employee_id`)
@@ -214,6 +215,7 @@ CREATE TABLE IF NOT EXISTS `tenants` (
   `db_pass` varchar(100) NOT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
   `max_devices` int(11) DEFAULT 5 COMMENT 'Mobile hardware quota set by Super Admin',
+  `max_users` int(11) DEFAULT 10 COMMENT 'Active user quota set by Super Admin',
   `schema_version` int(11) DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),

@@ -20,11 +20,16 @@ $username = $data['username'];
 $password = $data['password'];
 
 try {
-    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, employee_id, department, permissions_locked FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, employee_id, department, permissions_locked, status FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        
+        // 🚨 NEW SECURITY CHECK: Check if account is ACTIVE
+        if (isset($user['status']) && $user['status'] === 'inactive') {
+            sendResponse('error', 'Account Deactivated: This user account has been disabled by the administrator. Please contact support.');
+        }
         
         // --- SYSTEM QUOTA CHECK: Mobile Device Limit (Set by Super Admin) ---
         // Fallback: If device_id is missing, use fcm_token as the unique identifier
