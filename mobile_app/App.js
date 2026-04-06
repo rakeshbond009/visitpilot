@@ -86,7 +86,6 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
                 data: payload,
                 categoryIdentifier: 'visitor_arrival',
                 sound: true,
-                bypassDnd: true,
                 priority: Notifications.AndroidNotificationPriority.MAX,
             },
             trigger: null,
@@ -106,7 +105,6 @@ const linking = {
             HostDashboard: 'host',
             SecurityDashboard: 'security',
             AdminDashboard: 'admin',
-            MyVisitorsHistory: 'history',
         },
     },
 };
@@ -130,30 +128,30 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
-        let data = raw.data || raw;
+        let data = raw.data || raw.params || raw;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        // Deep picker: search for visit_id and type in any nested level
-        const findKey = (obj, key) => {
-            if (!obj || typeof obj !== 'object') return null;
-            if (obj[key]) return obj[key];
-            for (let k in obj) {
-                let res = findKey(obj[k], key);
-                if (res) return res;
-            }
-            return null;
-        };
+        let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
 
-        const visitId = findKey(raw, 'visit_id') || findKey(raw, 'visitId') || findKey(raw, 'id');
-        const type = findKey(raw, 'type') || "visit_update";
+        if (!visit_id && data.body) {
+            try {
+                const parsedBody = JSON.parse(data.body);
+                visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
+                data = { ...data, ...parsedBody };
+            } catch (e) { }
+        }
 
         return {
-            visit_id: String(visitId || ""),
-            type: type,
-            title: raw.title || findKey(raw, 'title'),
-            body: raw.body || findKey(raw, 'body')
+            visit_id: visit_id,
+            name: data.visitor_name || data.name || data.title || "Unknown Visitor",
+            mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
+            photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
+            company: data.company || data.organization || data.visitor_company || "General Visitor",
+            purpose: data.purpose || data.reason || data.body || "General Visit",
+            assets_carried: data.assets_carried || data.assets || data.asset || "None",
+            type: data.type || "visitor_arrival"
         };
     };
 
@@ -173,6 +171,12 @@ function AppContent() {
                         interruptionModeAndroid: 1,
                         playThroughEarpieceAndroid: false
                     });
+
+                    const urls = [
+                        'https://www.soundjay.com/phone/telephone-ring-03a.mp3',
+                        'https://www.soundjay.com/phone/phone-calling-1.mp3',
+                        'https://raw.githubusercontent.com/rafaelreis-hotmart/Audio-Sample/master/sample.mp3'
+                    ];
 
                     for (const url of urls) {
                         try {
@@ -241,15 +245,6 @@ function AppContent() {
                     const data = standardizeArrivalData(response.notification.request.content.data);
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data); setShowOverlay(true); return true;
-                    } else if (data && data.type === 'visit_update') {
-                        // Cold start deep link
-                        if (navigationRef.current) {
-                            navigationRef.current.navigate('MyVisitorsHistory', { 
-                                visit_id: String(data.visit_id), 
-                                autoOpenDetails: true 
-                            });
-                            return true;
-                        }
                     }
                 }
 
@@ -275,24 +270,6 @@ function AppContent() {
             const data = standardizeArrivalData(n.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.type === 'visit_update') {
-                // Foreground logic: Android doesn't show a heads-up if app is in focus
-                // So we show a manual UI alert
-                Alert.alert(
-                    data.title || "Visit Update",
-                    data.body || "There is a status update for your visit.",
-                    [
-                        { text: "View Details", onPress: () => {
-                            if (navigationRef.current) {
-                                navigationRef.current.navigate('MyVisitorsHistory', { 
-                                    visit_id: String(data.visit_id), 
-                                    autoOpenDetails: true 
-                                });
-                            }
-                        }},
-                        { text: "Dismiss", style: "cancel" }
-                    ]
-                );
             }
         });
 

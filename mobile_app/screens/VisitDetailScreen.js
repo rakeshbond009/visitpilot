@@ -1,135 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
-import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import apiClient from '../utils/apiClient';
-import { CONFIG } from '../utils/config';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
+import { MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export default function VisitDetailScreen({ navigation, route }) {
+const VisitDetailScreen = ({ route, navigation }) => {
     const { visit_id } = route.params;
     const [visit, setVisit] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchDetail();
+        fetchVisitDetail();
     }, [visit_id]);
 
-    const fetchDetail = async () => {
+    const fetchVisitDetail = async () => {
         try {
-            setLoading(true);
-            const response = await apiClient.get(`host/api/get_visit_detail.php?id=${visit_id}`);
-            if (response.data.success) {
-                setVisit(response.data.visit);
+            const baseUrl = await AsyncStorage.getItem('baseUrl');
+            const token = await AsyncStorage.getItem('userToken');
+            const tenant = await AsyncStorage.getItem('userTenant');
+
+            const response = await fetch(`${baseUrl}/host/api/get_visit_detail.php?visit_id=${visit_id}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'X-Tenant-ID': tenant }
+            });
+            const res = await response.json();
+            if (res.success) {
+                setVisit(res.data);
             } else {
-                Alert.alert("Error", "Could not load visit details.");
+                Alert.alert("Error", res.message || "Failed to load visit details.");
                 navigation.goBack();
             }
-        } catch (e) {
-            console.error("Detail Fetch Error:", e);
-            Alert.alert("Error", "Network connection failed.");
-            navigation.goBack();
+        } catch (error) {
+            console.error("Detail Fetch Error:", error);
+            Alert.alert("Error", "Could not connect to the server.");
         } finally {
             setLoading(false);
         }
     };
 
-    const getPhotoUrl = (url) => {
-        if (!url) return null;
-        if (url.startsWith('http')) return url;
-        let cleanUrl = url.replace(/^(\.\.\/)+/, '');
-        if (cleanUrl.startsWith('/')) cleanUrl = cleanUrl.substring(1);
-        return `${CONFIG.API_BASE_URL}${cleanUrl}`;
-    };
-
     if (loading) {
         return (
             <View style={styles.center}>
-                <ActivityIndicator size="large" color="#0d6efd" />
+                <ActivityIndicator size="large" color="#0066cc" />
+                <Text style={{ marginTop: 10 }}>Loading details...</Text>
             </View>
         );
     }
 
-    if (!visit) return null;
-
-    const photoUri = getPhotoUrl(visit.visit_photo || visit.photo_path || visit.photo_url);
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'approved': return '#28a745';
+            case 'pending': return '#ffc107';
+            case 'rejected': return '#dc3545';
+            case 'completed': return '#007bff';
+            default: return '#6c757d';
+        }
+    };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 50 }}>
+            {/* Header with Background */}
+            <LinearGradient colors={['#004e92', '#000428']} style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Icon name="arrow-left" size={24} color="#333" />
+                    <MaterialCommunityIcons name="arrow-left" size={28} color="white" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Visit Information</Text>
-                <View style={{ width: 40 }} />
-            </View>
+                <Text style={styles.headerTitle}>Visit Detail</Text>
+                <TouchableOpacity style={styles.shareBtn} onPress={() => {}}>
+                    <MaterialCommunityIcons name="share-variant" size={24} color="white" />
+                </TouchableOpacity>
+            </LinearGradient>
 
-            <ScrollView contentContainerStyle={styles.scroll}>
-                <View style={styles.card}>
-                    <View style={styles.mainInfo}>
-                        <Image
-                            source={photoUri ? { uri: photoUri } : { uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(visit.visitor_name || 'V')}&background=random` }}
-                            style={styles.photo}
-                        />
-                        <View style={styles.basic}>
-                            <Text style={styles.name}>{visit.visitor_name}</Text>
-                            <Text style={styles.mobile}>{visit.visitor_mobile || visit.mobile}</Text>
-                            <View style={[styles.badge, { backgroundColor: getStatusColor(visit.status) }]}>
-                                <Text style={styles.badgeText}>{(visit.status || '').toUpperCase()}</Text>
-                            </View>
-                        </View>
-                    </View>
-
-                    <View style={styles.grid}>
-                        <DetailItem label="Purpose" value={visit.purpose} icon="information" />
-                        <DetailItem label="Host" value={visit.host_name} icon="account" />
-                        <DetailItem label="Department" value={visit.department} icon="office-building" />
-                        <DetailItem label="Time" value={new Date(visit.created_at).toLocaleString()} icon="clock" />
-                        {visit.check_in_time && <DetailItem label="Check-In" value={new Date(visit.check_in_time).toLocaleString()} icon="login" />}
-                    </View>
+            {/* Profile Section */}
+            <View style={styles.profileSection}>
+                <Image 
+                    source={visit?.visitor_photo ? { uri: visit.visitor_photo } : require('../../assets/placeholder.png')} 
+                    style={styles.avatar} 
+                />
+                <Text style={styles.visitorName}>{visit?.visitor_name || "Unknown Visitor"}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(visit?.status) }]}>
+                    <Text style={styles.statusText}>{visit?.status?.toUpperCase() || "PENDING"}</Text>
                 </View>
-            </ScrollView>
-        </SafeAreaView>
-    );
-}
-
-function DetailItem({ label, value, icon }) {
-    return (
-        <View style={styles.item}>
-            <Icon name={icon} size={20} color="#666" style={{ marginRight: 10 }} />
-            <View>
-                <Text style={styles.label}>{label}</Text>
-                <Text style={styles.value}>{value || '-'}</Text>
             </View>
-        </View>
-    );
-}
 
-function getStatusColor(status) {
-    if (!status) return '#6c757d';
-    switch (status.toLowerCase()) {
-        case 'approved': return '#0d6efd';
-        case 'checked_in': return '#198754';
-        case 'rejected': return '#dc3545';
-        default: return '#6c757d';
-    }
-}
+            {/* Info Cards */}
+            <View style={styles.infoContainer}>
+                <DetailItem icon="phone" label="Mobile" value={visit?.visitor_mobile} color="#007bff" />
+                <DetailItem icon="account-tie" label="Host" value={visit?.host_name || "N/A"} color="#6c5ce7" />
+                <DetailItem icon="office-building" label="Department" value={visit?.department_name || "General"} color="#00b894" />
+                <DetailItem icon="calendar-clock" label="Visit Time" value={visit?.checkin_time || visit?.visit_date} color="#e17055" />
+                <DetailItem icon="comment-text" label="Purpose" value={visit?.purpose || "Business Meeting"} color="#fdcb6e" />
+                <DetailItem icon="briefcase" label="Assets" value={visit?.assets_carried || "None"} color="#a29bfe" />
+            </View>
+
+            {/* Actions */}
+            <View style={styles.actionRow}>
+                <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#28a745'}]} onPress={() => Linking.openURL(`tel:${visit.visitor_mobile}`)}>
+                    <MaterialCommunityIcons name="phone" size={22} color="white" />
+                    <Text style={styles.actionBtnText}>Call Visitor</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionBtn, {backgroundColor: '#25D366'}]} onPress={() => Linking.openURL(`whatsapp://send?phone=${visit.visitor_mobile}`)}>
+                    <MaterialCommunityIcons name="whatsapp" size={22} color="white" />
+                    <Text style={styles.actionBtnText}>WhatsApp</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+};
+
+const DetailItem = ({ icon, label, value, color }) => (
+    <View style={styles.detailCard}>
+        <View style={[styles.iconBox, { backgroundColor: color + '22' }]}>
+            <MaterialCommunityIcons name={icon} size={24} color={color} />
+        </View>
+        <View style={styles.detailText}>
+            <Text style={styles.detailLabel}>{label}</Text>
+            <Text style={styles.detailValue}>{value || "Not specified"}</Text>
+        </View>
+    </View>
+);
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    container: { flex: 1, backgroundColor: '#f8f9fa' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eee' },
-    headerTitle: { fontSize: 18, fontWeight: 'bold' },
-    backBtn: { padding: 5 },
-    scroll: { padding: 15 },
-    card: { backgroundColor: '#fff', borderRadius: 12, padding: 20, elevation: 2 },
-    mainInfo: { flexDirection: 'row', marginBottom: 25 },
-    photo: { width: 80, height: 80, borderRadius: 40, marginRight: 15 },
-    basic: { justifyContent: 'center' },
-    name: { fontSize: 20, fontWeight: 'bold' },
-    mobile: { color: '#666', marginVertical: 3 },
-    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
-    badgeText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-    grid: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 20 },
-    item: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    label: { fontSize: 12, color: '#999' },
-    value: { fontSize: 15, fontWeight: '500', color: '#333' }
+    header: { height: 120, justifyContent: 'center', paddingHorizontal: 20, paddingTop: 40, flexDirection: 'row', alignItems: 'center' },
+    backBtn: { position: 'absolute', left: 20, top: 55 },
+    shareBtn: { position: 'absolute', right: 20, top: 55 },
+    headerTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+    profileSection: { alignItems: 'center', marginTop: -40, marginBottom: 20 },
+    avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 4, borderColor: 'white', backgroundColor: '#eee' },
+    visitorName: { fontSize: 24, fontWeight: 'bold', marginTop: 10, color: '#333' },
+    statusBadge: { paddingHorizontal: 15, paddingVertical: 5, borderRadius: 20, marginTop: 8 },
+    statusText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
+    infoContainer: { paddingHorizontal: 20 },
+    detailCard: { flexDirection: 'row', backgroundColor: 'white', padding: 15, borderRadius: 15, marginBottom: 12, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
+    iconBox: { width: 45, height: 45, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    detailText: { flex: 1 },
+    detailLabel: { fontSize: 12, color: '#888', marginBottom: 2 },
+    detailValue: { fontSize: 16, color: '#333', fontWeight: '500' },
+    actionRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 20 },
+    actionBtn: { flex: 0.48, height: 50, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', elevation: 3 },
+    actionBtnText: { color: 'white', fontWeight: 'bold', marginLeft: 8 }
 });
+
+export default VisitDetailScreen;

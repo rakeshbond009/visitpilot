@@ -1,32 +1,38 @@
 <?php
-// host/api/get_visit_detail.php
 require_once '../../includes/db.php';
-require_once '../../includes/api_header.php';
+header('Content-Type: application/json');
 
-$visit_id = $_GET['id'] ?? 0;
+$visit_id = $_GET['visit_id'] ?? 0;
 
 if (!$visit_id) {
-    sendResponse('error', 'Missing visit ID');
+    echo json_encode(['success' => false, 'message' => 'Missing visit ID']);
+    exit;
 }
 
 try {
     $stmt = $pdo->prepare("
-        SELECT v.*, 
-               vis.name as visitor_name, vis.mobile as visitor_mobile, vis.address as visitor_company,
-               e.name as host_name, e.department as department
-        FROM visits v 
-        JOIN visitors vis ON v.visitor_id = vis.id 
-        LEFT JOIN employees e ON v.employee_id = e.id 
+        SELECT 
+            v.*, 
+            vis.fullname as visitor_name, 
+            vis.mobile as visitor_mobile,
+            vis.photo as visitor_photo,
+            vis.address as visitor_address,
+            h.fullname as host_name,
+            d.name as department_name
+        FROM visits v
+        JOIN visitors vis ON v.visitor_id = vis.id
+        LEFT JOIN users h ON v.host_id = h.id
+        LEFT JOIN departments d ON h.dept_id = d.id
         WHERE v.id = ?
     ");
     $stmt->execute([$visit_id]);
     $visit = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($visit) {
-        sendResponse('success', 'Visit found', ['visit' => $visit]);
+        echo json_encode(['success' => true, 'data' => $visit]);
     } else {
-        sendResponse('error', 'Visit not found');
+        echo json_encode(['success' => false, 'message' => 'Visit not found']);
     }
-} catch (Exception $e) {
-    sendResponse('error', 'Database error: ' . $e->getMessage());
+} catch (PDOException $e) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }

@@ -63,7 +63,7 @@ if ($action == 'approve') {
     };
     $debug("Processing APPROVAL for Visit $visit_id. Creator ID: " . ($creator_id ?? 'NONE'));
 
-    $push_security = sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+    $push_security = sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status'], $creator_id);
     $debug("Push to Security: " . ($push_security ? 'SENT' : 'FAILED'));
 
     $push_result = false;
@@ -83,7 +83,7 @@ if ($action == 'approve') {
     $stmt->execute([$visit_id]);
     $visitor_name = $stmt->fetchColumn();
 
-    sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+    $push_security = sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status'], $creator_id);
 
     $push_result = false;
     // Send Notification to Creator

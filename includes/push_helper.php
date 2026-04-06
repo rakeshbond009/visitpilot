@@ -261,7 +261,8 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [], $exc
                     'priority' => 'high',
                     'ttl' => '0s',
                     'notification' => [
-                        'channel_id' => 'visit_status_v1',
+                        'click_action' => 'visit_update_action',
+                        'sound' => 'default'
                     ]
                 ],
                 'apns' => [
@@ -272,9 +273,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [], $exc
                                 'body' => (string) $body,
                             ],
                             'sound' => 'default',
-                            'category' => 'visit_update_action',
-                            'thread-id' => 'visit-'.(string)($data['visit_id'] ?? 'unknown'),
-                            'interruption-level' => 'time-sensitive'
+                            'category' => 'visit_update_action'
                         ]
                     ]
                 ]
@@ -355,12 +354,16 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
     }
 
     $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
-    if (!file_exists($certPath)) return false;
+    if (!file_exists($certPath))
+        return false;
 
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
     $accessToken = getGoogleAccessToken($serviceAccount);
-    if (!$accessToken) return false;    foreach ($users as $user) {
+    if (!$accessToken)
+        return false;
+
+    foreach ($users as $user) {
         $log("Targeting Token: " . substr($user['fcm_token'], 0, 15) . "... for User $user_id");
         $message = [
             'message' => [
@@ -374,7 +377,6 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                     'body' => (string) $body,
                     'type' => 'visit_update',
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
-                    'click_action' => 'visit_update_action'
                 ],
                 'android' => [
                     'priority' => 'high',
