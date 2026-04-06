@@ -267,13 +267,6 @@ function sendPushToUser($pdo, $user_id, $title, $body, $data = [])
         curl_close($ch);
 
         $log("Targeted FCM Response for User $user_id ($platform) [HTTP $httpCode]: $response");
-
-        // CLEANUP: If token is unregistered, remove it from the DB
-        if ($httpCode === 404 || strpos($response, 'UNREGISTERED') !== false) {
-            $log("Token is INVALID/UNREGISTERED. Deleting from DB: " . (string)$device['fcm_token']);
-            $pdo->prepare("DELETE FROM user_devices WHERE fcm_token = ?")->execute([$device['fcm_token']]);
-            $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE fcm_token = ?")->execute([$device['fcm_token']]);
-        }
     }
     return true;
 }
@@ -389,19 +382,6 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         curl_close($ch);
 
         $log("FCM RESPONSE for Role $role, User {$user['user_id']} [HTTP $httpCode]: $response");
-
-        // AUTO-PURGE: Remove stale UNREGISTERED tokens immediately
-        if ($httpCode === 404) {
-            $decoded = json_decode($response, true);
-            $errorCode = $decoded['error']['details'][0]['errorCode'] ?? '';
-            if ($errorCode === 'UNREGISTERED') {
-                $log("PURGING stale token for User {$user['user_id']} (Role: $role)");
-                $pdo->prepare("DELETE FROM user_devices WHERE user_id = ? AND fcm_token = ?")
-                    ->execute([$user['user_id'], $user['fcm_token']]);
-                $pdo->prepare("UPDATE users SET fcm_token = NULL WHERE id = ? AND fcm_token = ?")
-                    ->execute([$user['user_id'], $user['fcm_token']]);
-            }
-        }
     }
     return true;
 }
