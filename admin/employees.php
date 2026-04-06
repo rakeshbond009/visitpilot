@@ -190,12 +190,16 @@ if (isset($_GET['grant_user'])) {
 // Fetch All Employees with User Status
 $employees = $pdo->query("SELECT e.*, u.id as user_id, u.status as user_status FROM employees e LEFT JOIN users u ON e.id = u.employee_id ORDER BY e.name")->fetchAll();
 
+// Quota Check
+$is_quota_reached = isUserQuotaReached();
+$quota_limit = $tenant['max_users'] ?? 0;
+
 require_once 'header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Employee Management</h3>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#empModal" onclick="clearForm()">
+    <button class="btn btn-primary" onclick="handleAddClick()">
         <i class="bi bi-plus-lg"></i> Add New Employee
     </button>
 </div>
@@ -366,7 +370,32 @@ require_once 'header.php';
         });
     }
 
+        });
+    }
+
+    function checkQuota() {
+        var reached = <?php echo $is_quota_reached ? 'true' : 'false'; ?>;
+        if (reached) {
+            AppDialog.show({
+                icon: 'warning',
+                title: 'User Limit Reached!',
+                text: 'Your current plan only allows <?php echo $quota_limit; ?> active users (non-admins). Please deactivate existing accounts to add more users.'
+            });
+            return false;
+        }
+        return true;
+    }
+
+    function handleAddClick() {
+        if (!checkQuota()) return;
+        clearForm();
+        var myModal = new bootstrap.Modal(document.getElementById('empModal'));
+        myModal.show();
+    }
+
     function confirmGrant(id, type) {
+        if (!checkQuota()) return;
+        
         var dialogText = type === 'reactivate' 
             ? 'Do you want to re-enable login for this employee? Their old credentials will be restored.'
             : 'Do you want to create a login account for this employee?';

@@ -254,6 +254,10 @@ if (isset($_GET['toggle_status'])) {
     }
 }
 
+// Quota Check
+$is_quota_reached = isUserQuotaReached();
+$quota_limit = $tenant['max_users'] ?? 0;
+
 // Capture success from GET
 if (isset($_GET['success'])) {
     $success = $_GET['success'];
@@ -513,7 +517,7 @@ require_once 'header.php';
         <button class="btn btn-info text-white me-2" data-bs-toggle="modal" data-bs-target="#rolePermModal">
             <i class="bi bi-diagram-3-fill"></i> Manage Roles
         </button>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <button class="btn btn-success" onclick="handleAddUserClick()">
             <i class="bi bi-person-plus-fill"></i> Add New User
         </button>
     </div>
@@ -1029,7 +1033,29 @@ endforeach; ?>
 </div>
 
 <script>
+function checkQuota() {
+    var reached = <?php echo $is_quota_reached ? 'true' : 'false'; ?>;
+    if (reached) {
+        AppDialog.show({
+            icon: 'warning',
+            title: 'User Limit Reached!',
+            text: 'Your current plan only allows <?php echo $quota_limit; ?> active users (non-admins). Please deactivate existing accounts or contact support to upgrade.'
+        });
+        return false;
+    }
+    return true;
+}
+
+function handleAddUserClick() {
+    if (!checkQuota()) return;
+    var myModal = new bootstrap.Modal(document.getElementById('addUserModal'));
+    myModal.show();
+}
+
 function toggleUserStatus(uid, status) {
+    // If activating, check quota first
+    if (status === 'active' && !checkQuota()) return;
+
     var title = status === 'active' ? 'Activate User?' : 'Deactivate User?';
     var text = status === 'active' 
         ? 'This will restore login access for the user.' 

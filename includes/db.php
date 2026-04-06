@@ -219,6 +219,29 @@ function generateVisitCode()
     return strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
 }
 
+/**
+ * Quota Enforcement: Check if user limit is reached for the current tenant.
+ * (Excludes 'admin' role, only counts 'active' users)
+ */
+function isUserQuotaReached()
+{
+    global $pdo, $tenant;
+    if (!$tenant || !isset($tenant['max_users']) || $tenant['max_users'] <= 0) {
+        return false;
+    }
+
+    try {
+        // Only count active users who are NOT admins
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE role != 'admin' AND status = 'active'");
+        $stmt->execute();
+        $active_users = (int) $stmt->fetchColumn();
+
+        return $active_users >= $tenant['max_users'];
+    } catch (Exception $e) {
+        return false;
+    }
+}
+
 // 10. SECURE PERSISTENT AUTHENTICATION & PERMISSIONS
 function handlePersistentLogin()
 {
