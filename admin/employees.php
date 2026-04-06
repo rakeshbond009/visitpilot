@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $dept = sanitize($_POST['department']);
     $email = sanitize($_POST['email']);
     $mobile = sanitize($_POST['mobile']);
+    $status = sanitize($_POST['status'] ?? 'active');
 
     // Store for form persistence on error
     $form_data = $_POST;
@@ -30,17 +31,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Edit
             try {
                 // Detailed Diff Capture for Audit Log
-                $curr = $pdo->prepare("SELECT name, department, email, mobile FROM employees WHERE id = ?");
+                $curr = $pdo->prepare("SELECT name, department, email, mobile, status FROM employees WHERE id = ?");
                 $curr->execute([$_POST['id']]);
                 $old_data = $curr->fetch(PDO::FETCH_ASSOC);
 
-                $stmt = $pdo->prepare("UPDATE employees SET name=?, department=?, email=?, mobile=? WHERE id=?");
-                $stmt->execute([$name, $dept, $email, $mobile, $_POST['id']]);
+                $stmt = $pdo->prepare("UPDATE employees SET name=?, department=?, email=?, mobile=?, status=? WHERE id=?");
+                $stmt->execute([$name, $dept, $email, $mobile, $status, $_POST['id']]);
 
-                $uUpd = $pdo->prepare("UPDATE users SET full_name=?, department=?, email=?, mobile=? WHERE employee_id=?");
-                $uUpd->execute([$name, $dept, $email, $mobile, $_POST['id']]);
+                // Sync status with users table if it exists
+                $uUpd = $pdo->prepare("UPDATE users SET full_name=?, department=?, email=?, mobile=?, status=? WHERE employee_id=?");
+                $uUpd->execute([$name, $dept, $email, $mobile, $status, $_POST['id']]);
 
-                $new_data = ['name' => $name, 'department' => $dept, 'email' => $email, 'mobile' => $mobile];
+                $new_data = ['name' => $name, 'department' => $dept, 'email' => $email, 'mobile' => $mobile, 'status' => $status];
                 
                 logAction($pdo, $_SESSION['user_id'], "Updated employee profile: $name", $old_data, $new_data);
                 redirect("employees.php?edit_success=1");
@@ -60,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     $pdo->beginTransaction();
 
-                    $stmt = $pdo->prepare("INSERT INTO employees (name, department, email, mobile) VALUES (?, ?, ?, ?)");
-                    $stmt->execute([$name, $dept, $email, $mobile]);
+                    $stmt = $pdo->prepare("INSERT INTO employees (name, department, email, mobile, status) VALUES (?, ?, ?, ?, ?)");
+                    $stmt->execute([$name, $dept, $email, $mobile, $status]);
                     $emp_id = $pdo->lastInsertId();
 
                     // Auto-create User Logic
@@ -86,8 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $hashed = password_hash($default_pass, PASSWORD_DEFAULT);
 
 
-                    $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?)");
-                    $uStmt->execute([$username, $hashed, $name, $emp_id, $dept, $email, $mobile]);
+                    $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile, status) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?, ?)");
+                    $uStmt->execute([$username, $hashed, $name, $emp_id, $dept, $email, $mobile, $status]);
 
                     logAction($pdo, $_SESSION['user_id'], "Added employee: $name and created user: $username");
 
@@ -179,8 +181,8 @@ if (isset($_GET['grant_user'])) {
     }
 }
 
-// Fetch Employees with User Status
-$employees = $pdo->query("SELECT e.*, u.id as user_id FROM employees e LEFT JOIN users u ON e.id = u.employee_id WHERE e.status='active' ORDER BY e.name")->fetchAll();
+// Fetch All Employees with User Status
+$employees = $pdo->query("SELECT e.*, u.id as user_id, u.status as user_status FROM employees e LEFT JOIN users u ON e.id = u.employee_id ORDER BY e.name")->fetchAll();
 
 require_once 'header.php';
 ?>
@@ -200,6 +202,7 @@ require_once 'header.php';
                     <th>Name</th>
                     <th>Department</th>
                     <th>Contact</th>
+                    <th>Status</th>
                     <th>User Access</th>
                     <th>Actions</th>
                 </tr>
@@ -222,8 +225,15 @@ require_once 'header.php';
                             </div>
                         </td>
                         <td>
+                            <span class="badge bg-<?php echo ($emp['status'] == 'active') ? 'success' : 'danger'; ?>">
+                                <?php echo ucfirst($emp['status']); ?>
+                            </span>
+                        </td>
+                        <td>
                             <?php if ($emp['user_id']): ?>
-                                <span class="badge bg-success">Active</span>
+                                <span class="badge bg-<?php echo ($emp['user_status'] == 'active') ? 'info' : 'secondary'; ?>">
+                                    <?php echo ($emp['user_status'] == 'active') ? 'Active Login' : 'Login Disabled'; ?>
+                                </span>
                                 <button type="button" class="btn btn-sm btn-outline-danger ms-1 border-0" title="Revoke Login"
                                     onclick="confirmRevoke(<?php echo $emp['id']; ?>)">
                                     <i class="bi bi-slash-circle-fill"></i>
@@ -308,6 +318,17 @@ require_once 'header.php';
                             oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                         <label for="mobile"><i class="bi bi-phone me-1"></i> Mobile Number</label>
                     </div>
+
+                    <div class="form-floating">
+                        <select name="status" id="status" class="form-select rounded-3">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                        <label for="status"><i class="bi bi-shield-check me-1"></i> Account Status</label>
+                        <div class="form-text mt-1 text-muted small">
+                            <i class="bi bi-info-circle me-1"></i> Deactivating an employee also disables their linked login account.
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-secondary rounded-pill px-4"
@@ -342,6 +363,7 @@ require_once 'header.php';
         document.getElementById('department').value = data.department;
         document.getElementById('email').value = data.email;
         document.getElementById('mobile').value = data.mobile;
+        document.getElementById('status').value = data.status || 'active';
 
         var myModal = new bootstrap.Modal(document.getElementById('empModal'));
         myModal.show();
@@ -354,6 +376,7 @@ require_once 'header.php';
         document.getElementById('department').value = '';
         document.getElementById('email').value = '';
         document.getElementById('mobile').value = '';
+        document.getElementById('status').value = 'active';
     }
 
     // Auto-show success modal based on URL

@@ -63,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['new_username'])) {
     $department = sanitize($_POST['new_department']);
     $email = sanitize($_POST['new_email'] ?? '');
     $mobile = sanitize($_POST['new_mobile'] ?? '');
+    $status = sanitize($_POST['new_status'] ?? 'active');
 
     // Store for form persistence
     $form_data = $_POST;
@@ -93,18 +94,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['new_username'])) {
         if ($existingEmp) {
             $employee_id = $existingEmp['id'];
             // Update their info just in case
-            $stmt = $pdo->prepare("UPDATE employees SET department = ?, email = ?, mobile = ? WHERE id = ?");
-            $stmt->execute([$department, $email, $mobile, $employee_id]);
+            $stmt = $pdo->prepare("UPDATE employees SET department = ?, email = ?, mobile = ?, status = ? WHERE id = ?");
+            $stmt->execute([$department, $email, $mobile, $status, $employee_id]);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO employees (name, department, email, mobile, status) VALUES (?, ?, ?, ?, 'active')");
-            $stmt->execute([$full_name, $department, $email, $mobile]);
+            $stmt = $pdo->prepare("INSERT INTO employees (name, department, email, mobile, status) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$full_name, $department, $email, $mobile, $status]);
             $employee_id = $pdo->lastInsertId();
         }
 
         // Create user record
         $password = password_hash($password_raw, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, department, employee_id, email, mobile) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$username, $password, $full_name, $role, $department, $employee_id, $email, $mobile]);
+        $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, department, employee_id, email, mobile, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$username, $password, $full_name, $role, $department, $employee_id, $email, $mobile, $status]);
 
         logAction($pdo, $_SESSION['user_id'], "Created new user: $username (Role: $role)");
 
@@ -125,11 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_user_id'])) {
     $full_name = sanitize($_POST['edit_full_name']);
     $role = sanitize($_POST['edit_role']);
     $department = sanitize($_POST['edit_department']);
+    $status = sanitize($_POST['edit_status'] ?? 'active');
     $password = $_POST['edit_password'];
 
     try {
         // Change Detection for Audit Log
-        $curr = $pdo->prepare("SELECT username, full_name, role, department FROM users WHERE id = ?");
+        $curr = $pdo->prepare("SELECT username, full_name, role, department, status, employee_id FROM users WHERE id = ?");
         $curr->execute([$id]);
         $old = $curr->fetch();
 
@@ -142,16 +144,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_user_id'])) {
             $changes[] = "role ({$old['role']} to $role)";
         if ($old['department'] !== $department)
             $changes[] = "department";
+        if ($old['status'] !== $status)
+            $changes[] = "status";
         if (!empty($password))
             $changes[] = "password";
 
         if (!empty($password)) {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("UPDATE users SET username=?, full_name=?, role=?, department=?, password=? WHERE id=?");
-            $stmt->execute([$username, $full_name, $role, $department, $hash, $id]);
+            $stmt = $pdo->prepare("UPDATE users SET username=?, full_name=?, role=?, department=?, status=?, password=? WHERE id=?");
+            $stmt->execute([$username, $full_name, $role, $department, $status, $hash, $id]);
         } else {
-            $stmt = $pdo->prepare("UPDATE users SET username=?, full_name=?, role=?, department=? WHERE id=?");
-            $stmt->execute([$username, $full_name, $role, $department, $id]);
+            $stmt = $pdo->prepare("UPDATE users SET username=?, full_name=?, role=?, department=?, status=? WHERE id=?");
+            $stmt->execute([$username, $full_name, $role, $department, $status, $id]);
+        }
+
+        // Sync with employee record if linked
+        if ($old['employee_id']) {
+            $stmt = $pdo->prepare("UPDATE employees SET name=?, department=?, status=? WHERE id=?");
+            $stmt->execute([$full_name, $department, $status, $old['employee_id']]);
         }
 
         $msg_log = "Updated user $username (ID: $id): " . (empty($changes) ? "no profile changes" : implode(", ", $changes));
@@ -219,7 +229,7 @@ if (isset($_GET['success'])) {
 }
 
 // Note: We need to also fetch department in the SQL query below
-$sql = "SELECT u.id, u.username, u.full_name, u.role, u.department, u.permissions_locked,
+$sql = "SELECT u.id, u.username, u.full_name, u.role, u.department, u.permissions_locked, u.status, u.employee_id,
                GROUP_CONCAT(up.permission_key) as perms 
         FROM users u 
         LEFT JOIN user_permissions up ON u.id = up.user_id 
@@ -608,6 +618,7 @@ require_once 'header.php';
                     <tr>
                         <th>User</th>
                         <th>Role</th>
+                        <th>Status</th>
                         <th>Assigned Permissions</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -621,6 +632,11 @@ require_once 'header.php';
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary"><?php echo strtoupper($u['role']); ?></span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-<?php echo ($u['status'] == 'active') ? 'success' : 'danger'; ?>">
+                                        <?php echo ucfirst($u['status']); ?>
+                                    </span>
                                 </td>
                                 <td>
                                     <?php
@@ -802,7 +818,16 @@ require_once 'header.php';
                                             <option value="employee" <?php echo ($u['role'] == 'employee') ? 'selected' : ''; ?>>Employee</option>
                                             <option value="admin" <?php echo ($u['role'] == 'admin') ? 'selected' : ''; ?>>Administrator</option>
                                         </select>
-                                        <label for="eRole<?php echo $u['id']; ?>">System Role</label>
+                                        <label for="eRole<?php echo $u['id']; ?>">User Role</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <select name="edit_status" class="form-select" id="eStatus<?php echo $u['id']; ?>" required>
+                                            <option value="active" <?php echo ($u['status'] == 'active') ? 'selected' : ''; ?>>Active (Enabled)</option>
+                                            <option value="inactive" <?php echo ($u['status'] == 'inactive') ? 'selected' : ''; ?>>Inactive (Disabled)</option>
+                                        </select>
+                                        <label for="eStatus<?php echo $u['id']; ?>">Account Status</label>
                                     </div>
                                 </div>
                             </div>
@@ -924,7 +949,7 @@ endforeach; ?>
                                 <label for="uPass">Password</label>
                             </div>
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-8">
                             <div class="form-floating">
                                 <select name="new_role" class="form-select" id="uRole" required>
                                     <option value="" disabled <?php echo !isset($form_data['new_role']) ? 'selected' : ''; ?>>Select Access Level...</option>
@@ -933,6 +958,15 @@ endforeach; ?>
                                     <option value="admin" <?php echo (isset($form_data['new_role']) && $form_data['new_role'] == 'admin') ? 'selected' : ''; ?>>Administrator</option>
                                 </select>
                                 <label for="uRole">System Role</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-floating">
+                                <select name="new_status" class="form-select" id="uStatus" required>
+                                    <option value="active" selected>Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                                <label for="uStatus">Status</label>
                             </div>
                         </div>
                     </div>
