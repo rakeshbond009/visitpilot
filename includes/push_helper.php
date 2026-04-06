@@ -248,7 +248,8 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                     'ttl' => '0s',
                     'notification' => [
                         'click_action' => 'visit_update_action',
-                        'sound' => 'default'
+                        'sound' => 'default',
+                        'channel_id' => 'vms_urgent_alerts_v2'
                     ]
                 ],
                 'apns' => [
@@ -259,7 +260,9 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                                 'body' => (string) $body,
                             ],
                             'sound' => 'default',
-                            'category' => 'visit_update_action'
+                            'category' => 'visit_update_action',
+                            'thread-id' => 'visit-'.(string)($data['visit_id'] ?? 'unknown'),
+                            'interruption-level' => 'time-sensitive'
                         ]
                     ]
                 ]
@@ -344,9 +347,8 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
     $accessToken = getGoogleAccessToken($serviceAccount);
-    if (!$accessToken) return false;
-
-    foreach ($users as $user) {
+    if (!$accessToken) return false;    foreach ($users as $user) {
+        $log("Targeting Token: " . substr($user['fcm_token'], 0, 15) . "... for User $user_id");
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
@@ -354,17 +356,20 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                     'title' => (string) $title,
                     'body' => (string) $body,
                 ],
-                'data' => array_merge([
+                'data' => [
                     'title' => (string) $title,
                     'body' => (string) $body,
                     'type' => 'visit_update',
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
                     'click_action' => 'visit_update_action'
-                ], $data),
+                ],
                 'android' => [
                     'priority' => 'high',
+                    'ttl' => '0s',
                     'notification' => [
-                        'click_action' => 'visit_update_action'
+                        'click_action' => 'visit_update_action',
+                        'sound' => 'default',
+                        'channel_id' => 'vms_urgent_alerts_v2'
                     ]
                 ]
             ]
@@ -374,6 +379,8 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Authorization: Bearer ' . $accessToken,
             'Content-Type: application/json'
@@ -382,8 +389,9 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         $res = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        $log("FCM RESPONSE for User $user_id: $res");
+        $log("FCM RESPONSE for Direct User $user_id [HTTP $httpCode]: $res");
     }
     return true;
 }

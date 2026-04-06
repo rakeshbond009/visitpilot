@@ -58,12 +58,13 @@ if ($action == 'approve') {
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
+    $push_result = false;
     // Send Notification to Creator
     if ($creator_id) {
-        sendPushNotificationToUser($pdo, $creator_id, "Visit Approved", "The visit for $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'visit_update']);
+        $push_result = sendPushNotificationToUser($pdo, $creator_id, "Visit Approved", "The visit for $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'visit_update']);
     }
 
-    echo json_encode(['success' => true, 'message' => 'Visitor Approved']);
+    echo json_encode(['success' => true, 'message' => 'Visitor Approved', 'push_sent' => $push_result]);
 } else {
     $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=?, rejection_reason=? WHERE id=?");
     $stmt->execute([$_SESSION['user_id'], current_datetime(), $reason, $visit_id]);
@@ -76,10 +77,11 @@ if ($action == 'approve') {
 
     sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
 
+    $push_result = false;
     // Send Notification to Creator
     if ($creator_id) {
-        sendPushNotificationToUser($pdo, $creator_id, "Visit Rejected", "The visit for $visitor_name has been rejected by the host. Reason: $reason", ['visit_id' => $visit_id, 'type' => 'visit_update']);
+        $push_result = sendPushNotificationToUser($pdo, $creator_id, "Visit Rejected", "The visit for $visitor_name has been rejected by the host. Reason: $reason", ['visit_id' => $visit_id, 'type' => 'visit_update']);
     }
 
-    echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
+    echo json_encode(['success' => true, 'message' => 'Visitor Rejected', 'push_sent' => $push_result]);
 }
