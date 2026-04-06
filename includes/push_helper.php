@@ -197,8 +197,15 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [], $exc
 
     // Fallback (Backward Compatibility)
     if (empty($users)) {
-        $stmt = $pdo->prepare("SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.role = ? AND u.fcm_token IS NOT NULL");
-        $stmt->execute([$role]);
+        $sql = "SELECT u.id as user_id, u.fcm_token, u.role FROM users u WHERE u.role = ? AND u.fcm_token IS NOT NULL";
+        if ($exclude_user_id) {
+            $sql .= " AND u.id != ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$role, $exclude_user_id]);
+        } else {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([$role]);
+        }
         $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
