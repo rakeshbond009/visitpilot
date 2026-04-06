@@ -124,13 +124,14 @@ function runJob_approveVisit($pdo, $payload)
 
     // 3. FCM to security
     try {
-        require_once dirname(__DIR__) . '/../includes/push_helper.php';
+        require_once __DIR__ . '/../../includes/push_helper.php';
         sendPushNotificationToRole(
             $pdo,
             'security',
             'Visit Approved',
             "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.",
-            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+            ['visit_id' => (string) $visit_id, 'type' => 'visit_update'],
+            $visit['created_by'] ?? null
         );
     } catch (Throwable $e) {
         error_log("[BG] FCM approve error: " . $e->getMessage());
@@ -189,13 +190,14 @@ function runJob_rejectVisit($pdo, $payload)
     }
 
     try {
-        require_once dirname(__DIR__) . '/../includes/push_helper.php';
+        require_once __DIR__ . '/../../includes/push_helper.php';
         sendPushNotificationToRole(
             $pdo,
             'security',
             'Visit Rejected',
             "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.",
-            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+            ['visit_id' => (string) $visit_id, 'type' => 'visit_update'],
+            $visit['created_by'] ?? null
         );
     } catch (Throwable $e) {
         error_log("[BG] FCM reject error: " . $e->getMessage());

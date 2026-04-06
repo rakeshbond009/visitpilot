@@ -167,7 +167,7 @@ function getGoogleAccessToken($serviceAccount)
     }
 }
 
-function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
+function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [], $exclude_user_id = null)
 {
     // --- CONSOLIDATED DEBUG LOGGING ---
     $logFile = __DIR__ . '/../approval_debug.log';
@@ -175,17 +175,24 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[PushRoleHelper] " . $msg . "\n", FILE_APPEND);
     };
 
-    $log("Attempting push for Role: $role. Title: $title");
+    $log("Attempting push for Role: $role. Title: $title. Exclude User ID: " . ($exclude_user_id ?? 'None'));
 
     // Fetch users by role
-    $stmt = $pdo->prepare("
+    $sql = "
         SELECT u.id as user_id, ud.fcm_token, u.role 
         FROM users u 
         JOIN user_devices ud ON u.id = ud.user_id 
         WHERE u.role = ? 
         AND ud.fcm_token IS NOT NULL
-    ");
-    $stmt->execute([$role]);
+    ";
+    if ($exclude_user_id) {
+        $sql .= " AND u.id != ?";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$role, $exclude_user_id]);
+    } else {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$role]);
+    }
     $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Fallback (Backward Compatibility)
@@ -247,7 +254,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                     'priority' => 'high',
                     'ttl' => '0s',
                     'notification' => [
-                        'channel_id' => 'default'
+                        'channel_id' => 'visit_status_v1',
                     ]
                 ],
                 'apns' => [
