@@ -3,12 +3,13 @@ require_once 'header.php';
 
 // Determine if user is Super Admin
 $is_super = (bool)($_SESSION['is_super'] ?? false);
-$current_tenant = $_SESSION['tenant_key'] ?? 'master';
+$current_tenant_key = $_SESSION['tenant_key'] ?? 'master';
 
+// Search and Filter parameters
 $search = sanitize($_GET['search'] ?? '');
 $user_filter = (int)($_GET['user_id'] ?? 0);
-// If not super-admin, always force the current tenant's key
-$tenant_filter = $is_super ? sanitize($_GET['tenant_key'] ?? '') : $current_tenant;
+// Restricted access: Tenants only see their own logs
+$tenant_filter = $is_super ? sanitize($_GET['tenant_key'] ?? '') : $current_tenant_key;
 
 // Pagination
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -31,17 +32,17 @@ if ($tenant_filter) {
     $params[] = $tenant_filter;
 }
 
+// Get total count (from Master DB for Super Admin)
 $count_sql = "SELECT COUNT(*) FROM audit_logs al $where";
 $stmt = $master_pdo->prepare($count_sql);
 $stmt->execute($params);
 $total = $stmt->fetchColumn();
 $total_pages = ceil($total / $per_page);
 
-// Get logs from Master DB to see all tenants
-$sql = "SELECT al.*, u.username, u.full_name, t.company_name as tenant_name
+// Get logs (from Master DB for Super Admin visibility)
+$sql = "SELECT al.*, u.username, u.full_name 
         FROM audit_logs al 
         LEFT JOIN users u ON al.user_id = u.id 
-        LEFT JOIN tenants t ON al.tenant_key = t.tenant_key
         $where
         ORDER BY al.created_at DESC 
         LIMIT $per_page OFFSET $offset";
@@ -52,7 +53,7 @@ $logs = $stmt->fetchAll();
 
 // Get users for filter
 $all_users = $master_pdo->query("SELECT id, full_name, username FROM users ORDER BY full_name")->fetchAll();
-$all_tenants = $master_pdo->query("SELECT tenant_key, company_name FROM tenants ORDER BY company_name")->fetchAll();
+$all_tenants = $is_super ? $master_pdo->query("SELECT tenant_key FROM tenants ORDER BY tenant_key")->fetchAll() : [];
 ?>
 
 <div class="row align-items-center mb-4">
@@ -94,20 +95,20 @@ endforeach; ?>
                         <option value="">All Tenants</option>
                         <?php foreach ($all_tenants as $t): ?>
                             <option value="<?php echo $t['tenant_key']; ?>" <?php echo ($tenant_filter == $t['tenant_key']) ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($t['company_name']); ?>
+                                <?php echo htmlspecialchars(strtoupper($t['tenant_key'])); ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 <?php else: ?>
-                    <div class="form-control bg-light text-muted">
+                    <div class="form-control bg-light text-muted small">
                         <i class="bi bi-building me-1"></i> My Tenant Logs
                     </div>
                 <?php endif; ?>
             </div>
-            <div class="col-md-1">
+            <div class="col-md-2">
                 <div class="btn-group w-100">
-                    <button type="submit" class="btn btn-primary">Go</button>
-                    <a href="audit_logs.php" class="btn btn-outline-secondary">X</a>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="audit_logs.php" class="btn btn-outline-secondary">Reset</a>
                 </div>
             </div>
         </form>
@@ -119,9 +120,10 @@ endforeach; ?>
         <table class="table table-hover align-middle mb-0">
             <thead class="bg-light border-bottom">
                 <tr class="text-uppercase small fw-bold text-muted">
+                    <th class="ps-4" style="width: 80px;">ID</th>
                     <th style="width: 200px;">When (IST)</th>
                     <th style="width: 200px;">Performed By</th>
-                    <th style="width: 150px;">Tenant Name</th>
+                    <th style="width: 150px;">Tenant</th>
                     <th>Action Description</th>
                     <th class="pe-4" style="width: 150px;">IP Address</th>
                 </tr>
@@ -152,7 +154,7 @@ endforeach; ?>
     endif; ?>
                     </td>
                     <td>
-                        <span class="badge bg-info-subtle text-info border border-info small"><?php echo htmlspecialchars($log['tenant_name'] ?? 'Super User'); ?></span>
+                        <span class="badge bg-secondary-subtle text-secondary border small text-uppercase"><?php echo htmlspecialchars($log['tenant_key'] ?? 'master'); ?></span>
                     </td>
                     <td>
                         <div class="p-2 rounded bg-light border-start border-3 border-primary small text-dark">

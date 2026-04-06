@@ -223,7 +223,8 @@ endif; ?>
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
             <div class="modal-header bg-danger text-white border-0 py-3">
-                <h5 class="modal-title fw-bold m-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>MANDATORY STEP</h5>
+                <h5 class="modal-title fw-bold m-0"><i class="bi bi-exclamation-octagon-fill me-2"></i>MANDATORY STEP
+                </h5>
             </div>
             <div class="modal-body text-center p-5">
                 <div class="mb-4 text-danger">
@@ -231,13 +232,16 @@ endif; ?>
                 </div>
                 <h4 class="fw-bold text-dark">Hostinger Database Ready?</h4>
                 <p class="text-muted fs-6 px-3">
-                    You MUST first go to your <strong>Hostinger Control Panel</strong> and manually create the database & user.<br><br>
+                    You MUST first go to your <strong>Hostinger Control Panel</strong> and manually create the database
+                    & user.<br><br>
                     Is the database created and ready for credentials?
                 </p>
             </div>
             <div class="modal-footer bg-light border-0 justify-content-center py-3">
-                <button type="button" class="btn btn-light border px-4 rounded-pill" data-bs-dismiss="modal">No, not yet</button>
-                <button type="button" id="confirmDbBtn" class="btn btn-danger px-5 rounded-pill fw-bold shadow-sm">Yes, I have created it</button>
+                <button type="button" class="btn btn-light border px-4 rounded-pill" data-bs-dismiss="modal">No, not
+                    yet</button>
+                <button type="button" id="confirmDbBtn" class="btn btn-danger px-5 rounded-pill fw-bold shadow-sm">Yes,
+                    I have created it</button>
             </div>
         </div>
     </div>
@@ -338,7 +342,7 @@ endif; ?>
     }
 
     // Handle Confirmation in Pre-Check Modal
-    document.getElementById('confirmDbBtn').addEventListener('click', function() {
+    document.getElementById('confirmDbBtn').addEventListener('click', function () {
         // Hide pre-check
         const checkModalEl = document.getElementById('hostingerCheckModal');
         bootstrap.Modal.getInstance(checkModalEl).hide();
@@ -357,7 +361,7 @@ endif; ?>
         document.getElementById('t_host').value = 'localhost';
         // document.getElementById('t_db').value = ''; // Let it stay as placeholder
         document.getElementById('t_user').value = 'root';
-        
+
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         document.getElementById('t_pass').value = isLocal ? '' : generateRandomPass(10);
         document.getElementById('t_status').value = 'active';
