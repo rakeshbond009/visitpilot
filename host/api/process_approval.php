@@ -44,31 +44,30 @@ if (!$stmt->fetch()) {
     exit;
 }
 
-if ($action == 'approve' || $action == 'reject') {
-    $status = ($action == 'approve') ? 'approved' : 'rejected';
-    
-    $stmt = $pdo->prepare("UPDATE visits SET approval_status=?, status=?, approved_by=?, approved_at=?, rejection_reason=? WHERE id=?");
-    $stmt->execute([$status, $status, $_SESSION['user_id'], current_datetime(), ($action == 'reject' ? $reason : null), $visit_id]);
-    
-    logAction($pdo, $_SESSION['user_id'], ($action == 'approve' ? "Approved" : "Rejected") . " visit ID: $visit_id via Popup");
+if ($action == 'approve') {
+    $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_by=?, approved_at=? WHERE id=?");
+    $stmt->execute([$_SESSION['user_id'], current_datetime(), $visit_id]);
+    logAction($pdo, $_SESSION['user_id'], "Approved visit ID: $visit_id via Popup");
 
-    // Unified Background Job (Handles PDF, WhatsApp, FCM to creator)
-    require_once '../../api/includes/async_dispatch.php';
-    require_once '../../api/includes/bg_jobs.php';
-    
-    $bgPayload = [
-        'visit_id' => $visit_id,
-        'reason' => $reason
-    ];
+    // Send Notification to Security
+    $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
+    $stmt->execute([$visit_id]);
+    $visitor_name = $stmt->fetchColumn();
 
-    // Response FIRST for snappy UI
-    echo json_encode(['success' => true, 'message' => "Visitor " . ucfirst($status)]);
-    
-    // Execute logic in background (FCM, WhatsApp, PDF)
-    if ($action == 'approve') {
-        runJobInline('approve_visit', $bgPayload, $pdo);
-    } else {
-        runJobInline('reject_visit', $bgPayload, $pdo);
-    }
-    exit;
+    sendPushNotificationToRole($pdo, 'security', "Visitor Approved", "Visitor $visitor_name has been approved by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+
+    echo json_encode(['success' => true, 'message' => 'Visitor Approved']);
+} else {
+    $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_by=?, approved_at=?, rejection_reason=? WHERE id=?");
+    $stmt->execute([$_SESSION['user_id'], current_datetime(), $reason, $visit_id]);
+    logAction($pdo, $_SESSION['user_id'], "Rejected visit ID: $visit_id via Popup");
+
+    // Send Notification to Security
+    $stmt = $pdo->prepare("SELECT v.name FROM visitors v JOIN visits vs ON v.id = vs.visitor_id WHERE vs.id = ?");
+    $stmt->execute([$visit_id]);
+    $visitor_name = $stmt->fetchColumn();
+
+    sendPushNotificationToRole($pdo, 'security', "Visitor Rejected", "Visitor $visitor_name has been rejected by the host.", ['visit_id' => $visit_id, 'type' => 'approval_status']);
+
+    echo json_encode(['success' => true, 'message' => 'Visitor Rejected']);
 }

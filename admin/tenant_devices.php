@@ -23,6 +23,16 @@ if (isset($_GET['toggle']) && isset($_GET['id'])) {
     exit;
 }
 
+// Handle Delete Action
+if (isset($_GET['delete']) && isset($_GET['id'])) {
+    $id = (int)$_GET['id'];
+    $stmt = $master_pdo->prepare("DELETE FROM tenant_devices WHERE id = ?");
+    $stmt->execute([$id]);
+    
+    header("Location: tenant_devices.php?tenant=" . urlencode($target_tenant) . "&msg=Device Removed");
+    exit;
+}
+
 // Now include UI
 require_once 'header.php';
 
@@ -129,6 +139,12 @@ if ($target_tenant) {
                                         <i class="bi bi-check-circle me-1"></i> Authorize
                                     </a>
                                 <?php endif; ?>
+                                
+                                <a href="tenant_devices.php?tenant=<?php echo urlencode($target_tenant); ?>&id=<?php echo $d['id']; ?>&delete=true" 
+                                   class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-xs ms-1" 
+                                   onclick="return confirm('Permanently remove this device registration? The user will have to login again to re-register.')">
+                                    <i class="bi bi-trash me-1"></i> Delete
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>

@@ -122,22 +122,18 @@ function runJob_approveVisit($pdo, $payload)
         error_log("[BG] WhatsApp approve error: " . $e->getMessage());
     }
 
-    // 3. FCM to creator (Security/Host who registered)
+    // 3. FCM to security
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        $creator_id = $visit['created_by'] ?? 0;
-        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Approve Job: Visit $visit_id, Creator: $creator_id\n", FILE_APPEND);
-        
-        if (!empty($creator_id)) {
-            sendPushToUser($pdo, $creator_id, 'Visit Approved', 
-                "{$visit['visitor_name']} has been approved by {$visit['host_name']}.",
-                ['visit_id' => (string)$visit_id, 'type' => 'visit_approved']
-            );
-        } else {
-            file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "SKIPPED FCM: created_by is empty for visit $visit_id\n", FILE_APPEND);
-        }
-    } catch (Throwable $e) { 
-        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Approve FCM Error: " . $e->getMessage() . "\n", FILE_APPEND);
+        sendPushNotificationToRole(
+            $pdo,
+            'security',
+            'Visit Approved',
+            "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.",
+            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+        );
+    } catch (Throwable $e) {
+        error_log("[BG] FCM approve error: " . $e->getMessage());
     }
 
     // 4. Dahua
@@ -171,22 +167,17 @@ function runJob_rejectVisit($pdo, $payload)
         error_log("[BG] WhatsApp reject error: " . $e->getMessage());
     }
 
-    // 2. FCM to creator (Security/Host who registered)
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        $creator_id = $visit['created_by'] ?? 0;
-        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Reject Job: Visit $visit_id, Creator: $creator_id\n", FILE_APPEND);
-        
-        if (!empty($creator_id)) {
-            sendPushToUser($pdo, $creator_id, 'Visit Rejected', 
-                "{$visit['visitor_name']} was REJECTED by {$visit['host_name']}.",
-                ['visit_id' => (string)$visit_id, 'type' => 'visit_rejected', 'reason' => $reason]
-            );
-        } else {
-            file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "SKIPPED Reject FCM: created_by empty for visit $visit_id\n", FILE_APPEND);
-        }
-    } catch (Throwable $e) { 
-        file_put_contents(dirname(__DIR__) . '/bg_trace.log', date('[Y-m-d H:i:s] ') . "Reject FCM Error: " . $e->getMessage() . "\n", FILE_APPEND);
+        sendPushNotificationToRole(
+            $pdo,
+            'security',
+            'Visit Rejected',
+            "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.",
+            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+        );
+    } catch (Throwable $e) {
+        error_log("[BG] FCM reject error: " . $e->getMessage());
     }
 }
 
