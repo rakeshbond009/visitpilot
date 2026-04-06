@@ -37,7 +37,7 @@ const statusColors = {
 
 const getStatusColor = (status) => statusColors[status?.toLowerCase()] || '#64748b';
 
-export default function MyVisitorsHistory({ navigation }) {
+export default function MyVisitorsHistory({ navigation, route }) {
     const [visits, setVisits] = useState([]);
     const [stats, setStats] = useState({ total: 0, active: 0, completed: 0, pending: 0, approved: 0, rejected: 0 });
     const [loading, setLoading] = useState(true);
@@ -131,11 +131,39 @@ export default function MyVisitorsHistory({ navigation }) {
         }
     }, [getDateRange, searchTerm, statusFilter, navigation]);
 
+    const fetchVisitDetails = async (visitId) => {
+        try {
+            setLoading(true);
+            const response = await apiClient.get('api/visit/details.php', {
+                params: { id: visitId }
+            });
+            if (response.data.status === 'success') {
+                setSelectedVisit(response.data.data);
+                setDetailModalVisible(true);
+            } else {
+                Alert.alert('Error', response.data.message || 'Could not load visit details');
+            }
+        } catch (err) {
+            console.error('Visit Details Error:', err);
+            Alert.alert('Error', 'Connection error while loading details');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useFocusEffect(
         useCallback(() => {
             fetchData(1);
         }, [fetchData])
     );
+
+    useEffect(() => {
+        if (route.params?.visit_id) {
+            fetchVisitDetails(route.params.visit_id);
+            // Clear params to avoid duplicate opening
+            navigation.setParams({ visit_id: null });
+        }
+    }, [route.params?.visit_id]);
 
     const onRefresh = () => {
         setRefreshing(true);

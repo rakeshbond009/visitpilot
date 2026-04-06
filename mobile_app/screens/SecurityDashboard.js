@@ -32,7 +32,7 @@ import { checkOverlayPermission } from '../utils/notificationManager';
 
 const { width, height } = Dimensions.get('window');
 
-export default function SecurityDashboard({ navigation }) {
+export default function SecurityDashboard({ navigation, route }) {
     const { hasPermission, permissions, refreshPermissions } = usePermissions();
     const [userData, setUserData] = useState(null);
     const [stats, setStats] = useState({
@@ -260,6 +260,14 @@ export default function SecurityDashboard({ navigation }) {
             return () => clearInterval(interval);
         }, [])
     );
+
+    useEffect(() => {
+        if (route.params?.visit_id) {
+            fetchVisitDetails(route.params.visit_id);
+            // Clear params to avoid duplicate opening
+            navigation.setParams({ visit_id: null });
+        }
+    }, [route.params?.visit_id]);
 
     const onRefresh = async () => {
         setRefreshing(true);

@@ -107,13 +107,15 @@ function runJob_approveVisit($pdo, $payload) {
         );
     } catch (Throwable $e) { error_log("[BG] WhatsApp approve error: " . $e->getMessage()); }
 
-    // 3. FCM to security
+    // 3. FCM to creator (Security/Host who registered)
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        sendPushNotificationToRole($pdo, 'security', 'Visit Approved',
-            "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.",
-            ['visit_id' => (string)$visit_id, 'type' => 'approval_status']
-        );
+        if (!empty($visit['created_by'])) {
+            sendPushToUser($pdo, $visit['created_by'], 'Visit Approved', 
+                "{$visit['visitor_name']} has been approved by {$visit['host_name']}.",
+                ['visit_id' => (string)$visit_id, 'type' => 'visit_approved']
+            );
+        }
     } catch (Throwable $e) { error_log("[BG] FCM approve error: " . $e->getMessage()); }
 
     // 4. Dahua
@@ -141,12 +143,15 @@ function runJob_rejectVisit($pdo, $payload) {
         );
     } catch (Throwable $e) { error_log("[BG] WhatsApp reject error: " . $e->getMessage()); }
 
+    // 2. FCM to creator (Security/Host who registered)
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        sendPushNotificationToRole($pdo, 'security', 'Visit Rejected',
-            "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.",
-            ['visit_id' => (string)$visit_id, 'type' => 'approval_status']
-        );
+        if (!empty($visit['created_by'])) {
+            sendPushToUser($pdo, $visit['created_by'], 'Visit Rejected', 
+                "{$visit['visitor_name']} was REJECTED by {$visit['host_name']}.",
+                ['visit_id' => (string)$visit_id, 'type' => 'visit_rejected', 'reason' => $reason]
+            );
+        }
     } catch (Throwable $e) { error_log("[BG] FCM reject error: " . $e->getMessage()); }
 }
 
@@ -165,10 +170,18 @@ function runJob_cancelInvite($pdo, $payload) {
 
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        sendPushNotificationToRole($pdo, 'security', 'Invitation Cancelled',
-            "Host $host_name CANCELLED invitation for $visitor_name.",
-            ['visit_id' => (string)$visit_id, 'type' => 'approval_status']
-        );
+
+        // Notify creator
+        $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id = ?");
+        $stmt->execute([$visit_id]);
+        $creator_id = $stmt->fetchColumn();
+
+        if ($creator_id) {
+            sendPushToUser($pdo, $creator_id, 'Invitation Cancelled',
+                "Host $host_name CANCELLED invitation for $visitor_name.",
+                ['visit_id' => (string)$visit_id, 'type' => 'visit_cancelled']
+            );
+        }
     } catch (Throwable $e) { error_log("[BG] FCM cancel error: " . $e->getMessage()); }
 }
 

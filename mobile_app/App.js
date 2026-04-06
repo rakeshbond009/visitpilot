@@ -23,6 +23,15 @@ const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 import apiClient from './utils/apiClient';
 import { registerForPushNotificationsAsync, updateTokenOnServer } from './utils/notificationManager';
 
+// Create navigation ref
+export const navigationRef = React.createRef();
+
+export function navigate(name, params) {
+    if (navigationRef.current?.isReady()) {
+        navigationRef.current.navigate(name, params);
+    }
+}
+
 // Screens
 import LoginScreen from './screens/LoginScreen';
 import HostDashboard from './screens/HostDashboard';
@@ -230,23 +239,60 @@ function AppContent() {
             });
         }, 5000);
 
+        const handleDeepLinkNotification = async (notifData) => {
+            if (!notifData) return false;
+            
+            // Dismiss all notifications when user interacts with one
+            await Notifications.dismissAllNotificationsAsync().catch(() => { });
+
+            const data = standardizeArrivalData(notifData);
+            
+            // Priority 1: Arrival Overlay
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); 
+                setShowOverlay(true); 
+                return true;
+            }
+
+            // Priority 2: Visit Details Navigation
+            const visitId = notifData.visit_id || notifData.visitId || (data && data.visit_id);
+            if (visitId) {
+                try {
+                    const storedUser = await AsyncStorage.getItem('userData');
+                    if (storedUser) {
+                        const user = JSON.parse(storedUser);
+                        let targetScreen = 'MyVisitorsHistory';
+                        if (user.role === 'security') {
+                            targetScreen = 'SecurityDashboard';
+                        }
+                        
+                        // Small delay to ensure navigation is ready
+                        setTimeout(() => {
+                            navigate(targetScreen, { visit_id: visitId });
+                        }, 500);
+                        return true;
+                    }
+                } catch (e) {
+                    console.error("Deep link handling error:", e);
+                }
+            }
+            return false;
+        };
+
         const checkNotifications = async () => {
             try {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
-                    const data = standardizeArrivalData(response.notification.request.content.data);
-                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                        setArrivalData(data); setShowOverlay(true); return true;
-                    }
+                    const handled = await handleDeepLinkNotification(response.notification.request.content.data);
+                    if (handled) return true;
                 }
 
                 const stored = await AsyncStorage.getItem('pending_arrival_call');
                 if (stored) {
-                    const data = standardizeArrivalData(JSON.parse(stored));
+                    const data = JSON.parse(stored);
                     await AsyncStorage.removeItem('pending_arrival_call');
-                    if (data) {
-                        setArrivalData(data); setShowOverlay(true); return true;
-                    }
+                    const handled = await handleDeepLinkNotification(data);
+                    if (handled) return true;
                 }
             } catch (e) { }
             return false;
@@ -266,10 +312,7 @@ function AppContent() {
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const data = standardizeArrivalData(r.notification.request.content.data);
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                setArrivalData(data); setShowOverlay(true);
-            }
+            handleDeepLinkNotification(r.notification.request.content.data);
         });
 
         return () => {
@@ -329,7 +372,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking}>
+            <NavigationContainer linking={linking} ref={navigationRef}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

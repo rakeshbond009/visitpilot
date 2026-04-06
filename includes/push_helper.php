@@ -167,6 +167,123 @@ function getGoogleAccessToken($serviceAccount)
     }
 }
 
+/**
+ * Sends a targeted push notification to a specific User ID.
+ * Works across all platforms and app states.
+ */
+function sendPushToUser($pdo, $user_id, $title, $body, $data = [])
+{
+    $logFile = __DIR__ . '/push_debug.log';
+    $log = function ($msg) use ($logFile) {
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+    };
+
+    $log("Attempting targeted push for User ID: $user_id. Title: $title");
+
+    // Fetch tokens for this specific user
+    $stmt = $pdo->prepare("
+        SELECT ud.fcm_token, ud.platform 
+        FROM user_devices ud 
+        WHERE ud.user_id = ? AND ud.fcm_token IS NOT NULL
+    ");
+    $stmt->execute([$user_id]);
+    $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fallback to users table
+    if (empty($devices)) {
+        $stmt = $pdo->prepare("SELECT fcm_token, 'android' as platform FROM users WHERE id = ? AND fcm_token IS NOT NULL");
+        $stmt->execute([$user_id]);
+        $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    if (empty($devices)) {
+        $log("No active FCM tokens found for User ID: $user_id");
+        return false;
+    }
+
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase JSON not found");
+        return false;
+    }
+    $serviceAccount = json_decode(file_get_contents($certPath), true);
+    $projectId = $serviceAccount['project_id'];
+    $accessToken = getGoogleAccessToken($serviceAccount);
+
+    if (!$accessToken) {
+        $log("CRITICAL ERROR: Failed to fetch Google Access Token");
+        return false;
+    }
+
+    foreach ($devices as $device) {
+        $platform = strtolower($device['platform'] ?? 'android');
+        
+        // Use a consistent structure for both notification and data
+        // This ensures visibility in all states and proper clicking behavior
+        $message = [
+            'message' => [
+                'token' => (string) $device['fcm_token'],
+                'notification' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                ],
+                'data' => [
+                    'title' => (string) $title,
+                    'body' => (string) $body,
+                    'type' => (string) ($data['type'] ?? 'visit_status_update'),
+                    'visit_id' => (string) ($data['visit_id'] ?? ''),
+                    'click_action' => 'FLUTTER_NOTIFICATION_CLICK',
+                ],
+                'android' => [
+                    'priority' => 'high',
+                    'notification' => [
+                        'channel_id' => 'visit_updates',
+                        'priority' => 'high',
+                        'sound' => 'default',
+                        'click_action' => 'FLUTTER_NOTIFICATION_CLICK'
+                    ]
+                ],
+                'apns' => [
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => (string) $title,
+                                'body' => (string) $body,
+                            ],
+                            'sound' => 'default',
+                            'badge' => 1,
+                        ]
+                    ]
+                ],
+                'fcm_options' => [
+                    'analytics_label' => (string) ($data['type'] ?? 'visit_updates')
+                ]
+            ]
+        ];
+
+        $payloadJson = json_encode($message);
+        $ch = curl_init("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json'
+            ],
+            CURLOPT_POSTFIELDS => $payloadJson,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $log("Targeted FCM Response for User $user_id ($platform) [HTTP $httpCode]: $response");
+    }
+    return true;
+}
+
 function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
 {
     // --- DEBUG LOGGING ---
