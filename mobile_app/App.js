@@ -129,19 +129,31 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
-        let data = raw.data || raw.params || raw;
+        let data = raw.data || raw;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        const normalizedData = raw.body && typeof raw.body === 'string' && raw.body.startsWith('{') ? JSON.parse(raw.body) : (raw.data || raw);
-        const finalVisitId = normalizedData.visit_id || normalizedData.visitId || normalizedData.id || raw.visit_id || raw.visitId || raw.id;
-        
-        const result = {
-            visit_id: String(finalVisitId || ""),
-            type: normalizedData.type || raw.type || "visit_update"
+        // Deep picker: search for visit_id and type in any nested level
+        const findKey = (obj, key) => {
+            if (!obj || typeof obj !== 'object') return null;
+            if (obj[key]) return obj[key];
+            for (let k in obj) {
+                let res = findKey(obj[k], key);
+                if (res) return res;
+            }
+            return null;
         };
-        return result;
+
+        const visitId = findKey(raw, 'visit_id') || findKey(raw, 'visitId') || findKey(raw, 'id');
+        const type = findKey(raw, 'type') || "visit_update";
+
+        return {
+            visit_id: String(visitId || ""),
+            type: type,
+            title: raw.title || findKey(raw, 'title'),
+            body: raw.body || findKey(raw, 'body')
+        };
     };
 
     // --- RINGING & VIBRATION ---
