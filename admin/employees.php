@@ -377,9 +377,6 @@ require_once 'header.php';
         });
     }
 
-        });
-    }
-
     function checkQuota() {
         var reached = <?php echo $is_quota_reached ? 'true' : 'false'; ?>;
         if (reached) {
