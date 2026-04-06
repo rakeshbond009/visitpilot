@@ -169,10 +169,10 @@ function getGoogleAccessToken($serviceAccount)
 
 function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
 {
-    // --- DEBUG LOGGING ---
-    $logFile = __DIR__ . '/push_debug.log';
+    // --- CONSOLIDATED DEBUG LOGGING ---
+    $logFile = __DIR__ . '/../approval_debug.log';
     $log = function ($msg) use ($logFile) {
-        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[PushRoleHelper] " . $msg . "\n", FILE_APPEND);
     };
 
     $log("Attempting push for Role: $role. Title: $title");
@@ -310,9 +310,10 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
  */
 function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
 {
-    $logFile = __DIR__ . '/push_debug.log';
+    // --- CONSOLIDATED DEBUG LOGGING ---
+    $logFile = __DIR__ . '/../approval_debug.log';
     $log = function ($msg) use ($logFile) {
-        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . $msg . "\n", FILE_APPEND);
+        file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[PushHelper] " . $msg . "\n", FILE_APPEND);
     };
 
     $log("Attempting push for Specific User ID: $user_id. Title: $title");
