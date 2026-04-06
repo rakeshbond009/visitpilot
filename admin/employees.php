@@ -29,16 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if (isset($_POST['id']) && !empty($_POST['id'])) {
             // Edit
             try {
-                // Change Detection for Audit Log
+                // Detailed Diff Capture for Audit Log
                 $curr = $pdo->prepare("SELECT name, department, email, mobile FROM employees WHERE id = ?");
                 $curr->execute([$_POST['id']]);
-                $old = $curr->fetch();
-
-                $changes = [];
-                if ($old['name'] !== $name) $changes[] = "name";
-                if ($old['department'] !== $dept) $changes[] = "department";
-                if ($old['email'] !== $email) $changes[] = "email";
-                if ($old['mobile'] !== $mobile) $changes[] = "mobile number";
+                $old_data = $curr->fetch(PDO::FETCH_ASSOC);
 
                 $stmt = $pdo->prepare("UPDATE employees SET name=?, department=?, email=?, mobile=? WHERE id=?");
                 $stmt->execute([$name, $dept, $email, $mobile, $_POST['id']]);
@@ -46,8 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $uUpd = $pdo->prepare("UPDATE users SET full_name=?, department=?, email=?, mobile=? WHERE employee_id=?");
                 $uUpd->execute([$name, $dept, $email, $mobile, $_POST['id']]);
 
-                $msg_log = "Updated employee $name (ID: {$_POST['id']}): " . (empty($changes) ? "no profile changes" : implode(", ", $changes));
-                logAction($pdo, $_SESSION['user_id'], $msg_log);
+                $new_data = ['name' => $name, 'department' => $dept, 'email' => $email, 'mobile' => $mobile];
+                
+                logAction($pdo, $_SESSION['user_id'], "Updated employee profile: $name", $old_data, $new_data);
 
                 header("Location: employees.php?edit_success=1");
                 exit;
@@ -177,7 +172,13 @@ if (isset($_GET['grant_user'])) {
             $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?)");
             $uStmt->execute([$username, $hashed, $emp_data['name'], $id, $emp_data['department'], $emp_data['email'], $emp_data['mobile']]);
 
-            logAction($pdo, $_SESSION['user_id'], "Granted login access to employee: {$emp_data['name']} (@$username)");
+            $new_user_data = [
+                'username' => $username,
+                'full_name' => $emp_data['name'],
+                'role' => 'employee',
+                'department' => $emp_data['department']
+            ];
+            logAction($pdo, $_SESSION['user_id'], "Granted login access to employee: {$emp_data['name']} (@$username)", null, $new_user_data);
             
             header("Location: employees.php?new_user=" . urlencode($username) . "&new_pass=" . urlencode($default_pass));
             exit;

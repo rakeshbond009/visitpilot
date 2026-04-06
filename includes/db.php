@@ -529,7 +529,7 @@ function requireLogin()
     }
 }
 
-function logAction($pdo, $user_id, $action)
+function logAction($pdo, $user_id, $action, $old = null, $new = null)
 {
     global $master_pdo, $tenant_key;
     
@@ -557,16 +557,19 @@ function logAction($pdo, $user_id, $action)
 
     try {
         $cur_tenant = $tenant_key ?? ($_SESSION['tenant_key'] ?? 'master');
-        $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, performed_by, action, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$final_user_id, $performed_by, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
+        $old_json = $old ? json_encode($old) : null;
+        $new_json = $new ? json_encode($new) : null;
+
+        $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, performed_by, action, old_value, new_value, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$final_user_id, $performed_by, $action, $old_json, $new_json, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
     } catch (Exception $e) {
         // Fallback for older schema structures (Missing performed_by or tenant_key)
         try {
+            $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, performed_by, action, ip_address, tenant_key, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$final_user_id, $performed_by, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', $cur_tenant, current_datetime()]);
+        } catch (Exception $e2) {
             $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?)");
             $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0', current_datetime()]);
-        } catch (Exception $e2) {
-            $stmt = $log_db->prepare("INSERT INTO audit_logs (user_id, action, ip_address) VALUES (?, ?, ?)");
-            $stmt->execute([$final_user_id, $action, $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0']);
         }
     }
 }

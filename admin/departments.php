@@ -12,19 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['id']) && !empty($_POST['id'])) {
         // Edit
         try {
-            $curr = $pdo->prepare("SELECT name, status FROM departments WHERE id = ?");
-            $curr->execute([$_POST['id']]);
-            $old = $curr->fetch();
-
-            $changes = [];
-            if ($old['name'] !== $name) $changes[] = "name ({$old['name']} to $name)";
-            if ($old['status'] !== $status) $changes[] = "status ({$old['status']} to $status)";
+            $old = $pdo->prepare("SELECT name, status FROM departments WHERE id = ?");
+            $old->execute([$_POST['id']]);
+            $oldData = $old->fetch(PDO::FETCH_ASSOC);
 
             $stmt = $pdo->prepare("UPDATE departments SET name=?, status=? WHERE id=?");
             $stmt->execute([$name, $status, $_POST['id']]);
             
-            $msg_log = "Updated department ID: {$_POST['id']}: " . (empty($changes) ? "no changes" : implode(", ", $changes));
-            logAction($pdo, $_SESSION['user_id'], $msg_log);
+            $msg_log = "Updated department: $name";
+            logAction($pdo, $_SESSION['user_id'], $msg_log, $oldData, ['name' => $name, 'status' => $status]);
 
             $msg = "Department updated successfully!";
         } catch (PDOException $e) {
@@ -35,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
             $stmt = $pdo->prepare("INSERT INTO departments (name, status) VALUES (?, ?)");
             $stmt->execute([$name, $status]);
-            logAction($pdo, $_SESSION['user_id'], "Added new department: $name");
+            logAction($pdo, $_SESSION['user_id'], "Added new department: $name", null, ['name' => $name, 'status' => $status]);
             $msg = "Department added successfully!";
         } catch (PDOException $e) {
             if ($e->getCode() == 23000) {

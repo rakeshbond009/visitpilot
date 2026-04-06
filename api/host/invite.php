@@ -104,7 +104,14 @@ try {
 
     // Consolidated Audit Log for Invitation
     $v_name = $data['name'] ?? 'Visitor';
-    logAction($pdo, $user_id, "Invitation Created via Mobile for: $v_name (Visit Date: $visit_date, Code: $visit_code)");
+    $invDetails = [
+        'visitor' => $v_name,
+        'mobile' => $data['mobile'],
+        'purpose' => $data['purpose'],
+        'date' => $visit_date,
+        'code' => $visit_code
+    ];
+    logAction($pdo, $user_id, "Invitation Created via Mobile for: $v_name (Visit Date: $visit_date, Code: $visit_code)", null, $invDetails);
 
     sendResponse('success', "Invitation sent to " . $v_name, [
         'visit_code' => $visit_code,

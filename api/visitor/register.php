@@ -186,7 +186,13 @@ try {
     dispatchBackgroundTask('register_visitor', $bgPayload);
 
     // Audit Log for Mobile Registration
-    logAction($pdo, $user_id, "Visitor Registered via Mobile: " . ($visitorRow['name'] ?? $data['name']) . " (Visit Code: $visit_code)");
+    $newRegData = [
+        'visitor' => $visitorRow['name'] ?? $data['name'],
+        'purpose' => $data['purpose'],
+        'visit_code' => $visit_code,
+        'mobile' => $visitorRow['mobile'] ?? $data['mobile']
+    ];
+    logAction($pdo, $user_id, "Visitor Registered via Mobile: " . ($visitorRow['name'] ?? $data['name']) . " (Visit Code: $visit_code)", null, $newRegData);
 
     // ⚡ STEP 2: Respond IMMEDIATELY (flush / fastcgi_finish_request)
     sendInstantResponse('success', 'Visitor registered successfully', [

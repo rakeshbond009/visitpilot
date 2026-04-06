@@ -182,7 +182,27 @@ endforeach; ?>
                         </td>
                         <td>
                             <div class="p-2 rounded bg-light border-start border-3 border-primary small text-dark">
-                                <?php echo htmlspecialchars($log['action']); ?>
+                                <div class="fw-bold"><?php echo htmlspecialchars($log['action']); ?></div>
+                                <?php 
+                                $old = !empty($log['old_value']) ? json_decode($log['old_value'], true) : null;
+                                $new = !empty($log['new_value']) ? json_decode($log['new_value'], true) : null;
+                                
+                                if ($old || $new):
+                                    $all_keys = array_unique(array_merge(array_keys($old ?? []), array_keys($new ?? [])));
+                                    echo '<div class="mt-1 border-top pt-1 text-muted" style="font-size: 0.75rem;">';
+                                    foreach ($all_keys as $key):
+                                        $o_val = $old[$key] ?? '(empty)';
+                                        $n_val = $new[$key] ?? '(empty)';
+                                        if ($o_val !== $n_val):
+                                            echo '<div class="d-flex justify-content-between mb-1">';
+                                            echo '<span>' . ucwords(str_replace('_', ' ', $key)) . '</span>';
+                                            echo '<span><span class="text-danger">' . htmlspecialchars($o_val) . '</span> <i class="bi bi-arrow-right"></i> <span class="text-success">' . htmlspecialchars($n_val) . '</span></span>';
+                                            echo '</div>';
+                                        endif;
+                                    endforeach;
+                                    echo '</div>';
+                                endif;
+                                ?>
                             </div>
                         </td>
                         <td class="pe-4">
