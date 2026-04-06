@@ -1,6 +1,6 @@
 -- Migration #001: Complete VMS Schema
 -- Created: 2026-02-08
--- Updated to match actual vms_db structure
+-- Updated to include Multi-Tenant Quotas and Account Status
 
 CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -81,7 +81,7 @@ CREATE TABLE IF NOT EXISTS `visits` (
   `approval_status` enum('pending','approved','rejected') DEFAULT 'pending',
   `is_invited` tinyint(1) DEFAULT 0,
   `approved_by` int(11) DEFAULT NULL,
-  `approved_at` datetime DEFAULT NULL,
+  `approved_at?` datetime DEFAULT NULL,
   `rejection_reason` text DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
   `visit_code` varchar(20) NOT NULL,
@@ -111,8 +111,8 @@ CREATE TABLE IF NOT EXISTS `user_devices` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
   `fcm_token` text NOT NULL,
-  `platform` varchar(20) DEFAULT 'android',
-  `last_updated` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `platform?` varchar(20) DEFAULT 'android',
+  `last_updated?` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `user_devices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS `visit_otps` (
 CREATE TABLE IF NOT EXISTS `support_requests` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
-  `email` varchar(100) NOT NULL,
+  `email?` varchar(100) NOT NULL,
   `subject` varchar(200) NOT NULL,
   `message` text NOT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
@@ -205,7 +205,6 @@ INSERT IGNORE INTO `visit_purposes` (`purpose_name`) VALUES
 -- MASTER PLATFORM TABLES (Multi-Tenant Routing & Global Controls)
 -- ==========================================================
 
--- 1. Tenant Registry: Stores database credentials and quotas for each client.
 CREATE TABLE IF NOT EXISTS `tenants` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_key` varchar(50) NOT NULL,
@@ -214,41 +213,38 @@ CREATE TABLE IF NOT EXISTS `tenants` (
   `db_user` varchar(100) NOT NULL,
   `db_pass` varchar(100) NOT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
-  `max_devices` int(11) DEFAULT 5 COMMENT 'Mobile hardware quota set by Super Admin',
-  `max_users` int(11) DEFAULT 10 COMMENT 'Active user quota set by Super Admin',
+  `max_devices` int(11) DEFAULT 5 COMMENT 'Mobile device quota',
+  `max_users` int(11) DEFAULT 10 COMMENT 'Active user quota',
   `schema_version` int(11) DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `tenant_key` (`tenant_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Global Mobile Device Registry: Enforces quotas and hardware blocking.
 CREATE TABLE IF NOT EXISTS `tenant_devices` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_key` varchar(50) NOT NULL,
   `device_id` varchar(255) NOT NULL,
   `device_name` varchar(255) DEFAULT NULL,
-  `last_user_name` varchar(255) DEFAULT NULL COMMENT 'Name of the last user who logged in on this phone',
-  `status` enum('active','blocked') DEFAULT 'active' COMMENT 'Blocked devices are denied login and do not count towards quota',
+  `last_user_name` varchar(255) DEFAULT NULL,
+  `status` enum('active','blocked') DEFAULT 'active',
   `last_login` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_tenant_device` (`tenant_key`, `device_id`),
   CONSTRAINT `fk_device_tenant` FOREIGN KEY (`tenant_key`) REFERENCES `tenants` (`tenant_key`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Global Audit Logs: Centralized trail for all administrative actions.
 CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `tenant_key` varchar(50) DEFAULT 'system',
   `user_id` int(11) DEFAULT NULL,
-  `performed_by` varchar(255) DEFAULT NULL COMMENT 'Human readable name/username',
+  `performed_by` varchar(255) DEFAULT NULL,
   `action` text NOT NULL,
-  `old_value` JSON DEFAULT NULL COMMENT 'State before change',
-  `new_value` JSON DEFAULT NULL COMMENT 'State after change',
+  `old_value` JSON DEFAULT NULL,
+  `new_value` JSON DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_audit_tenant` (`tenant_key`),
   KEY `idx_audit_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-

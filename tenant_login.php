@@ -47,35 +47,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
     $username = sanitize($_POST['username']);
     $password = $_POST['password'];
 
-    $stmt = $pdo->prepare("SELECT id, username, password, role, full_name, employee_id, department, permissions_locked, status FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password'])) {
-        if (isset($user['status']) && $user['status'] === 'inactive') {
-            $error = "Account Deactivated: This user account has been disabled by the administrator.";
-        } else {
+    if ($user) {
+        if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['full_name'] = $user['full_name'];
             $_SESSION['bg_mode'] = $user['bg_mode'];
             $_SESSION['is_super'] = (bool) (($user['is_superadmin'] ?? $user['is_super']) ?? false);
-            $_SESSION['tenant_key'] = $isolated_tenant_key;
+            $_SESSION['tenant_key'] = $isolated_tenant_key; // Set the tenant context
 
+            // Log action (integrated with centralized audit logs)
             logAction($pdo, $user['id'], "User Login: $username (Tenant: $isolated_tenant_key)");
 
             if ($user['role'] == 'admin') {
                 header("Location: admin/dashboard.php");
+                exit;
             } elseif ($user['role'] == 'host' || $user['role'] == 'employee') {
                 header("Location: host/dashboard.php");
+                exit;
             } else {
                 header("Location: security/dashboard.php");
+                exit;
             }
-            exit;
+        } else {
+            $error = "Invalid password";
         }
     } else {
-        $error = "Invalid username or password";
+        $error = "User not found in this tenant's database";
     }
 }
 

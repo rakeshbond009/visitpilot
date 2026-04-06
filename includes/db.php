@@ -168,15 +168,6 @@ if ($tenant) {
     $pdo = $master_pdo ?? null;
 }
 
-// SAFE SCHEMA SYNC: Ensure new quota/status columns exist
-if (isset($master_pdo)) {
-    try { $master_pdo->exec("ALTER TABLE tenants ADD COLUMN max_users INT DEFAULT 10 COMMENT 'User quota'"); } catch (Exception $e) {}
-}
-if (isset($pdo)) {
-    try { $pdo->exec("ALTER TABLE users ADD COLUMN status ENUM('active','inactive') DEFAULT 'active'"); } catch (Exception $e) {}
-    try { $pdo->exec("ALTER TABLE employees ADD COLUMN status ENUM('active','inactive') DEFAULT 'active'"); } catch (Exception $e) {}
-}
-
 /**
  * Returns a connection to the centralized support database (PDO for VMS)
  */
@@ -302,20 +293,18 @@ function loadUserPermissions()
     // If a Super Admin is managing a tenant, we MUST NOT overwrite their Master DB identity with Tenant DB data.
     $is_super = $_SESSION['is_super'] ?? false;
     if (!$is_super) {
-        $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked, status FROM users WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT role, full_name, permissions_locked FROM users WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
         $userRow = $stmt->fetch();
-
-        // 🚨 INSTANT LOGOUT: If account is disabled, kick them out now!
-        if (!$userRow || (isset($userRow['status']) && $userRow['status'] === 'inactive')) {
-            destroyPersistentSession();
-            redirect(BASE_URL . 'index.php?msg=account_disabled');
-        }
 
         if ($userRow) {
             $_SESSION['role'] = $userRow['role'];
             $_SESSION['full_name'] = $userRow['full_name'];
             $_SESSION['permissions_locked'] = (bool) $userRow['permissions_locked'];
+        } else {
+            // If the user record is missing (revoked), force an immediate logout
+            destroyPersistentSession();
+            redirect(BASE_URL . 'index.php?msg=access_revoked');
         }
     }
 

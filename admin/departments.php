@@ -41,8 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
     }
-    header("Location: departments.php?msg=" . urlencode($msg));
-    exit;
+    redirect("departments.php?msg=" . urlencode($msg));
 }
 
 // Handle Delete
@@ -56,8 +55,7 @@ if (isset($_GET['delete'])) {
     } catch (PDOException $e) {
         $msg = "Error: Could not delete department. It may be in use.";
     }
-    header("Location: departments.php?msg=" . urlencode($msg));
-    exit;
+    redirect("departments.php?msg=" . urlencode($msg));
 }
 
 require_once 'header.php';

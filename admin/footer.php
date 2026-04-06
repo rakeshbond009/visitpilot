@@ -14,6 +14,22 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <?php include_once '../includes/visit_details_modal.php'; ?>
 <script src="../assets/js/security_notifications.js?v=3.2"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Universal URL cleaner: remove success/msg flags from address bar after load
+    // This prevents alert loops on page refresh
+    if (typeof window.history.replaceState === 'function') {
+        const url = new URL(window.location.href);
+        if (url.search) {
+            // Keep the page load smooth, then clean the history
+            setTimeout(function() {
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+            }, 1000); 
+        }
+    }
+});
+</script>
 </body>
 
 </html>
