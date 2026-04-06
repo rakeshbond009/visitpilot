@@ -7,6 +7,16 @@ $error = '';
 $success = '';
 $form_data = []; // To preserve form values on error
 
+// Fetch Quota from Master DB
+$max_users = 10; // default
+if (isset($master_pdo) && isset($_SESSION['tenant_key'])) {
+    $qStmt = $master_pdo->prepare("SELECT max_users FROM tenants WHERE tenant_key = ?");
+    $qStmt->execute([$_SESSION['tenant_key']]);
+    $max_users = (int)($qStmt->fetchColumn() ?: 10);
+}
+// Fetch Current Active Count (All users with status = active)
+$active_count = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE status = 'active'")->fetchColumn();
+
 // Handle Permission Update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['user_id'])) {
     $user_id = (int)$_POST['user_id'];
@@ -77,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['new_username'])) {
             throw new Exception("Please enter a valid 10-digit mobile number.");
         }
 
+        if ($active_count >= $max_users) {
+            throw new Exception("User Quota Reached! You can only have a maximum of $max_users active user accounts. Please deactivate an existing user or employee first.");
+        }
+
         // Check if username already exists
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
@@ -108,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['new_username'])) {
 
         // Create user record
         $password = password_hash($password_raw, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, department, employee_id, email, mobile) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, department, employee_id, email, mobile, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')");
         $stmt->execute([$username, $password, $full_name, $role, $department, $employee_id, $email, $mobile]);
 
         logAction($pdo, $_SESSION['user_id'], "Created new user: $username (Role: $role)");
@@ -173,6 +187,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['edit_user_id'])) {
     }
 }
 
+// Handle Status Change (Activate/Deactivate)
+if (isset($_GET['status_change']) && isset($_GET['uid'])) {
+    $uid = (int)$_GET['uid'];
+    $new_status = $_GET['status_change'] === 'active' ? 'active' : 'inactive';
+
+    try {
+        if ($uid === (int)$_SESSION['user_id']) {
+            throw new Exception("You cannot deactivate your own account!");
+        }
+
+        if ($new_status === 'active' && $active_count >= $max_users) {
+            throw new Exception("Exceeds Quota! Cannot activate. Limit is $max_users.");
+        }
+
+        $pdo->beginTransaction();
+        
+        $uStmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
+        $uStmt->execute([$new_status, $uid]);
+
+        // Sync with employee record if exists
+        $eId = $pdo->query("SELECT (SELECT employee_id FROM users WHERE id = $uid)) as eid");
+        // Simplified fetch to avoid subquery issues in some MySQL versions during transaction
+        $stmt_eid = $pdo->prepare("SELECT employee_id FROM users WHERE id = ?");
+        $stmt_eid->execute([$uid]);
+        $eId = $stmt_eid->fetchColumn();
+
+        if ($eId) {
+            $pdo->prepare("UPDATE employees SET status = ? WHERE id = ?")->execute([$new_status, $eId]);
+        }
+
+        $stmt_uname = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+        $stmt_uname->execute([$uid]);
+        $uName = $stmt_uname->fetchColumn();
+        logAction($pdo, $_SESSION['user_id'], "User account set to $new_status: $uName");
+
+        $pdo->commit();
+        header("Location: permissions.php?success=" . urlencode("User account is now $new_status."));
+        exit;
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        $error = $e->getMessage();
+    }
+}
+
 // Handle Role Permission Update
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['role_permission_update'])) {
     $target_role = $_POST['target_role'];
@@ -231,12 +289,12 @@ if (isset($_GET['success'])) {
 }
 
 // Note: We need to also fetch department in the SQL query below
-$sql = "SELECT u.id, u.username, u.full_name, u.role, u.department, u.permissions_locked,
+$sql = "SELECT u.id, u.username, u.full_name, u.role, u.department, u.permissions_locked, u.status,
                GROUP_CONCAT(up.permission_key) as perms 
         FROM users u 
         LEFT JOIN user_permissions up ON u.id = up.user_id 
         GROUP BY u.id 
-        ORDER BY u.username";
+        ORDER BY u.status, u.username";
 $users = $pdo->query($sql)->fetchAll();
 
 // Fetch departments for dropdown
@@ -481,12 +539,18 @@ require_once 'header.php';
     }
 </style>
 
-    <h3>User Permissions Management</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h3 class="mb-0">User Permissions Management</h3>
+        <span class="badge bg-<?php echo ($active_count >= $max_users) ? 'danger' : 'primary'; ?>-opacity text-<?php echo ($active_count >= $max_users) ? 'danger' : 'primary'; ?>">
+            <i class="bi bi-people-fill me-1"></i> Active Quota: <?php echo $active_count; ?> / <?php echo $max_users; ?>
+        </span>
+    </div>
     <div>
         <button class="btn btn-info text-white me-2" data-bs-toggle="modal" data-bs-target="#rolePermModal">
             <i class="bi bi-diagram-3-fill"></i> Manage Roles
         </button>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal" <?php echo ($active_count >= $max_users) ? 'disabled title="Quota Reached"' : ''; ?>>
             <i class="bi bi-person-plus-fill"></i> Add New User
         </button>
     </div>
@@ -650,14 +714,33 @@ endforeach; ?>
                                 ?>
                             </td>
                             <td class="text-end">
-                                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                    data-bs-target="#permModal<?php echo $u['id']; ?>" title="Manage Permissions">
-                                    <i class="bi bi-shield-lock"></i>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-warning text-dark" data-bs-toggle="modal"
-                                    data-bs-target="#editUserModal<?php echo $u['id']; ?>" title="Edit Details">
-                                    <i class="bi bi-pencil-square"></i>
-                                </button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                        data-bs-target="#permModal<?php echo $u['id']; ?>" title="Manage Permissions">
+                                        <i class="bi bi-shield-lock"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning text-dark" data-bs-toggle="modal"
+                                        data-bs-target="#editUserModal<?php echo $u['id']; ?>" title="Edit Details">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                    <?php if ($u['id'] != $_SESSION['user_id']): ?>
+                                        <?php if ($u['status'] == 'active'): ?>
+                                            <a href="permissions.php?status_change=inactive&uid=<?php echo $u['id']; ?>" 
+                                               class="btn btn-sm btn-outline-danger" 
+                                               onclick="return confirm('Deactivate this user? They will be logged out immediately.')"
+                                               title="Deactivate Account">
+                                                <i class="bi bi-person-x-fill"></i>
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="permissions.php?status_change=active&uid=<?php echo $u['id']; ?>" 
+                                               class="btn btn-sm btn-outline-success" 
+                                               onclick="return confirm('Activate this user? This will consume 1 quota slot.')"
+                                               title="Activate Account">
+                                                <i class="bi bi-person-check-fill"></i>
+                                            </a>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                         </tr>
                     <?php
