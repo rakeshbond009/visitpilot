@@ -1042,8 +1042,8 @@ function toggleUserStatus(uid, status) {
         text: text,
         confirmText: confirmBtn,
         icon: icon
-    }).then(function(confirmed) {
-        if (confirmed) {
+    }).then(function(result) {
+        if (result.isConfirmed) {
             window.location.href = 'permissions.php?toggle_status=' + uid + '&status=' + status;
         }
     });

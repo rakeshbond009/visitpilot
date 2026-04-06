@@ -359,8 +359,8 @@ require_once 'header.php';
             text: 'Are you sure you want to disable login for this employee? The employee record will remain, and the user account will be marked as inactive.',
             confirmText: 'Yes, Deactivate',
             icon: 'warning'
-        }).then(function (confirmed) {
-            if (confirmed) {
+        }).then(function (result) {
+            if (result.isConfirmed) {
                 window.location.href = 'employees.php?disable_user=' + id;
             }
         });
@@ -376,8 +376,8 @@ require_once 'header.php';
             text: dialogText,
             confirmText: 'Yes, Enable Access',
             icon: 'info'
-        }).then(function (confirmed) {
-            if (confirmed) {
+        }).then(function (result) {
+            if (result.isConfirmed) {
                 window.location.href = 'employees.php?grant_user=' + id;
             }
         });
