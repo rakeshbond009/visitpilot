@@ -88,6 +88,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
 });
 
 const Stack = createStackNavigator();
+const navigationRef = React.createRef();
 
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.visitpilot.vms://'],
@@ -97,6 +98,7 @@ const linking = {
             HostDashboard: 'host',
             SecurityDashboard: 'security',
             AdminDashboard: 'admin',
+            MyVisitorsHistory: 'history',
         },
     },
 };
@@ -135,7 +137,7 @@ function AppContent() {
             } catch (e) { }
         }
 
-        return {
+        const result = {
             visit_id: visit_id,
             name: data.visitor_name || data.name || data.title || "Unknown Visitor",
             mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
@@ -145,6 +147,8 @@ function AppContent() {
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
             type: data.type || "visitor_arrival"
         };
+        // Alert.alert("Standardized Result", JSON.stringify(result)); // Uncomment if raw data inspection is needed
+        return result;
     };
 
     // --- RINGING & VIBRATION ---
@@ -262,6 +266,8 @@ function AppContent() {
             const data = standardizeArrivalData(n.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && data.type === 'visit_update') {
+                // Alert.alert("Visit Update Received", `Foreground notification detected for visit ${data.visit_id}. Check if system push banner appeared.`);
             }
         });
 
@@ -269,6 +275,17 @@ function AppContent() {
             const data = standardizeArrivalData(r.notification.request.content.data);
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && data.type === 'visit_update') {
+                Alert.alert("Push Tapped", `Navigating to History for Visit ID: ${data.visit_id}`);
+                // Deep link to history
+                if (navigationRef.current) {
+                    navigationRef.current.navigate('MyVisitorsHistory', { 
+                        visit_id: String(data.visit_id),
+                        autoOpenDetails: true 
+                    });
+                } else {
+                    Alert.alert("Debug Error", "navigationRef.current is null! Cannot navigate.");
+                }
             }
         });
 
@@ -329,7 +346,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking}>
+            <NavigationContainer linking={linking} ref={navigationRef}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

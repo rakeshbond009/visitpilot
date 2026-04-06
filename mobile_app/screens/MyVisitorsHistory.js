@@ -37,7 +37,7 @@ const statusColors = {
 
 const getStatusColor = (status) => statusColors[status?.toLowerCase()] || '#64748b';
 
-export default function MyVisitorsHistory({ navigation }) {
+export default function MyVisitorsHistory({ navigation, route }) {
     const [visits, setVisits] = useState([]);
     const [stats, setStats] = useState({ total: 0, active: 0, completed: 0, pending: 0, approved: 0, rejected: 0 });
     const [loading, setLoading] = useState(true);
@@ -130,6 +130,22 @@ export default function MyVisitorsHistory({ navigation }) {
             setRefreshing(false);
         }
     }, [getDateRange, searchTerm, statusFilter, navigation]);
+
+    // Handle Deep Linking / Auto-open from notification
+    useEffect(() => {
+        if (route.params?.visit_id && visits.length > 0) {
+            const v = visits.find(x => String(x.id) === String(route.params.visit_id));
+            if (v) {
+                Alert.alert("Deep Link Active", `Match found for Visit ${route.params.visit_id}. Opening Detail Modal.`);
+                setSelectedVisit(v);
+                setDetailModalVisible(true);
+                // Clear params to prevent re-opening on every re-render
+                navigation.setParams({ visit_id: null, autoOpenDetails: false });
+            } else {
+                Alert.alert("Deep Link Error", `Visit ID ${route.params.visit_id} was not found in the first results page.`);
+            }
+        }
+    }, [visits, route.params, navigation]);
 
     useFocusEffect(
         useCallback(() => {
