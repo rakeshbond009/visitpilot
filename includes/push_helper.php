@@ -247,9 +247,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
                     'priority' => 'high',
                     'ttl' => '0s',
                     'notification' => [
-                        'click_action' => 'visit_update_action',
-                        'sound' => 'default',
-                        'channel_id' => 'vms_urgent_alerts_v2'
+                        'channel_id' => 'default'
                     ]
                 ],
                 'apns' => [
@@ -369,7 +367,7 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                     'notification' => [
                         'click_action' => 'visit_update_action',
                         'sound' => 'default',
-                        'channel_id' => 'vms_urgent_alerts_v2'
+                        'channel_id' => 'default'
                     ]
                 ]
             ]

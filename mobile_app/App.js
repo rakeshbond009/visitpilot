@@ -241,6 +241,15 @@ function AppContent() {
                     const data = standardizeArrivalData(response.notification.request.content.data);
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data); setShowOverlay(true); return true;
+                    } else if (data && data.type === 'visit_update') {
+                        // Cold start deep link
+                        if (navigationRef.current) {
+                            navigationRef.current.navigate('MyVisitorsHistory', { 
+                                visit_id: String(data.visit_id), 
+                                autoOpenDetails: true 
+                            });
+                            return true;
+                        }
                     }
                 }
 
@@ -267,7 +276,23 @@ function AppContent() {
             if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
             } else if (data && data.type === 'visit_update') {
-                // Alert.alert("Visit Update Received", `Foreground notification detected for visit ${data.visit_id}. Check if system push banner appeared.`);
+                // Foreground logic: Android doesn't show a heads-up if app is in focus
+                // So we show a manual UI alert
+                Alert.alert(
+                    data.title || "Visit Update",
+                    data.body || "There is a status update for your visit.",
+                    [
+                        { text: "View Details", onPress: () => {
+                            if (navigationRef.current) {
+                                navigationRef.current.navigate('MyVisitorsHistory', { 
+                                    visit_id: String(data.visit_id), 
+                                    autoOpenDetails: true 
+                                });
+                            }
+                        }},
+                        { text: "Dismiss", style: "cancel" }
+                    ]
+                );
             }
         });
 
