@@ -24,8 +24,8 @@ $stmt = $pdo->query("SELECT count(*) FROM visits WHERE approval_status = 'pendin
 $pending_approvals = $stmt->fetchColumn();
 
 // Check-in Pending (Approved but not checked in)
-// Logic: status='approved' AND (created today OR (invite for today))
-$stmt = $pdo->query("SELECT count(*) FROM visits WHERE status = 'approved' AND (date(created_at) = CURDATE() OR (is_invited=1 AND visit_date = CURDATE()))");
+// Logic: approval_status='approved' AND status='pending' AND (created today OR (invite for today))
+$stmt = $pdo->query("SELECT count(*) FROM visits WHERE approval_status = 'approved' AND status = 'pending' AND (date(created_at) = CURDATE() OR (is_invited=1 AND visit_date = CURDATE()))");
 $checkin_pending = $stmt->fetchColumn();
 
 // List - Initial Load
@@ -37,7 +37,7 @@ $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, emp.na
            OR v.status = 'checked_in' 
            OR v.approval_status = 'pending'
            OR DATE(v.approved_at) = CURDATE()
-           OR (v.status = 'approved' AND (DATE(v.created_at) = CURDATE() OR (v.is_invited=1 AND v.visit_date = CURDATE())))
+           OR (v.approval_status = 'approved' AND v.status = 'pending' AND (DATE(v.created_at) = CURDATE() OR (v.is_invited=1 AND v.visit_date = CURDATE())))
         ORDER BY v.created_at DESC";
 $stmt = $pdo->query($sql);
 $visits = $stmt->fetchAll();
@@ -878,7 +878,7 @@ return v.created_at.startsWith(serverToday);
 if (type === 'active') return v.status === 'checked_in';
 if (type === 'pending') return v.approval_status === 'pending';
 if (type === 'checkin_pending') {
-return v.status === 'approved' && (v.created_at.startsWith(serverToday) || (v.is_invited == 1 && v.visit_date ===
+return v.approval_status === 'approved' && v.status === 'pending' && (v.created_at.startsWith(serverToday) || (v.is_invited == 1 && v.visit_date ===
 serverToday));
 }
 if (type === 'overstay') {
@@ -899,7 +899,7 @@ return v.status === 'checked_in' && v.check_in_time && new Date(v.check_in_time)
 
     // Actions (simplified for modal)
     const showPass = visit.approval_status !== 'rejected';
-    const showCheckin = visit.status === 'approved' && visit.approval_status === 'approved';
+    const showCheckin = visit.approval_status === 'approved' && visit.status === 'pending';
     const showCheckout = visit.status === 'checked_in';
 
     // Date Formatting

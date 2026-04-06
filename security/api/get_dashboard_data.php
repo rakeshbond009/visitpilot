@@ -40,7 +40,7 @@ try {
                OR v.status = 'checked_in' 
                OR v.approval_status = 'pending'
                OR DATE(v.approved_at) = CURDATE()
-               OR (v.status = 'approved' AND (DATE(v.created_at) = CURDATE() OR (v.is_invited=1 AND v.visit_date = CURDATE()))))";
+               OR (v.approval_status = 'approved' AND v.status = 'pending' AND (DATE(v.created_at) = CURDATE() OR (v.is_invited=1 AND v.visit_date = CURDATE()))))";
     $params = [];
 
     if ($limit_employee_id) {
@@ -112,7 +112,7 @@ try {
                       FROM visits v 
                       JOIN visitors vis ON v.visitor_id = vis.id 
                       LEFT JOIN employees e ON v.employee_id = e.id
-                      WHERE v.status = 'approved' 
+                      WHERE v.approval_status = 'approved' AND v.status = 'pending' 
                       AND (DATE(v.created_at) <= CURDATE() OR (v.is_invited = 1 AND v.visit_date <= CURDATE()))";
     
     if ($limit_employee_id) {
