@@ -22,7 +22,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import apiClient from '../utils/apiClient';
+import apiClient, { logout } from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { APP_VERSION } from '../constants';
 import { usePermissions } from '../context/PermissionContext';
@@ -2094,10 +2094,7 @@ export default function AdminDashboard({ navigation }) {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.logoutBtn}
-                            onPress={async () => {
-                                await AsyncStorage.removeItem('userData');
-                                navigation.replace('Login');
-                            }}
+                            onPress={() => logout(navigation)}
                         >
                             <Text style={styles.logoutText}>Logout</Text>
                         </TouchableOpacity>

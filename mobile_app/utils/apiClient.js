@@ -52,4 +52,25 @@ apiClient.interceptors.response.use(
     }
 );
 
+export const logout = async (navigation) => {
+    try {
+        const lastToken = await AsyncStorage.getItem('last_fcm_token');
+        const cachedToken = await AsyncStorage.getItem('cached_fcm_token');
+        const fcmToken = lastToken || cachedToken;
+
+        console.log("[Logout] Attempting server logout with token:", fcmToken ? fcmToken.substring(0, 15) + "..." : "none");
+
+        // Use a timeout to ensure logout doesn't hang the UI if network is poor
+        await apiClient.post('api/auth/logout.php', { fcm_token: fcmToken }, { timeout: 5000 });
+    } catch (e) {
+        console.log('[Logout] Server-side logout failed or timed out:', e.message);
+    } finally {
+        // Always clear local state regardless of server success
+        await AsyncStorage.removeItem('userData');
+        if (navigation) {
+            navigation.replace('Login');
+        }
+    }
+};
+
 export default apiClient;

@@ -20,7 +20,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import apiClient from '../utils/apiClient';
+import apiClient, { logout } from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { APP_VERSION } from '../constants';
@@ -1583,7 +1583,7 @@ export default function SecurityDashboard({ navigation }) {
                     <Text style={styles.userName}>{userData?.full_name || 'Officer'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
-                <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('userData'); navigation.replace('Login'); }}>
+                <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
             </View>

@@ -24,7 +24,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import VisitDetailModal from '../components/VisitDetailModal';
 import VisitListModal from '../components/VisitListModal';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
-import apiClient from '../utils/apiClient';
+import apiClient, { logout } from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { checkOverlayPermission } from '../utils/notificationManager';
 import { usePermissions } from '../context/PermissionContext';
@@ -1415,7 +1415,7 @@ export default function HostDashboard({ navigation }) {
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
-                <TouchableOpacity style={styles.logoutBtn} onPress={async () => { await AsyncStorage.removeItem('userData'); navigation.replace('Login'); }}>
+                <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
             </View>
