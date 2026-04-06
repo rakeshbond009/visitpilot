@@ -136,6 +136,27 @@ function runJob_approveVisit($pdo, $payload)
         error_log("[BG] FCM approve error: " . $e->getMessage());
     }
 
+    // 5. FCM to Creator (Notify the person who created the visit)
+    try {
+        $creator_id = $visit['created_by'] ?? null;
+        if ($creator_id) {
+            // --- DEBUG LOGGING ---
+            $logFile = __DIR__ . '/../../approval_debug.log';
+            file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[BG] Notifying Creator $creator_id for Approval of Visit $visit_id\n", FILE_APPEND);
+            
+            require_once __DIR__ . '/../../includes/push_helper.php';
+            sendPushNotificationToUser(
+                $pdo,
+                $creator_id,
+                'Visit Approved',
+                "Your visit for {$visit['visitor_name']} has been approved by the host.",
+                ['visit_id' => (string) $visit_id, 'type' => 'visit_update']
+            );
+        }
+    } catch (Throwable $e) {
+        error_log("[BG] FCM creator approve error: " . $e->getMessage());
+    }
+
     // 4. Dahua
     bgHelper_syncDahua($pdo, $visit_id, $visit['visitor_id'], $visit['visitor_name'], $visit['visit_photo'] ?? '', $visit['visit_code'] ?? '');
 }
@@ -179,6 +200,26 @@ function runJob_rejectVisit($pdo, $payload)
     } catch (Throwable $e) {
         error_log("[BG] FCM reject error: " . $e->getMessage());
     }
+    // 3. FCM to Creator (Notify the person who created the visit)
+    try {
+        $creator_id = $visit['created_by'] ?? null;
+        if ($creator_id) {
+            // --- DEBUG LOGGING ---
+            $logFile = __DIR__ . '/../../approval_debug.log';
+            file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[BG] Notifying Creator $creator_id for Rejection of Visit $visit_id\n", FILE_APPEND);
+
+            require_once __DIR__ . '/../../includes/push_helper.php';
+            sendPushNotificationToUser(
+                $pdo,
+                $creator_id,
+                'Visit Rejected',
+                "Your visit request for {$visit['visitor_name']} has been rejected by the host. Reason: $reason",
+                ['visit_id' => (string) $visit_id, 'type' => 'visit_update']
+            );
+        }
+    } catch (Throwable $e) {
+        error_log("[BG] FCM creator reject error: " . $e->getMessage());
+    }
 }
 
 function runJob_cancelInvite($pdo, $payload)
@@ -211,6 +252,29 @@ function runJob_cancelInvite($pdo, $payload)
         );
     } catch (Throwable $e) {
         error_log("[BG] FCM cancel error: " . $e->getMessage());
+    }
+    // 3. FCM to Creator
+    try {
+        $stmt = $pdo->prepare("SELECT created_by FROM visits WHERE id = ?");
+        $stmt->execute([$visit_id]);
+        $creator_id = $stmt->fetchColumn();
+
+        if ($creator_id) {
+            // --- DEBUG LOGGING ---
+            $logFile = __DIR__ . '/../../approval_debug.log';
+            file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "[BG] Notifying Creator $creator_id for Cancellation of Visit $visit_id\n", FILE_APPEND);
+
+            require_once __DIR__ . '/../../includes/push_helper.php';
+            sendPushNotificationToUser(
+                $pdo,
+                $creator_id,
+                'Invitation Cancelled',
+                "Your invitation for $visitor_name has been cancelled.",
+                ['visit_id' => (string) $visit_id, 'type' => 'visit_update']
+            );
+        }
+    } catch (Throwable $e) {
+        error_log("[BG] FCM creator cancel error: " . $e->getMessage());
     }
 }
 
