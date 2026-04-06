@@ -240,6 +240,13 @@ function AppContent() {
                     const data = standardizeArrivalData(response.notification.request.content.data);
                     if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                         setArrivalData(data); setShowOverlay(true); return true;
+                    } else if (data && data.type === 'visit_update') {
+                        // Killed-state tap: dashboard not mounted yet — store for it to pick up on focus
+                        const visitId = String(data.visit_id || '');
+                        if (visitId) {
+                            await AsyncStorage.setItem('pending_visit_detail_id', visitId);
+                        }
+                        return true;
                     }
                 }
 

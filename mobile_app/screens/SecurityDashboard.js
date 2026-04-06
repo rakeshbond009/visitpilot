@@ -258,30 +258,27 @@ export default function SecurityDashboard({ navigation }) {
         useCallback(() => {
             fetchData();
             const interval = setInterval(fetchData, 15000);
+
+            // Check for pending visit_id from notification tap
+            AsyncStorage.getItem('pending_visit_detail_id').then(pendingId => {
+                if (pendingId) {
+                    AsyncStorage.removeItem('pending_visit_detail_id');
+                    fetchVisitDetails(pendingId);
+                }
+            }).catch(() => {});
+
             return () => clearInterval(interval);
         }, [])
     );
 
-    // Handle notification tap: open VisitDetailModal directly
+    // Listen for real-time visit_update events (foreground notifications)
     useEffect(() => {
-        const checkPendingVisit = async () => {
-            try {
-                const pendingId = await AsyncStorage.getItem('pending_visit_detail_id');
-                if (pendingId) {
-                    await AsyncStorage.removeItem('pending_visit_detail_id');
-                    fetchVisitDetails(pendingId);
-                }
-            } catch (e) { }
-        };
-        checkPendingVisit();
-
         const sub = DeviceEventEmitter.addListener('openVisitDetail', ({ visit_id }) => {
             if (visit_id) {
                 AsyncStorage.removeItem('pending_visit_detail_id').catch(() => {});
                 fetchVisitDetails(visit_id);
             }
         });
-
         return () => sub.remove();
     }, []);
 

@@ -241,33 +241,27 @@ export default function HostDashboard({ navigation }) {
         useCallback(() => {
             fetchData();
             const interval = setInterval(fetchData, 10000);
+
+            // Check for pending visit_id from notification tap (works for killed + background states)
+            AsyncStorage.getItem('pending_visit_detail_id').then(pendingId => {
+                if (pendingId) {
+                    AsyncStorage.removeItem('pending_visit_detail_id');
+                    fetchVisitDetails(pendingId);
+                }
+            }).catch(() => {});
+
             return () => clearInterval(interval);
         }, [loading])
     );
 
-    // Handle notification tap: open VisitDetailModal directly
+    // Listen for real-time visit_update events (foreground notifications)
     useEffect(() => {
-        // Check AsyncStorage for a pending visit_id (set when app was killed/bg and notification was tapped)
-        const checkPendingVisit = async () => {
-            try {
-                const pendingId = await AsyncStorage.getItem('pending_visit_detail_id');
-                if (pendingId) {
-                    await AsyncStorage.removeItem('pending_visit_detail_id');
-                    fetchVisitDetails(pendingId);
-                }
-            } catch (e) { }
-        };
-        checkPendingVisit();
-
-        // Listen for real-time event (app in foreground or background)
         const sub = DeviceEventEmitter.addListener('openVisitDetail', ({ visit_id }) => {
             if (visit_id) {
-                // Clear AsyncStorage so other dashboards don't double-open
                 AsyncStorage.removeItem('pending_visit_detail_id').catch(() => {});
                 fetchVisitDetails(visit_id);
             }
         });
-
         return () => sub.remove();
     }, []);
 
