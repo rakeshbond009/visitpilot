@@ -44,15 +44,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($id) {
-                $stmt = $master_pdo->prepare("UPDATE tenants SET tenant_key=?, db_host=?, db_name=?, db_user=?, db_pass=?, status=? WHERE id=?");
-                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $id]);
-                logAction($pdo, $_SESSION['user_id'], "Updated Tenant: $key (ID: $id)");
+                $max_devices = (int)($_POST['max_devices'] ?? 5);
+                $stmt = $master_pdo->prepare("UPDATE tenants SET tenant_key=?, db_host=?, db_name=?, db_user=?, db_pass=?, status=?, max_devices=? WHERE id=?");
+                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $max_devices, $id]);
+                logAction($pdo, $_SESSION['user_id'], "Updated Tenant: $key (ID: $id, Quota: $max_devices)");
                 $_SESSION['tenant_msg'] = "Tenant '$key' config updated.";
             } else {
-                $stmt = $master_pdo->prepare("INSERT INTO tenants (tenant_key, db_host, db_name, db_user, db_pass, status) VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status]);
+                $max_devices = (int)($_POST['max_devices'] ?? 5);
+                $stmt = $master_pdo->prepare("INSERT INTO tenants (tenant_key, db_host, db_name, db_user, db_pass, status, max_devices) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([$key, $db_host, $db_name, $db_user, $db_pass, $status, $max_devices]);
                 $new_id = $master_pdo->lastInsertId();
-                logAction($pdo, $_SESSION['user_id'], "Registed New Tenant: $key (ID: $new_id)");
+                logAction($pdo, $_SESSION['user_id'], "Registed New Tenant: $key (ID: $new_id, Quota: $max_devices)");
 
                 // Generate random secure password for tenant admin
                 $random_password = bin2hex(random_bytes(8)); // 16 character random password
@@ -133,9 +135,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Fetch all tenants from Master DB
-$m_stmt = $master_pdo->query("SELECT * FROM tenants ORDER BY id DESC");
-$tenants = $m_stmt->fetchAll(PDO::FETCH_ASSOC);
+// 4. FETCH ALL TENANTS (Prioritize display metadata)
+$t_stmt = $master_pdo->query("SELECT t.*, 
+    (SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = t.tenant_key AND status = 'active') as active_devices 
+    FROM tenants t ORDER BY t.id DESC");
+$tenants = $t_stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -169,11 +173,12 @@ endif; ?>
         <table class="table table-hover align-middle mb-0">
             <thead class="bg-light">
                 <tr>
-                    <th class="ps-4">Client / Tenant Key</th>
-                    <th>Database Connection</th>
-                    <th>Version</th>
-                    <th>Status</th>
-                    <th class="text-end pe-4">Actions</th>
+                    <th class="ps-4 small text-uppercase">Client / Tenant Key</th>
+                    <th class="small text-uppercase">Database Connection</th>
+                    <th class="small text-uppercase">Mobile Quota</th>
+                    <th class="small text-uppercase">Version</th>
+                    <th class="small text-uppercase">Status</th>
+                    <th class="text-end pe-4 small text-uppercase">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -192,6 +197,10 @@ endif; ?>
                                 <code><?php echo htmlspecialchars($t['db_name'] ?? ''); ?></code>
                             </div>
                         </td>
+                        <td class="fw-bold text-primary">
+                            <i class="bi bi-phone me-1"></i>
+                            <?php echo (int)($t['active_devices'] ?? 0); ?> / <?php echo (int)($t['max_devices'] ?? 5); ?>
+                        </td>
                         <td>
                             <span class="badge bg-dark rounded-pill">v<?php echo $t['schema_version'] ?? '0'; ?></span>
                         </td>
@@ -202,6 +211,10 @@ endif; ?>
                             </span>
                         </td>
                         <td class="text-end pe-4">
+                            <a href="tenant_devices.php?tenant=<?php echo urlencode($t['tenant_key']); ?>"
+                                class="btn btn-sm btn-outline-dark rounded-pill px-3 me-1" title="Manage Hardware">
+                                <i class="bi bi-phone me-1"></i> Devices
+                            </a>
                             <a href="<?php echo BASE_URL; ?>switch_tenant.php?tenant=<?php echo urlencode($t['tenant_key']); ?>"
                                 class="btn btn-sm btn-success rounded-pill px-3 me-2" title="Login as this tenant"
                                 target="_blank">
@@ -276,12 +289,16 @@ endif; ?>
                                 required>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label small fw-bold text-muted text-uppercase">Status</label>
-                            <select name="status" id="t_status" class="form-select">
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
+                            <label class="form-label small fw-bold text-muted text-uppercase">Mobile Quota</label>
+                            <input type="number" name="max_devices" id="t_max_devices" class="form-control fw-bold" value="5" min="1" required>
                         </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Status</label>
+                        <select name="status" id="t_status" class="form-select">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
                     </div>
 
                     <div class="mt-3">
@@ -361,8 +378,9 @@ endif; ?>
         document.getElementById('t_id').value = '';
         document.getElementById('t_key').value = '';
         document.getElementById('t_host').value = 'localhost';
-        // document.getElementById('t_db').value = ''; // Let it stay as placeholder
+        document.getElementById('t_db').value = ''; 
         document.getElementById('t_user').value = 'root';
+        document.getElementById('t_max_devices').value = '5';
 
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         document.getElementById('t_pass').value = isLocal ? '' : generateRandomPass(10);
@@ -380,6 +398,7 @@ endif; ?>
         document.getElementById('t_user').value = t.db_user;
         document.getElementById('t_pass').value = t.db_pass;
         document.getElementById('t_status').value = t.status;
+        document.getElementById('t_max_devices').value = t.max_devices || 5;
 
         new bootstrap.Modal(document.getElementById('tenantModal')).show();
     }

@@ -25,6 +25,43 @@ try {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        
+        // --- SYSTEM QUOTA CHECK: Mobile Device Limit (Set by Super Admin) ---
+        $device_id = $data['device_id'] ?? null;
+        if ($device_id && !empty($tenant) && $tenant !== 'none') {
+            global $master_pdo;
+            if ($master_pdo) {
+                // Fetch the quota set by Super Admin
+                $tStmt = $master_pdo->prepare("SELECT max_devices FROM tenants WHERE tenant_key = ?");
+                $tStmt->execute([$tenant]);
+                $max_devices = (int)($tStmt->fetchColumn() ?: 5); 
+
+                // Check Device Registry (Status & Record)
+                $dCheck = $master_pdo->prepare("SELECT id, status FROM tenant_devices WHERE tenant_key = ? AND device_id = ?");
+                $dCheck->execute([$tenant, $device_id]);
+                $device_rec = $dCheck->fetch();
+
+                if ($device_rec) {
+                    // 🚨 CRITICAL: Deny if explicitly BLOCKED by System Admin
+                    if ($device_rec['status'] === 'blocked') {
+                        sendResponse('error', "Device Authorization Revoked: This mobile hardware has been blocked by the system administrator. Access denied.");
+                    }
+                    // Update heartbeat for active device
+                    $master_pdo->prepare("UPDATE tenant_devices SET last_login = NOW() WHERE id = ?")->execute([$device_rec['id']]);
+                } else {
+                    // New phone: Check if the client has any ACTIVE slots left in their quota
+                    $dCount = $master_pdo->prepare("SELECT COUNT(*) FROM tenant_devices WHERE tenant_key = ? AND status = 'active'");
+                    $dCount->execute([$tenant]);
+                    if ((int)$dCount->fetchColumn() >= $max_devices) {
+                        sendResponse('error', "Device Quota Reached: This company is limited to $max_devices active mobile devices. Please contact the system administrator to upgrade.");
+                    }
+                    // Register the new phone as 'active'
+                    $master_pdo->prepare("INSERT INTO tenant_devices (tenant_key, device_id, device_name, status) VALUES (?, ?, ?, 'active')")
+                               ->execute([$tenant, $device_id, $data['device_name'] ?? 'Android Device']);
+                }
+            }
+        }
+
         // If department is blank in users table, try to get it from employees table
         if (empty($user['department']) && !empty($user['employee_id'])) {
             try {
@@ -112,7 +149,7 @@ try {
         // Fetch Mandatory Fields Config
         $mandatory_fields_stmt = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'mandatory_registration_fields'");
         $mandatory_fields_val = $mandatory_fields_stmt ? $mandatory_fields_stmt->fetchColumn() : null;
-        $mandatory_fields = $mandatory_fields_val ? json_decode($mandatory_fields_val, true) : ["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"];
+        $mandatory_fields = $mandatory_fields_val ? json_decode($mandatory_fields_val, true) : ["visitor_name", "mobile_number", "id_proof", "purpose", "meeting_host", "otp_check"];
         $user['mandatory_fields'] = $mandatory_fields;
 
         // Return user data (excluding password)
