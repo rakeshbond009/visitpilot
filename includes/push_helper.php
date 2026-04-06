@@ -143,8 +143,11 @@ function getGoogleAccessToken($serviceAccount)
         $signatureInput = $base64UrlHeader . "." . $base64UrlClaimSet;
 
         $privateKey = openssl_pkey_get_private($serviceAccount['private_key']);
-        if (!$privateKey)
+        if (!$privateKey) {
+            $err = openssl_error_string();
+            file_put_contents(__DIR__ . '/push_debug.log', date('[Y-m-d H:i:s] ') . "JWT ERROR: Could not parse private key. OpenSSL Error: $err\n", FILE_APPEND);
             return '';
+        }
 
         openssl_sign($signatureInput, $signature, $privateKey, OPENSSL_ALGO_SHA256);
         $jwt = $signatureInput . "." . str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
