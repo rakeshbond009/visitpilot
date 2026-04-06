@@ -102,10 +102,11 @@ try {
         sendWhatsAppNotification($data['mobile'], $waMessage, 'visitor_meet_notify', ["*{$data['name']}*", "*{$v_date_fmt}*", "*{$visit_code}*"]);
     }
 
-    // Audit Log for Mobile Invitation
-    logAction($pdo, $user_id, "Invitation Created via Mobile for: {$data['name']} (Visit Date: $visit_date)");
+    // Consolidated Audit Log for Invitation
+    $v_name = $data['name'] ?? 'Visitor';
+    logAction($pdo, $user_id, "Invitation Created via Mobile for: $v_name (Visit Date: $visit_date, Code: $visit_code)");
 
-    sendResponse('success', 'Invitation created successfully', [
+    sendResponse('success', "Invitation sent to " . $v_name, [
         'visit_code' => $visit_code,
         'qr_code' => $qr_filename,
         'visitor_name' => $data['name'],

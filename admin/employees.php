@@ -125,6 +125,46 @@ if (isset($_GET['disable_user'])) {
     exit;
 }
 
+// Handle Grant User (Create Login for Existing)
+if (isset($_GET['grant_user'])) {
+    $id = (int)$_GET['grant_user'];
+    try {
+        $emp = $pdo->prepare("SELECT * FROM employees WHERE id = ?");
+        $emp->execute([$id]);
+        $emp_data = $emp->fetch();
+
+        if ($emp_data) {
+            // Generate Username Logic (Same as Add Flow)
+            $base_username = strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '.', $emp_data['name']))); 
+            $base_username = trim($base_username, '.');
+            if (strlen($base_username) < 3) $base_username = "user." . $base_username;
+
+            $username = $base_username;
+            $counter = 1;
+            while (true) {
+                $check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
+                $check->execute([$username]);
+                if ($check->fetchColumn() == 0) break;
+                $username = $base_username . "." . $counter;
+                $counter++;
+            }
+
+            $default_pass = "Welcome@123";
+            $hashed = password_hash($default_pass, PASSWORD_DEFAULT);
+
+            $uStmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role, employee_id, department, email, mobile) VALUES (?, ?, ?, 'employee', ?, ?, ?, ?)");
+            $uStmt->execute([$username, $hashed, $emp_data['name'], $id, $emp_data['department'], $emp_data['email'], $emp_data['mobile']]);
+
+            logAction($pdo, $_SESSION['user_id'], "Granted user access to employee: {$emp_data['name']} (ID: $id)");
+            
+            header("Location: employees.php?new_user=" . urlencode($username) . "&new_pass=" . urlencode($default_pass));
+            exit;
+        }
+    } catch (Exception $e) {
+        $error = "Error granting access: " . $e->getMessage();
+    }
+}
+
 // Fetch Employees with User Status
 $employees = $pdo->query("SELECT e.*, u.id as user_id FROM employees e LEFT JOIN users u ON e.id = u.employee_id WHERE e.status='active' ORDER BY e.name")->fetchAll();
 
@@ -175,7 +215,12 @@ require_once 'header.php';
                                     <i class="bi bi-slash-circle-fill"></i>
                                 </button>
                             <?php else: ?>
-                                <span class="badge bg-secondary">No Login</span>
+                                <span class="badge bg-secondary mb-1">No Login</span>
+                                <a href="?grant_user=<?php echo $emp['id']; ?>" class="btn btn-sm btn-outline-primary py-0 px-2 d-block" 
+                                   title="Grant Access" 
+                                   onclick="return confirm('Do you want to create a login account for this employee?')">
+                                   <i class="bi bi-person-plus-fill"></i> Enable Access
+                                </a>
                             <?php endif; ?>
                         </td>
                         <td>

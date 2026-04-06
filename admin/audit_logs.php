@@ -48,9 +48,27 @@ $sql = "SELECT al.*,
         ORDER BY al.created_at DESC 
         LIMIT $per_page OFFSET $offset";
 
-$stmt = $master_pdo->prepare($sql);
-$stmt->execute($params);
-$logs = $stmt->fetchAll();
+try {
+    $stmt = $master_pdo->prepare($sql);
+    $stmt->execute($params);
+    $logs = $stmt->fetchAll();
+} catch (PDOException $e) {
+    // Fallback if 'performed_by' column is not yet added to the DB
+    if ($e->getCode() == '42S22') {
+        $sql_fallback = "SELECT al.*, u.username, u.full_name, 
+                         CONCAT(u.full_name, ' (@', u.username, ')') as display_name
+                         FROM audit_logs al 
+                         LEFT JOIN users u ON al.user_id = u.id 
+                         $where
+                         ORDER BY al.created_at DESC 
+                         LIMIT $per_page OFFSET $offset";
+        $stmt = $master_pdo->prepare($sql_fallback);
+        $stmt->execute($params);
+        $logs = $stmt->fetchAll();
+    } else {
+        throw $e;
+    }
+}
 
 // Get users for filter
 $all_users = $master_pdo->query("SELECT id, full_name, username FROM users ORDER BY full_name")->fetchAll();

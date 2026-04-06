@@ -21,10 +21,16 @@ if ($action !== 'qr_process' && !isset($data['visit_id'])) {
 $id = $data['visit_id'] ?? 0;
 
 try {
+    // Fetch details for enriched logging
+    $vStmt = $pdo->prepare("SELECT v.visit_code, vr.name as visitor_name FROM visits v JOIN visitors vr ON v.visitor_id = vr.id WHERE v.id = ?");
+    $vStmt->execute([$id]);
+    $vDetails = $vStmt->fetch();
+    $vRef = $vDetails ? " (Code: {$vDetails['visit_code']}, Visitor: {$vDetails['visitor_name']})" : " (ID: $id)";
+
     if ($action === 'approve') {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
-        logAction($pdo, $_SESSION['user_id'] ?? 0, "Approved visit ID: $id status_action");
+        logAction($pdo, $_SESSION['user_id'] ?? 0, "Approved visit$vRef status_action");
 
         $bgPayload = ['visit_id' => $id];
         // ⚡ STEP 1: Apache/LSAPI path
@@ -49,6 +55,7 @@ try {
         $reason = $data['reason'] ?? 'Invitation cancelled by host.';
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $reason, $id]);
+        logAction($pdo, $user_id, "Cancelled invitation$vRef. Reason: $reason");
 
         $bgPayload = [
             'visit_id' => $id,
@@ -67,7 +74,7 @@ try {
         $reason = $data['reason'] ?? 'Host declined the visit.';
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='rejected', status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=?");
         $stmt->execute([$user_id, $reason, $id]);
-        logAction($pdo, $user_id, "Rejected visit ID: $id. Reason: $reason");
+        logAction($pdo, $user_id, "Rejected visit$vRef. Reason: $reason");
 
         $bgPayload = [
             'visit_id' => $id,
@@ -90,15 +97,13 @@ try {
             sendResponse('error', 'Cannot check-in: Visit not yet approved by host');
         }
 
-        $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW(), checked_in_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
-        logAction($pdo, $user_id, "Visitor Check-in successful for visit ID: $id");
+        logAction($pdo, $user_id, "Checked IN visit$vRef");
         sendResponse('success', 'Check-in successful');
 
     } elseif ($action === 'checkout') {
-        $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW(), checked_out_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
-        logAction($pdo, $user_id, "Visitor Check-out successful for visit ID: $id");
+        logAction($pdo, $user_id, "Checked OUT visit$vRef");
         sendResponse('success', 'Check-out successful');
 
     } elseif ($action === 'qr_process') {
