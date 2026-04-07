@@ -2,6 +2,7 @@
   "expo": {
     "name": "VisitPilot",
     "slug": "visitpilot",
+    "owner": "codepilotx",
     "version": "1.0.2",
     "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
