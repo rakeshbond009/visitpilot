@@ -48,50 +48,10 @@ jobs:
           # Using --no-install to prevent EAS from trying to run yarn automatically
           eas update --auto --non-interactive --branch production
 
-  build_android:
-    name: Build Android APK (Local on GH)
+  build:
+    name: Full App Build (APK/IPA)
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: npm
-          cache-dependency-path: mobile_app/package-lock.json
-
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Build Android APK
-        run: |
-          cd mobile_app
-          npm install
-          npx expo prebuild --platform android --clean
-          eas build --platform android --profile preview --local --non-interactive
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: VisitPilot-Android-APK
-          path: mobile_app/*.apk
-
-  build_ios:
-    name: Build iOS IPA (Local on GH Mac)
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -112,16 +72,9 @@ jobs:
       - name: Install dependencies
         run: |
           cd mobile_app
-          npm install
+          npm install --frozen-lockfile || npm install
 
-      - name: Build IPA
+      - name: Build App
         run: |
           cd mobile_app
-          eas build --platform ios --profile preview --local --non-interactive
-
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: VisitPilot-iOS-IPA
-          path: mobile_app/*.ipa
-
+          eas build --platform ${{ github.event.inputs.platform }} --profile preview --non-interactive

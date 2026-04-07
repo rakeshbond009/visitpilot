@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Constants from 'expo-constants';
-
 import {
     StyleSheet,
     View,
@@ -1422,11 +1420,7 @@ export default function HostDashboard({ navigation }) {
                 <View style={{ flex: 1 }}>
                     <Text style={styles.greeting}>Host Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
-                    <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: 'bold', marginTop: 4 }}>
-                        v{Constants.expoConfig?.version || '1.0.x'} | B:{Constants.expoConfig?.android?.versionCode || '?'}
-                    </Text>
-
-
+                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
@@ -1471,8 +1465,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
     loadingText: { marginTop: 15, color: '#64748b', fontWeight: '500' },
-    header: { flexDirection: 'row', padding: 20, backgroundColor: '#ffeb3b', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-
+    header: { flexDirection: 'row', padding: 20, backgroundColor: '#fff', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
     greeting: { fontSize: 13, color: '#64748b', fontWeight: '500' },
     userName: { fontSize: 22, fontWeight: '800', color: '#1e293b' },
     logoutBtn: { backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },

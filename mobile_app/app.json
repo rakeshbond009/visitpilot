@@ -4,7 +4,7 @@
     "slug": "visitpilot",
     "owner": "codepilotx",
     "version": "1.0.2",
-    "icon": "./assets/icon.jpg",
+    "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
@@ -12,7 +12,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.codepilot.vms",
+      "bundleIdentifier": "com.codepilotx.vms",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -30,7 +30,7 @@
       }
     },
     "android": {
-      "package": "com.codepilot.vms",
+      "package": "com.codepilotx.vms",
       "versionCode": 2,
       "allowBackup": false,
       "permissions": [
@@ -43,7 +43,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.jpg",
+          "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
           "color": "#ffffff"
         }
       ],
