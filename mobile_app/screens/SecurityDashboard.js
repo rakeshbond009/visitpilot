@@ -139,11 +139,21 @@ export default function SecurityDashboard({ navigation }) {
     }, [userData?.id]);
 
     useEffect(() => {
-        const navSub = DeviceEventEmitter.addListener('navigateToVisit', (data) => {
-            if (data?.visitId) {
-                fetchVisitDetails(data.visitId);
+        const navSub = DeviceEventEmitter.addListener('openVisitDetails', (visitId) => {
+            if (visitId) {
+                fetchVisitDetails(visitId);
             }
         });
+        
+        const checkPending = async () => {
+            const pendingId = await AsyncStorage.getItem('pending_visit_id');
+            if (pendingId) {
+                await AsyncStorage.removeItem('pending_visit_id');
+                fetchVisitDetails(pendingId);
+            }
+        };
+        checkPending();
+
         return () => navSub.remove();
     }, []);
 

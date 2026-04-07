@@ -69,12 +69,14 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Install dependencies
+      - name: Inject Build ID
         run: |
           cd mobile_app
-          npm install --frozen-lockfile || npm install
+          BUILD_DATE=$(date +'%d/%m/%y %H:%M')
+          echo "export const BUILD_ID = 'Build: $BUILD_DATE';" > buildinfo.js
+          echo "Build ID injected: $BUILD_DATE"
 
-      - name: Build App
+      - name: Execute Build/Update
         run: |
           cd mobile_app
           eas build --platform ${{ github.event.inputs.platform }} --profile preview --non-interactive

@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
 import { APP_VERSION } from './constants';
+import { BUILD_ID } from './buildinfo';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 
@@ -120,7 +121,6 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
-        // Data can be in nested formats depending on Expo/FCM versions
         let data = raw.data || raw.params || raw;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
@@ -146,8 +146,8 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || (data.status ? `visit_${data.status}` : "visitor_arrival"),
-            is_call_priority: data.is_call_priority === 'true' || data.type === 'visitor_arrival'
+            type: data.type || (data.status ? 'approval_status' : 'visitor_arrival'),
+            is_call_priority: String(data.is_call_priority) === 'true' || data.type === 'visitor_arrival' || !data.status
         };
     };
 
@@ -239,8 +239,16 @@ function AppContent() {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
                     const data = standardizeArrivalData(response.notification.request.content.data);
-                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                        setArrivalData(data); setShowOverlay(true); return true;
+                    if (data) {
+                        if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
+                            setArrivalData(data); setShowOverlay(true); return true;
+                        } else if (data.type === 'approval_status') {
+                            if (data.visit_id) {
+                                await AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
+                                DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                                return true;
+                            }
+                        }
                     }
                 }
 
@@ -264,31 +272,40 @@ function AppContent() {
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
-            if (data && data.is_call_priority) {
-                setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.visit_id) {
-                // For non-call notifications (e.g. status updates) in foreground
-                Alert.alert(
-                    n.request.content.title || "Notification",
-                    n.request.content.body || "Status updated",
-                    [
-                        { text: "Later", style: "cancel" },
-                        { 
-                            text: "View Details", 
-                            onPress: () => DeviceEventEmitter.emit('navigateToVisit', { visitId: data.visit_id })
-                        }
-                    ]
-                );
+            if (data) {
+                if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
+                    setArrivalData(data); setShowOverlay(true);
+                } else if (data.type === 'approval_status') {
+                    // In foreground - show a simple Alert
+                    Alert.alert(
+                        n.request.content.title || "Visit Update",
+                        n.request.content.body || "A visit status has been updated.",
+                        [
+                            { text: "Dismiss", style: "cancel" },
+                            {
+                                text: "View Details",
+                                onPress: () => {
+                                    if (data.visit_id) DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                                }
+                            }
+                        ]
+                    );
+                }
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
             const data = standardizeArrivalData(r.notification.request.content.data);
-            if (data && data.is_call_priority) {
-                setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.visit_id) {
-                // Navigate to Security Dashboard to show details
-                DeviceEventEmitter.emit('navigateToVisit', { visitId: data.visit_id });
+            if (data) {
+                if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
+                    setArrivalData(data); setShowOverlay(true);
+                } else if (data.type === 'approval_status') {
+                    // Tapped from background/killed
+                    if (data.visit_id) {
+                        AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
+                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                    }
+                }
             }
         });
 
