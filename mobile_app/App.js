@@ -159,7 +159,7 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || (data.visitor_name ? "visitor_arrival" : "approval_status"),
+            type: data.type || (visit_id && !data.visitor_name ? "approval_status" : "visitor_arrival"),
             is_call_priority: data.is_call_priority === 'true' || data.is_call_priority === true || data.type === 'visitor_arrival'
         };
     };

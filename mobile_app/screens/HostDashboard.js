@@ -155,9 +155,13 @@ export default function HostDashboard({ navigation }) {
         checkPerms();
 
         // Listen for direct open requests from notifications
+        // Listener for real-time notification events while on the dashboard
         const notificationSub = DeviceEventEmitter.addListener('openVisitDetails', (visitId) => {
-            console.log("[HostDashboard] Received openVisitDetails for ID:", visitId);
-            if (visitId) fetchVisitDetails(visitId);
+            console.log("[HostDashboard] Real-time Detail Request for ID:", visitId);
+            if (visitId) {
+                // To avoid race conditions with refresh, we use a slight delay
+                setTimeout(() => fetchVisitDetails(visitId), 100);
+            }
         });
 
         return () => notificationSub.remove();
@@ -249,17 +253,17 @@ export default function HostDashboard({ navigation }) {
         useCallback(() => {
             fetchData();
             
-            // Check for any visit that needs to be opened (from notification tap)
+            // Check for any visit that was tapped earlier
             const checkPendingVisit = async (retries = 3) => {
                 try {
                     const pendingId = await AsyncStorage.getItem('pending_visit_id');
                     if (pendingId) {
-                        console.log("[HostDashboard] Opening pending visit:", pendingId);
+                        console.log("[HostDashboard] Found pending visit ID in storage:", pendingId);
                         await AsyncStorage.removeItem('pending_visit_id');
                         fetchVisitDetails(pendingId);
                     } else if (retries > 0) {
-                        // Small delay to allow AsyncStorage to sync if tap happened just now
-                        setTimeout(() => checkPendingVisit(retries - 1), 500);
+                        // Small retry to account for AsyncStorage write latency after tap
+                        setTimeout(() => checkPendingVisit(retries - 1), 700);
                     }
                 } catch (e) { }
             };
