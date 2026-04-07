@@ -15,6 +15,7 @@
       "bundleIdentifier": "com.codepilotx.vms",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "This app uses the camera to scan visitor QR codes and take visitor photos.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photos to save or upload visitor identification."
       }
