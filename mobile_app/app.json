@@ -33,13 +33,6 @@
       "package": "com.codepilotx.vms",
       "versionCode": 2,
       "allowBackup": false,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
-        "backgroundColor": "#FFFFFF"
-      },
-      "queries": [
-        "whatsapp"
-      ],
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "SYSTEM_ALERT_WINDOW",
