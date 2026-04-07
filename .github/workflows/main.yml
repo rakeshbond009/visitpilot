@@ -47,8 +47,8 @@ jobs:
           cd mobile_app
           # Get current date and time
           BUILD_DATE=$(date +'%d/%m %H:%M')
-          # Use sed to append the date/time inside the APP_VERSION quotes
-          sed -i "s/APP_VERSION = \"\(.*\)\"/APP_VERSION = \"\1 ($BUILD_DATE)\"/g" constants.js
+          # Use | as delimiter instead of / to avoid conflict with the date slash
+          sed -i "s|APP_VERSION = \"\(.*\)\"|APP_VERSION = \"\1 ($BUILD_DATE)\"|g" constants.js
           echo "APP_VERSION updated with: $BUILD_DATE"
 
       - name: Publish Update (OTA)
