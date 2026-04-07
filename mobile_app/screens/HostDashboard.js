@@ -1417,11 +1417,11 @@ export default function HostDashboard({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.greeting}>Host Portal</Text>
-                    <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
-                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
-                </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.greeting}>Host Portal</Text>
+                        <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
+                        <Text style={{ fontSize: 10, color: '#3b82f6', fontWeight: 'bold' }}>{APP_VERSION}</Text>
+                    </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
