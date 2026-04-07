@@ -8,6 +8,8 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Updates from 'expo-updates';
+
 
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
@@ -118,7 +120,25 @@ function AppContent() {
 
     const { role, hasPermission, loading } = usePermissions();
 
+    const { isUpdating, isUpdateAvailable, isUpdatePending } = Updates.useUpdates();
+
+    useEffect(() => {
+        async function checkAndFetch() {
+            try {
+                const update = await Updates.checkForUpdateAsync();
+                if (update.isAvailable) {
+                    await Updates.fetchUpdateAsync();
+                    await Updates.reloadAsync();
+                }
+            } catch (e) {
+                console.log("Update check failed (expected on local dev):", e.message);
+            }
+        }
+        checkAndFetch();
+    }, []);
+
     const standardizeArrivalData = (raw) => {
+
         if (!raw) return null;
         let data = raw.data || raw.params || raw;
         if (typeof data === 'string') {
