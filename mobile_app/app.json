@@ -11,7 +11,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.codepilot.vms",
+      "bundleIdentifier": "com.codepilotx.vms",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to scan visitor QR codes and take visitor photos.",
@@ -30,7 +30,7 @@
       }
     },
     "android": {
-      "package": "com.codepilot.vms",
+      "package": "com.codepilotx.vms",
       "versionCode": 2,
       "allowBackup": false,
       "adaptiveIcon": {
