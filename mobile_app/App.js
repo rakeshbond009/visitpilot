@@ -403,6 +403,9 @@ function AppContent() {
                     }}
                 />
             )}
+            <View style={{ padding: 10, alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, color: '#94a3b8' }}>{APP_VERSION} • {BUILD_ID}</Text>
+            </View>
         </View>
     );
 }
