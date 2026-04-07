@@ -235,16 +235,8 @@ function AppContent() {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
                     const data = standardizeArrivalData(response.notification.request.content.data);
-                    if (data) {
-                        if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
-                            setArrivalData(data); setShowOverlay(true); return true;
-                        } else if (data.type === 'approval_status') {
-                            if (data.visit_id) {
-                                await AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
-                                DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                                return true;
-                            }
-                        }
+                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                        setArrivalData(data); setShowOverlay(true); return true;
                     }
                 }
 
@@ -268,40 +260,15 @@ function AppContent() {
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
-            if (data) {
-                if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
-                    setArrivalData(data); setShowOverlay(true);
-                } else if (data.type === 'approval_status') {
-                    // In foreground - show a simple Alert
-                    Alert.alert(
-                        n.request.content.title || "Visit Update",
-                        n.request.content.body || "A visit status has been updated.",
-                        [
-                            { text: "Dismiss", style: "cancel" },
-                            {
-                                text: "View Details",
-                                onPress: () => {
-                                    if (data.visit_id) DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                                }
-                            }
-                        ]
-                    );
-                }
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
             const data = standardizeArrivalData(r.notification.request.content.data);
-            if (data) {
-                if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
-                    setArrivalData(data); setShowOverlay(true);
-                } else if (data.type === 'approval_status') {
-                    // Tapped from background/killed
-                    if (data.visit_id) {
-                        AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
-                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                    }
-                }
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 

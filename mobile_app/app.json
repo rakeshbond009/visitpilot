@@ -3,7 +3,8 @@
     "name": "VisitPilot",
     "slug": "visitpilot",
     "owner": "codepilotx",
-    "version": "1.0.2",
+    "version": "1.0.3",
+
     "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -23,7 +24,8 @@
     "updates": {
       "url": "https://u.expo.dev/d839753e-5116-49cd-b79d-754e9ae05c9b"
     },
-    "runtimeVersion": "1.0.2",
+    "runtimeVersion": "1.0.3",
+
     "extra": {
       "eas": {
         "projectId": "d839753e-5116-49cd-b79d-754e9ae05c9b"
@@ -31,7 +33,8 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 2,
+      "versionCode": 3,
+
       "allowBackup": false,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",

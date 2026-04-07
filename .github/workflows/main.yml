@@ -42,15 +42,6 @@ jobs:
           cd mobile_app
           npm install --frozen-lockfile || npm install
 
-      - name: Inject Build ID into APP_VERSION
-        run: |
-          cd mobile_app
-          # Get current date and time
-          BUILD_DATE=$(date +'%d/%m %H:%M')
-          # Overwrite the version line with the fresh time using the marker
-          sed -i "s|.*// CI_VERSION_MARKER|export const APP_VERSION = \"VisitPilot v2.1.4 ($BUILD_DATE)\"; // CI_VERSION_MARKER|g" constants.js
-          echo "APP_VERSION updated with: $BUILD_DATE"
-
       - name: Publish Update (OTA)
         run: |
           cd mobile_app

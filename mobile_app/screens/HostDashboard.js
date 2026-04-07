@@ -29,7 +29,8 @@ import { CONFIG } from '../utils/config';
 import { checkOverlayPermission } from '../utils/notificationManager';
 import { usePermissions } from '../context/PermissionContext';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { APP_VERSION } from '../constants';
+import { APP_VERSION, BUILD_ID } from '../constants';
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -57,7 +58,7 @@ const getPhotoUrl = (path) => {
 
     // Construct the full URL
     const baseUrl = CONFIG.API_BASE_URL.endsWith('/') ? CONFIG.API_BASE_URL : `${CONFIG.API_BASE_URL}/`;
-
+    
     // Final encoded URL to handle spaces/special chars
     return encodeURI(`${baseUrl}${cleanPath}`);
 };
@@ -1417,11 +1418,11 @@ export default function HostDashboard({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.greeting}>Host Portal</Text>
-                        <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
-                        <Text style={{ fontSize: 10, color: '#3b82f6', fontWeight: 'bold' }}>{APP_VERSION}</Text>
-                    </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={styles.greeting}>Host Portal</Text>
+                    <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
+                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION} | {BUILD_ID}</Text>
+                </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
