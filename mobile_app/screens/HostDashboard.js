@@ -250,13 +250,16 @@ export default function HostDashboard({ navigation }) {
             fetchData();
             
             // Check for any visit that needs to be opened (from notification tap)
-            const checkPendingVisit = async () => {
+            const checkPendingVisit = async (retries = 3) => {
                 try {
                     const pendingId = await AsyncStorage.getItem('pending_visit_id');
                     if (pendingId) {
-                        console.log("[HostDashboard] Opening pending visit from storage:", pendingId);
+                        console.log("[HostDashboard] Opening pending visit:", pendingId);
                         await AsyncStorage.removeItem('pending_visit_id');
                         fetchVisitDetails(pendingId);
+                    } else if (retries > 0) {
+                        // Small delay to allow AsyncStorage to sync if tap happened just now
+                        setTimeout(() => checkPendingVisit(retries - 1), 500);
                     }
                 } catch (e) { }
             };

@@ -140,6 +140,13 @@ function AppContent() {
             } catch (e) { }
         }
 
+        // ONE MORE TRY: Check notification.data if it exists
+        if (!visit_id && raw.notification?.data) {
+            const extraData = raw.notification.data;
+            visit_id = extraData.visit_id || extraData.visitId || extraData.id;
+            data = { ...data, ...extraData };
+        }
+
         if (!visit_id) {
             console.log("[Notification] No visit_id found in payload:", JSON.stringify(data));
         }
@@ -152,8 +159,8 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || (visit_id && !data.visitor_name ? "approval_status" : "visitor_arrival"),
-            is_call_priority: data.is_call_priority === 'true' || data.is_call_priority === true
+            type: data.type || (data.visitor_name ? "visitor_arrival" : "approval_status"),
+            is_call_priority: data.is_call_priority === 'true' || data.is_call_priority === true || data.type === 'visitor_arrival'
         };
     };
 
@@ -282,29 +289,50 @@ function AppContent() {
             if (data) {
                 if (data.type === 'visitor_arrival' || data.is_call_priority) {
                     setArrivalData(data); setShowOverlay(true);
-                } else if (data.type === 'approval_status' || data.type === 'visit_update') {
-                    // In foreground - Emit directly to open modal if possible
-                    if (data.visit_id) {
-                        console.log("[Notification] Auto-emitting openVisitDetails in foreground:", data.visit_id);
-                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                    }
+                } else {
+                    // Show a notification banner/alert for status updates
+                    Alert.alert(
+                        n.request.content.title || "Visit Update",
+                        n.request.content.body || "A visit status has been updated.",
+                        [
+                            { text: "Dismiss", style: "cancel" },
+                            { 
+                                text: "View Details", 
+                                onPress: () => {
+                                    if (data.visit_id) {
+                                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                                    }
+                                }
+                            }
+                        ]
+                    );
                 }
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            console.log("[Notification] Tapped/Responded:", JSON.stringify(r.notification.request.content.data));
+            console.log("[Notification] Tapped:", JSON.stringify(r.notification.request.content.data));
             const data = standardizeArrivalData(r.notification.request.content.data);
             if (data) {
                 if (data.type === 'visitor_arrival' || data.is_call_priority) {
                     setArrivalData(data); setShowOverlay(true);
-                } else if (data.type === 'approval_status' || data.type === 'visit_update') {
-                    // Tapped from background/killed
-                    if (data.visit_id) {
-                        console.log("[Notification] Storing pending_visit_id for deep link:", data.visit_id);
-                        AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
-                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                    }
+                } else if (data.visit_id) {
+                    // Tap from outside -> Store for DASHBOARD to pick up
+                    AsyncStorage.setItem('pending_visit_id', String(data.visit_id))
+                        .then(() => {
+                            DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                        });
+                }
+            }
+        });
+
+        // CRITICAL: Check if app was opened FROM a killed state by a notification
+        Notifications.getLastNotificationResponseAsync().then(r => {
+            if (r?.notification?.request?.content?.data) {
+                console.log("[Notification] Initial tap detected:", JSON.stringify(r.notification.request.content.data));
+                const data = standardizeArrivalData(r.notification.request.content.data);
+                if (data && data.visit_id && data.type !== 'visitor_arrival') {
+                    AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
                 }
             }
         });
