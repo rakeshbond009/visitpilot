@@ -1422,9 +1422,10 @@ export default function HostDashboard({ navigation }) {
                 <View style={{ flex: 1 }}>
                     <Text style={styles.greeting}>Host Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
-                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>
-                        v{Constants.expoConfig.version} | VC:{Constants.expoConfig.android.versionCode}
+                    <Text style={{ fontSize: 10, color: '#94a3b8', fontWeight: 'bold', marginTop: 4 }}>
+                        v{Constants.expoConfig?.version || '1.0.x'} | B:{Constants.expoConfig?.android?.versionCode || '?'}
                     </Text>
+
 
                 </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
