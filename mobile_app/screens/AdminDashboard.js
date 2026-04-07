@@ -16,8 +16,7 @@ import {
     Image,
     Linking,
     TextInput,
-    Platform,
-    DeviceEventEmitter
+    Platform
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -320,33 +319,11 @@ export default function AdminDashboard({ navigation }) {
             // Wait a bit to ensure UI is ready
             setTimeout(() => checkOverlayPermission(userData.id), 2000);
         }
-
-        // Listen for direct open requests from notifications
-        const notificationSub = DeviceEventEmitter.addListener('openVisitDetails', (visitId) => {
-            console.log("[AdminDashboard] Received openVisitDetails for ID:", visitId);
-            if (visitId) fetchVisitDetails(visitId);
-        });
-
-        return () => notificationSub.remove();
     }, [userData?.id]);
 
     useFocusEffect(
         useCallback(() => {
             fetchData();
-
-            // Check for any visit that needs to be opened (from notification tap)
-            const checkPendingVisit = async () => {
-                try {
-                    const pendingId = await AsyncStorage.getItem('pending_visit_id');
-                    if (pendingId) {
-                        console.log("[AdminDashboard] Opening pending visit from storage:", pendingId);
-                        await AsyncStorage.removeItem('pending_visit_id');
-                        fetchVisitDetails(pendingId);
-                    }
-                } catch (e) { }
-            };
-            checkPendingVisit();
-
             const interval = setInterval(fetchData, 30000); // Admin data updates less frequently
             return () => clearInterval(interval);
         }, [])

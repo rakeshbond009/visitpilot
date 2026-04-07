@@ -17,7 +17,6 @@ import {
     Pressable,
     TextInput,
     Linking,
-    DeviceEventEmitter,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -153,18 +152,6 @@ export default function HostDashboard({ navigation }) {
             }
         };
         checkPerms();
-
-        // Listen for direct open requests from notifications
-        // Listener for real-time notification events while on the dashboard
-        const notificationSub = DeviceEventEmitter.addListener('openVisitDetails', (visitId) => {
-            console.log("[HostDashboard] Real-time Detail Request for ID:", visitId);
-            if (visitId) {
-                // To avoid race conditions with refresh, we use a slight delay
-                setTimeout(() => fetchVisitDetails(visitId), 100);
-            }
-        });
-
-        return () => notificationSub.remove();
     }, [userData?.id]);
 
     const fetchData = async () => {
@@ -252,23 +239,6 @@ export default function HostDashboard({ navigation }) {
     useFocusEffect(
         useCallback(() => {
             fetchData();
-            
-            // Check for any visit that was tapped earlier
-            const checkPendingVisit = async (retries = 3) => {
-                try {
-                    const pendingId = await AsyncStorage.getItem('pending_visit_id');
-                    if (pendingId) {
-                        console.log("[HostDashboard] Found pending visit ID in storage:", pendingId);
-                        await AsyncStorage.removeItem('pending_visit_id');
-                        fetchVisitDetails(pendingId);
-                    } else if (retries > 0) {
-                        // Small retry to account for AsyncStorage write latency after tap
-                        setTimeout(() => checkPendingVisit(retries - 1), 700);
-                    }
-                } catch (e) { }
-            };
-            checkPendingVisit();
-
             const interval = setInterval(fetchData, 10000);
             return () => clearInterval(interval);
         }, [loading])

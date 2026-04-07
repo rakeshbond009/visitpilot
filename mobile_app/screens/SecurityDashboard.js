@@ -136,14 +136,6 @@ export default function SecurityDashboard({ navigation }) {
             // Wait a bit to ensure UI is ready
             setTimeout(() => checkOverlayPermission(userData.id), 2000);
         }
-
-        // Listen for direct open requests from notifications
-        const notificationSub = DeviceEventEmitter.addListener('openVisitDetails', (visitId) => {
-            console.log("[SecurityDashboard] Received openVisitDetails for ID:", visitId);
-            if (visitId) fetchVisitDetails(visitId);
-        });
-
-        return () => notificationSub.remove();
     }, [userData?.id]);
 
     const fetchVisitDetails = async (visitId) => {
@@ -265,22 +257,6 @@ export default function SecurityDashboard({ navigation }) {
     useFocusEffect(
         useCallback(() => {
             fetchData();
-
-            // Check for any visit that needs to be opened (from notification tap)
-            const checkPendingVisit = async (retries = 3) => {
-                try {
-                    const pendingId = await AsyncStorage.getItem('pending_visit_id');
-                    if (pendingId) {
-                        console.log("[SecurityDashboard] Opening pending visit:", pendingId);
-                        await AsyncStorage.removeItem('pending_visit_id');
-                        fetchVisitDetails(pendingId);
-                    } else if (retries > 0) {
-                        setTimeout(() => checkPendingVisit(retries - 1), 500);
-                    }
-                } catch (e) { }
-            };
-            checkPendingVisit();
-
             const interval = setInterval(fetchData, 15000);
             return () => clearInterval(interval);
         }, [])

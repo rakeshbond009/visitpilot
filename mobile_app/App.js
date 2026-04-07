@@ -120,19 +120,14 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
-        // In FCM, data can be in raw.data or directly in raw
         let data = raw.data || raw.params || raw;
-        
-        // Handle double-encoded JSON strings which sometimes happen with FCM
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        // Try to find visit_id in common locations
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
 
-        // If still not found, check if it's buried in the body string
-        if (!visit_id && data.body && typeof data.body === 'string' && data.body.includes('{')) {
+        if (!visit_id && data.body) {
             try {
                 const parsedBody = JSON.parse(data.body);
                 visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
@@ -140,27 +135,15 @@ function AppContent() {
             } catch (e) { }
         }
 
-        // ONE MORE TRY: Check notification.data if it exists
-        if (!visit_id && raw.notification?.data) {
-            const extraData = raw.notification.data;
-            visit_id = extraData.visit_id || extraData.visitId || extraData.id;
-            data = { ...data, ...extraData };
-        }
-
-        if (!visit_id) {
-            console.log("[Notification] No visit_id found in payload:", JSON.stringify(data));
-        }
-
         return {
-            visit_id: visit_id ? String(visit_id) : null,
+            visit_id: visit_id,
             name: data.visitor_name || data.name || data.title || "Unknown Visitor",
             mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
             photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || (visit_id && !data.visitor_name ? "approval_status" : "visitor_arrival"),
-            is_call_priority: data.is_call_priority === 'true' || data.is_call_priority === true || data.type === 'visitor_arrival'
+            type: data.type || "visitor_arrival"
         };
     };
 
@@ -252,16 +235,8 @@ function AppContent() {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
                     const data = standardizeArrivalData(response.notification.request.content.data);
-                    if (data) {
-                        if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
-                            setArrivalData(data); setShowOverlay(true); return true;
-                        } else if (data.type === 'approval_status') {
-                            if (data.visit_id) {
-                                await AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
-                                DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                                return true;
-                            }
-                        }
+                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                        setArrivalData(data); setShowOverlay(true); return true;
                     }
                 }
 
@@ -284,56 +259,16 @@ function AppContent() {
         setTimeout(() => clearInterval(poll), 10000);
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
-            console.log("[Notification] Received in foreground:", JSON.stringify(n.request.content.data));
             const data = standardizeArrivalData(n.request.content.data);
-            if (data) {
-                if (data.type === 'visitor_arrival' || data.is_call_priority) {
-                    setArrivalData(data); setShowOverlay(true);
-                } else {
-                    // Show a notification banner/alert for status updates
-                    Alert.alert(
-                        n.request.content.title || "Visit Update",
-                        n.request.content.body || "A visit status has been updated.",
-                        [
-                            { text: "Dismiss", style: "cancel" },
-                            { 
-                                text: "View Details", 
-                                onPress: () => {
-                                    if (data.visit_id) {
-                                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                                    }
-                                }
-                            }
-                        ]
-                    );
-                }
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            console.log("[Notification] Tapped:", JSON.stringify(r.notification.request.content.data));
             const data = standardizeArrivalData(r.notification.request.content.data);
-            if (data) {
-                if (data.type === 'visitor_arrival' || data.is_call_priority) {
-                    setArrivalData(data); setShowOverlay(true);
-                } else if (data.visit_id) {
-                    // Tap from outside -> Store for DASHBOARD to pick up
-                    AsyncStorage.setItem('pending_visit_id', String(data.visit_id))
-                        .then(() => {
-                            DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                        });
-                }
-            }
-        });
-
-        // CRITICAL: Check if app was opened FROM a killed state by a notification
-        Notifications.getLastNotificationResponseAsync().then(r => {
-            if (r?.notification?.request?.content?.data) {
-                console.log("[Notification] Initial tap detected:", JSON.stringify(r.notification.request.content.data));
-                const data = standardizeArrivalData(r.notification.request.content.data);
-                if (data && data.visit_id && data.type !== 'visitor_arrival') {
-                    AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
-                }
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+                setArrivalData(data); setShowOverlay(true);
             }
         });
 

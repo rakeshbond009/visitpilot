@@ -10,7 +10,24 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.codepilot.vms",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to scan visitor QR codes and take visitor photos.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to save or upload visitor identification."
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d839753e-5116-49cd-b79d-754e9ae05c9b"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d839753e-5116-49cd-b79d-754e9ae05c9b"
+      }
     },
     "android": {
       "package": "com.codepilot.vms",

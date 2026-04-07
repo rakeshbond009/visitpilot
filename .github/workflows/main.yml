@@ -1,0 +1,79 @@
+name: CI/CD VisitPilot
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # This adds a "Run Workflow" button in GitHub to trigger manual builds
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - android
+        - ios
+        - all
+
+jobs:
+  update:
+    name: Expo OTA Update (No Re-install)
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+          cache-dependency-path: mobile_app/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          cd mobile_app
+          npm install
+
+      - name: Publish Update (OTA)
+        run: |
+          cd mobile_app
+          eas update --auto --non-interactive --branch production
+
+  build:
+    name: Full App Build (APK/IPA)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+          cache-dependency-path: mobile_app/package-lock.json
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          cd mobile_app
+          npm install
+
+      - name: Build App
+        run: |
+          cd mobile_app
+          eas build --platform ${{ github.event.inputs.platform }} --profile preview --non-interactive
