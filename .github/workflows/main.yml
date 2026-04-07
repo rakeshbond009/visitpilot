@@ -75,14 +75,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install dependencies
+      - name: Build Android APK
         run: |
           cd mobile_app
           npm install
-
-      - name: Build APK
-        run: |
-          cd mobile_app
+          npx expo prebuild --platform android --clean
           eas build --platform android --profile preview --local --non-interactive
 
       - name: Upload APK
