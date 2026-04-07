@@ -120,13 +120,16 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
+        // Data can be in nested formats depending on Expo/FCM versions
         let data = raw.data || raw.params || raw;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
+        // Extract Visit ID (handles various casing and nesting)
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
 
+        // Try parsing body if it's a JSON string
         if (!visit_id && data.body) {
             try {
                 const parsedBody = JSON.parse(data.body);
@@ -143,7 +146,8 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival"
+            type: data.type || (data.status ? `visit_${data.status}` : "visitor_arrival"),
+            is_call_priority: data.is_call_priority === 'true' || data.type === 'visitor_arrival'
         };
     };
 
@@ -260,15 +264,31 @@ function AppContent() {
 
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
             const data = standardizeArrivalData(n.request.content.data);
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+            if (data && data.is_call_priority) {
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && data.visit_id) {
+                // For non-call notifications (e.g. status updates) in foreground
+                Alert.alert(
+                    n.request.content.title || "Notification",
+                    n.request.content.body || "Status updated",
+                    [
+                        { text: "Later", style: "cancel" },
+                        { 
+                            text: "View Details", 
+                            onPress: () => DeviceEventEmitter.emit('navigateToVisit', { visitId: data.visit_id })
+                        }
+                    ]
+                );
             }
         });
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
             const data = standardizeArrivalData(r.notification.request.content.data);
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+            if (data && data.is_call_priority) {
                 setArrivalData(data); setShowOverlay(true);
+            } else if (data && data.visit_id) {
+                // Navigate to Security Dashboard to show details
+                DeviceEventEmitter.emit('navigateToVisit', { visitId: data.visit_id });
             }
         });
 

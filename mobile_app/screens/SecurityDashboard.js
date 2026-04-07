@@ -138,6 +138,15 @@ export default function SecurityDashboard({ navigation }) {
         }
     }, [userData?.id]);
 
+    useEffect(() => {
+        const navSub = DeviceEventEmitter.addListener('navigateToVisit', (data) => {
+            if (data?.visitId) {
+                fetchVisitDetails(data.visitId);
+            }
+        });
+        return () => navSub.remove();
+    }, []);
+
     const fetchVisitDetails = async (visitId) => {
         try {
             setLoading(true);
