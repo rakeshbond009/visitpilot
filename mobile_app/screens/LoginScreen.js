@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import Constants from 'expo-constants';
+
 import {
     StyleSheet,
     View,
@@ -188,10 +190,11 @@ export default function LoginScreen({ navigation }) {
         >
             <View style={styles.innerContainer}>
                 <View style={styles.header}>
-                    <Text style={{ fontSize: 10, color: '#adb5bd', fontWeight: 'bold', marginBottom: 5 }}>{APP_VERSION}</Text>
+                    <Text style={{ fontSize: 10, color: '#ff00ff', fontWeight: '900', marginBottom: 5 }}>
+                        BUILD: {Constants.expoConfig.version} (VC:{Constants.expoConfig.android.versionCode})
+                    </Text>
                     <Text style={[styles.title, { color: '#ff00ff' }]}>VisitPilot !!!</Text>
                     <Text style={styles.subtitle}>STATIC UPDATE TEST: SUCCESSFUL</Text>
-
                 </View>
 
                 <View style={styles.form}>
