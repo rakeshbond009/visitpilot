@@ -12,7 +12,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Components
 import IncomingCallScreen from './components/IncomingCallScreen';
 import { APP_VERSION } from './constants';
-import { BUILD_ID } from './buildinfo';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND_NOTIFICATION_TASK';
 
@@ -126,10 +125,8 @@ function AppContent() {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
-        // Extract Visit ID (handles various casing and nesting)
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
 
-        // Try parsing body if it's a JSON string
         if (!visit_id && data.body) {
             try {
                 const parsedBody = JSON.parse(data.body);
@@ -146,8 +143,7 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || (data.status ? 'approval_status' : 'visitor_arrival'),
-            is_call_priority: String(data.is_call_priority) === 'true' || data.type === 'visitor_arrival' || !data.status
+            type: data.type || "visitor_arrival"
         };
     };
 
@@ -403,9 +399,6 @@ function AppContent() {
                     }}
                 />
             )}
-            <View style={{ padding: 10, alignItems: 'center' }}>
-                <Text style={{ fontSize: 10, color: '#94a3b8' }}>{APP_VERSION} • {BUILD_ID}</Text>
-            </View>
         </View>
     );
 }

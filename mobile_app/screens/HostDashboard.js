@@ -57,7 +57,7 @@ const getPhotoUrl = (path) => {
 
     // Construct the full URL
     const baseUrl = CONFIG.API_BASE_URL.endsWith('/') ? CONFIG.API_BASE_URL : `${CONFIG.API_BASE_URL}/`;
-    
+
     // Final encoded URL to handle spaces/special chars
     return encodeURI(`${baseUrl}${cleanPath}`);
 };
