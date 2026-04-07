@@ -188,7 +188,30 @@ export default function LoginScreen({ navigation }) {
             style={styles.container}
         >
             <View style={styles.innerContainer}>
+                {/* HARDCORE VISIBLE SYNC BADGE */}
+                <View style={{
+                    position: 'absolute',
+                    top: 40,
+                    right: 20,
+                    backgroundColor: '#ff3b30',
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                    zIndex: 9999,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    elevation: 10,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 5,
+                }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff', marginRight: 8 }} />
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900' }}>{BUILD_ID}</Text>
+                </View>
+
                 <View style={styles.header}>
+
                     <Text style={{ fontSize: 10, color: '#adb5bd', fontWeight: '800', marginBottom: 5 }}>
                         {APP_VERSION} | {BUILD_ID}
                     </Text>

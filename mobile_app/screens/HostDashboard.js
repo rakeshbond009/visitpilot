@@ -1418,7 +1418,24 @@ export default function HostDashboard({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
+                {/* HARDCORE SYNC BADGE */}
+                <View style={{
+                    position: 'absolute',
+                    top: 15,
+                    right: 15,
+                    backgroundColor: '#10b981',
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 12,
+                    borderWidth: 2,
+                    borderColor: '#fff',
+                    zIndex: 9999,
+                    elevation: 5,
+                }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>SYNC: {BUILD_ID}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
+
                     <Text style={styles.greeting}>Host Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION} | {BUILD_ID}</Text>

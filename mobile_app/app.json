@@ -3,7 +3,7 @@
     "name": "VisitPilot",
     "slug": "visitpilot",
     "owner": "codepilotx",
-    "version": "1.0.3",
+    "version": "1.0.2",
 
     "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
@@ -24,7 +24,8 @@
     "updates": {
       "url": "https://u.expo.dev/d839753e-5116-49cd-b79d-754e9ae05c9b"
     },
-    "runtimeVersion": "1.0.3",
+    "runtimeVersion": "1.0.2",
+
 
     "extra": {
       "eas": {
