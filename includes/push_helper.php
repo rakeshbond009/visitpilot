@@ -73,11 +73,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                 ],
                 'android' => [
                     'priority' => 'high',
-                    'ttl' => '0s',
-                    'notification' => [
-                        'channel_id' => 'vms_urgent_alerts_v2',
-                        'sound' => 'default'
-                    ]
+                    'ttl' => '0s'
                 ]
             ]
         ];
@@ -372,7 +368,7 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
                     'priority' => 'high',
                     'notification' => [
                         'click_action' => 'visit_update_action',
-                        'channel_id' => 'vms_urgent_alerts_v2',
+                        'channel_id' => 'default',
                         'sound' => 'default'
                     ]
                 ]

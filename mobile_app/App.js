@@ -152,8 +152,8 @@ function AppContent() {
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival",
-            is_call_priority: String(data.is_call_priority) === 'true'
+            type: data.type || (visit_id && !data.visitor_name ? "approval_status" : "visitor_arrival"),
+            is_call_priority: data.is_call_priority === 'true' || data.is_call_priority === true
         };
     };
 
@@ -283,23 +283,11 @@ function AppContent() {
                 if (data.type === 'visitor_arrival' || data.is_call_priority) {
                     setArrivalData(data); setShowOverlay(true);
                 } else if (data.type === 'approval_status' || data.type === 'visit_update') {
-                    // In foreground - show a simple Alert
-                    Alert.alert(
-                        n.request.content.title || "Visit Update",
-                        n.request.content.body || "A visit status has been updated.",
-                        [
-                            { text: "Dismiss", style: "cancel" },
-                            { 
-                                text: "View Details", 
-                                onPress: () => {
-                                    if (data.visit_id) {
-                                        console.log("[Notification] Emitting openVisitDetails from foreground alert:", data.visit_id);
-                                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
-                                    }
-                                }
-                            }
-                        ]
-                    );
+                    // In foreground - Emit directly to open modal if possible
+                    if (data.visit_id) {
+                        console.log("[Notification] Auto-emitting openVisitDetails in foreground:", data.visit_id);
+                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                    }
                 }
             }
         });
@@ -313,7 +301,7 @@ function AppContent() {
                 } else if (data.type === 'approval_status' || data.type === 'visit_update') {
                     // Tapped from background/killed
                     if (data.visit_id) {
-                        console.log("[Notification] Storing pending_visit_id and emitting openVisitDetails:", data.visit_id);
+                        console.log("[Notification] Storing pending_visit_id for deep link:", data.visit_id);
                         AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
                         DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
                     }
