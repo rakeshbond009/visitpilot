@@ -4,7 +4,6 @@
     "slug": "visitpilot",
     "owner": "codepilotx",
     "version": "1.0.2",
-
     "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -25,8 +24,6 @@
       "url": "https://u.expo.dev/d839753e-5116-49cd-b79d-754e9ae05c9b"
     },
     "runtimeVersion": "1.0.2",
-
-
     "extra": {
       "eas": {
         "projectId": "d839753e-5116-49cd-b79d-754e9ae05c9b"
@@ -34,8 +31,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 3,
-
+      "versionCode": 2,
       "allowBackup": false,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",

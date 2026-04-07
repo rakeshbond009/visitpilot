@@ -29,8 +29,7 @@ import { CONFIG } from '../utils/config';
 import { checkOverlayPermission } from '../utils/notificationManager';
 import { usePermissions } from '../context/PermissionContext';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { APP_VERSION, BUILD_ID } from '../constants';
-
+import { APP_VERSION } from '../constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,7 +57,7 @@ const getPhotoUrl = (path) => {
 
     // Construct the full URL
     const baseUrl = CONFIG.API_BASE_URL.endsWith('/') ? CONFIG.API_BASE_URL : `${CONFIG.API_BASE_URL}/`;
-    
+
     // Final encoded URL to handle spaces/special chars
     return encodeURI(`${baseUrl}${cleanPath}`);
 };
@@ -1418,27 +1417,10 @@ export default function HostDashboard({ navigation }) {
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
-                {/* HARDCORE SYNC BADGE */}
-                <View style={{
-                    position: 'absolute',
-                    top: 15,
-                    right: 15,
-                    backgroundColor: '#10b981',
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 12,
-                    borderWidth: 2,
-                    borderColor: '#fff',
-                    zIndex: 9999,
-                    elevation: 5,
-                }}>
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>SYNC: {BUILD_ID}</Text>
-                </View>
                 <View style={{ flex: 1 }}>
-
                     <Text style={styles.greeting}>Host Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
-                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION} | {BUILD_ID}</Text>
+                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
@@ -1483,7 +1465,8 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
     loadingText: { marginTop: 15, color: '#64748b', fontWeight: '500' },
-    header: { flexDirection: 'row', padding: 20, backgroundColor: '#fff', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    header: { flexDirection: 'row', padding: 20, backgroundColor: '#ffeb3b', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+
     greeting: { fontSize: 13, color: '#64748b', fontWeight: '500' },
     userName: { fontSize: 22, fontWeight: '800', color: '#1e293b' },
     logoutBtn: { backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },

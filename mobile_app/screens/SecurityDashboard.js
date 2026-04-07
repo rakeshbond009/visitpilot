@@ -24,8 +24,7 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import apiClient, { logout } from '../utils/apiClient';
 import { CONFIG } from '../utils/config';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { APP_VERSION, BUILD_ID } from '../constants';
-
+import { APP_VERSION } from '../constants';
 import { usePermissions } from '../context/PermissionContext';
 import VisitDetailModal from '../components/VisitDetailModal';
 import VisitListModal from '../components/VisitListModal';
@@ -1583,7 +1582,7 @@ export default function SecurityDashboard({ navigation }) {
                 <View style={{ flex: 1 }}>
                     <Text style={styles.greeting}>Security Portal</Text>
                     <Text style={styles.userName}>{userData?.full_name || 'Officer'}</Text>
-                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION} | {BUILD_ID}</Text>
+                    <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
                 <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
                     <Text style={styles.logoutText}>Logout</Text>
