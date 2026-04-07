@@ -33,10 +33,7 @@ import RegisterVisitor from './screens/RegisterVisitor';
 import VisitorReports from './screens/VisitorReports';
 import EmployeeReport from './screens/EmployeeReport';
 import MyVisitorsHistory from './screens/MyVisitorsHistory';
-// VisitDetailScreen removed — dashboards open VisitDetailModal directly via DeviceEventEmitter
 import ComingSoon from './screens/ComingSoon';
-
-const navigationRef = React.createRef();
 
 // Context
 import { PermissionProvider, usePermissions } from './context/PermissionContext';
@@ -123,14 +120,19 @@ function AppContent() {
 
     const standardizeArrivalData = (raw) => {
         if (!raw) return null;
+        // In FCM, data can be in raw.data or directly in raw
         let data = raw.data || raw.params || raw;
+        
+        // Handle double-encoded JSON strings which sometimes happen with FCM
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) { }
         }
 
+        // Try to find visit_id in common locations
         let visit_id = data.visit_id || data.visitId || data.id || raw.visit_id || raw.visitId || raw.id;
 
-        if (!visit_id && data.body) {
+        // If still not found, check if it's buried in the body string
+        if (!visit_id && data.body && typeof data.body === 'string' && data.body.includes('{')) {
             try {
                 const parsedBody = JSON.parse(data.body);
                 visit_id = parsedBody.visit_id || parsedBody.visitId || parsedBody.id;
@@ -138,15 +140,20 @@ function AppContent() {
             } catch (e) { }
         }
 
+        if (!visit_id) {
+            console.log("[Notification] No visit_id found in payload:", JSON.stringify(data));
+        }
+
         return {
-            visit_id: visit_id,
+            visit_id: visit_id ? String(visit_id) : null,
             name: data.visitor_name || data.name || data.title || "Unknown Visitor",
             mobile: data.visitor_mobile || data.mobile || data.phone || data.visitorMobile || "",
             photo: data.visitor_photo || data.photo_url || data.photo || data.visitorPhoto,
             company: data.company || data.organization || data.visitor_company || "General Visitor",
             purpose: data.purpose || data.reason || data.body || "General Visit",
             assets_carried: data.assets_carried || data.assets || data.asset || "None",
-            type: data.type || "visitor_arrival"
+            type: data.type || "visitor_arrival",
+            is_call_priority: String(data.is_call_priority) === 'true'
         };
     };
 
@@ -238,15 +245,16 @@ function AppContent() {
                 const response = await Notifications.getLastNotificationResponseAsync();
                 if (response) {
                     const data = standardizeArrivalData(response.notification.request.content.data);
-                    if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                        setArrivalData(data); setShowOverlay(true); return true;
-                    } else if (data && data.type === 'visit_update') {
-                        // Killed-state tap: dashboard not mounted yet — store for it to pick up on focus
-                        const visitId = String(data.visit_id || '');
-                        if (visitId) {
-                            await AsyncStorage.setItem('pending_visit_detail_id', visitId);
+                    if (data) {
+                        if (data.type === 'visitor_arrival' || data.is_call_priority === 'true') {
+                            setArrivalData(data); setShowOverlay(true); return true;
+                        } else if (data.type === 'approval_status') {
+                            if (data.visit_id) {
+                                await AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
+                                DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                                return true;
+                            }
                         }
-                        return true;
                     }
                 }
 
@@ -268,53 +276,47 @@ function AppContent() {
         }, 2000);
         setTimeout(() => clearInterval(poll), 10000);
 
-        // FOREGROUND: Handle notification received while app is open
         notificationListener.current = Notifications.addNotificationReceivedListener(n => {
-            const raw = n.request.content;
-            const data = standardizeArrivalData(raw.data);
-
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                // Visitor arrival: show full-screen call overlay
-                setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.type === 'visit_update') {
-                // Status update: emit event so active dashboard opens its VisitDetailModal
-                const visitId = String(data.visit_id || '');
-                if (visitId) {
-                    DeviceEventEmitter.emit('openVisitDetail', { visit_id: visitId });
-                } else {
-                    // Fallback: plain alert if no visit_id
+            console.log("[Notification] Received in foreground:", JSON.stringify(n.request.content.data));
+            const data = standardizeArrivalData(n.request.content.data);
+            if (data) {
+                if (data.type === 'visitor_arrival' || data.is_call_priority) {
+                    setArrivalData(data); setShowOverlay(true);
+                } else if (data.type === 'approval_status' || data.type === 'visit_update') {
+                    // In foreground - show a simple Alert
                     Alert.alert(
-                        raw.title || 'Visit Update',
-                        raw.body || 'Your visit status has been updated.',
-                        [{ text: 'OK', style: 'default' }]
+                        n.request.content.title || "Visit Update",
+                        n.request.content.body || "A visit status has been updated.",
+                        [
+                            { text: "Dismiss", style: "cancel" },
+                            { 
+                                text: "View Details", 
+                                onPress: () => {
+                                    if (data.visit_id) {
+                                        console.log("[Notification] Emitting openVisitDetails from foreground alert:", data.visit_id);
+                                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                                    }
+                                }
+                            }
+                        ]
                     );
                 }
             }
         });
 
-        // BACKGROUND/KILLED TAP: Handle user tapping a notification
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
-            const raw = r.notification.request.content;
-            const data = standardizeArrivalData(raw.data);
-
-            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
-                // Visitor arrival tap: show call overlay
-                setArrivalData(data); setShowOverlay(true);
-            } else if (data && data.type === 'visit_update') {
-                // Status update tap: store visit_id so active dashboard opens its VisitDetailModal
-                const visitId = String(data.visit_id || '');
-                if (visitId) {
-                    // Persist for killed-state recovery (dashboard reads on focus)
-                    AsyncStorage.setItem('pending_visit_detail_id', visitId).catch(() => {});
-                    // Also emit immediately in case app is just in background and dashboard is mounted
-                    const tryEmit = (attempts = 0) => {
-                        DeviceEventEmitter.emit('openVisitDetail', { visit_id: visitId });
-                        // Re-emit a few times to ensure the mounted dashboard catches it
-                        if (attempts < 3) {
-                            setTimeout(() => tryEmit(attempts + 1), 600);
-                        }
-                    };
-                    tryEmit();
+            console.log("[Notification] Tapped/Responded:", JSON.stringify(r.notification.request.content.data));
+            const data = standardizeArrivalData(r.notification.request.content.data);
+            if (data) {
+                if (data.type === 'visitor_arrival' || data.is_call_priority) {
+                    setArrivalData(data); setShowOverlay(true);
+                } else if (data.type === 'approval_status' || data.type === 'visit_update') {
+                    // Tapped from background/killed
+                    if (data.visit_id) {
+                        console.log("[Notification] Storing pending_visit_id and emitting openVisitDetails:", data.visit_id);
+                        AsyncStorage.setItem('pending_visit_id', String(data.visit_id));
+                        DeviceEventEmitter.emit('openVisitDetails', data.visit_id);
+                    }
                 }
             }
         });
@@ -376,7 +378,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking} ref={navigationRef}>
+            <NavigationContainer linking={linking}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

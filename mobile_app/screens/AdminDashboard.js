@@ -17,7 +17,7 @@ import {
     Linking,
     TextInput,
     Platform,
-    DeviceEventEmitter,
+    DeviceEventEmitter
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -320,35 +320,37 @@ export default function AdminDashboard({ navigation }) {
             // Wait a bit to ensure UI is ready
             setTimeout(() => checkOverlayPermission(userData.id), 2000);
         }
+
+        // Listen for direct open requests from notifications
+        const notificationSub = DeviceEventEmitter.addListener('openVisitDetails', (visitId) => {
+            console.log("[AdminDashboard] Received openVisitDetails for ID:", visitId);
+            if (visitId) fetchVisitDetails(visitId);
+        });
+
+        return () => notificationSub.remove();
     }, [userData?.id]);
 
     useFocusEffect(
         useCallback(() => {
             fetchData();
+
+            // Check for any visit that needs to be opened (from notification tap)
+            const checkPendingVisit = async () => {
+                try {
+                    const pendingId = await AsyncStorage.getItem('pending_visit_id');
+                    if (pendingId) {
+                        console.log("[AdminDashboard] Opening pending visit from storage:", pendingId);
+                        await AsyncStorage.removeItem('pending_visit_id');
+                        fetchVisitDetails(pendingId);
+                    }
+                } catch (e) { }
+            };
+            checkPendingVisit();
+
             const interval = setInterval(fetchData, 30000); // Admin data updates less frequently
-
-            // Check for pending visit_id from notification tap
-            AsyncStorage.getItem('pending_visit_detail_id').then(pendingId => {
-                if (pendingId) {
-                    AsyncStorage.removeItem('pending_visit_detail_id');
-                    fetchVisitDetails(pendingId);
-                }
-            }).catch(() => {});
-
             return () => clearInterval(interval);
         }, [])
     );
-
-    // Listen for real-time visit_update events (foreground notifications)
-    useEffect(() => {
-        const sub = DeviceEventEmitter.addListener('openVisitDetail', ({ visit_id }) => {
-            if (visit_id) {
-                AsyncStorage.removeItem('pending_visit_detail_id').catch(() => {});
-                fetchVisitDetails(visit_id);
-            }
-        });
-        return () => sub.remove();
-    }, []);
 
     const onRefresh = async () => {
         setRefreshing(true);
@@ -531,7 +533,7 @@ export default function AdminDashboard({ navigation }) {
                         onPress={() => handleRecordClick(item, 'visits')}
                     >
                         <View style={styles.activityPhotoContainer}>
-                            { (item.photo_url || item.visit_photo || item.photo_path) ? (
+                            {(item.photo_url || item.visit_photo || item.photo_path) ? (
                                 <Image
                                     source={{ uri: getPhotoUrl(item.photo_url || item.visit_photo || item.photo_path) }}
                                     style={styles.miniVisitorPhoto}
@@ -786,7 +788,7 @@ export default function AdminDashboard({ navigation }) {
 
                     <View style={styles.visitorMainInfo}>
                         <View style={styles.photoContainer}>
-                            { (v.photo_url || v.visit_photo || v.photo_path) ? (
+                            {(v.photo_url || v.visit_photo || v.photo_path) ? (
                                 <Image
                                     source={{ uri: getPhotoUrl(v.photo_url || v.visit_photo || v.photo_path) }}
                                     style={styles.visitorPhoto}

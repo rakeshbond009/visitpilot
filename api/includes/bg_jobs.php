@@ -122,16 +122,18 @@ function runJob_approveVisit($pdo, $payload)
         error_log("[BG] WhatsApp approve error: " . $e->getMessage());
     }
 
-    // 3. FCM to security
+    // 3. FCM to entry creator
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        sendPushNotificationToRole(
-            $pdo,
-            'security',
-            'Visit Approved',
-            "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.",
-            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
-        );
+        if (!empty($visit['created_by'])) {
+            sendPushNotificationToUser(
+                $pdo,
+                $visit['created_by'],
+                'Visit Approved',
+                "Host {$visit['host_name']} approved visit for {$visit['visitor_name']}.",
+                ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+            );
+        }
     } catch (Throwable $e) {
         error_log("[BG] FCM approve error: " . $e->getMessage());
     }
@@ -169,13 +171,15 @@ function runJob_rejectVisit($pdo, $payload)
 
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        sendPushNotificationToRole(
-            $pdo,
-            'security',
-            'Visit Rejected',
-            "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.",
-            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
-        );
+        if (!empty($visit['created_by'])) {
+            sendPushNotificationToUser(
+                $pdo,
+                $visit['created_by'],
+                'Visit Rejected',
+                "Host {$visit['host_name']} REJECTED visit for {$visit['visitor_name']}.",
+                ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+            );
+        }
     } catch (Throwable $e) {
         error_log("[BG] FCM reject error: " . $e->getMessage());
     }
@@ -187,6 +191,7 @@ function runJob_cancelInvite($pdo, $payload)
     $visitor_name = $payload['visitor_name'] ?? '';
     $visitor_mobile = $payload['visitor_mobile'] ?? '';
     $host_name = $payload['host_name'] ?? 'your host';
+    $created_by = $payload['created_by'] ?? 0;
 
     try {
         require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
@@ -202,13 +207,15 @@ function runJob_cancelInvite($pdo, $payload)
 
     try {
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        sendPushNotificationToRole(
-            $pdo,
-            'security',
-            'Invitation Cancelled',
-            "Host $host_name CANCELLED invitation for $visitor_name.",
-            ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
-        );
+        if (!empty($created_by)) {
+            sendPushNotificationToUser(
+                $pdo,
+                $created_by,
+                'Invitation Cancelled',
+                "Host $host_name CANCELLED invitation for $visitor_name.",
+                ['visit_id' => (string) $visit_id, 'type' => 'approval_status']
+            );
+        }
     } catch (Throwable $e) {
         error_log("[BG] FCM cancel error: " . $e->getMessage());
     }

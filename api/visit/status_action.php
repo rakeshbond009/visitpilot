@@ -71,6 +71,7 @@ try {
             'visitor_name' => $visitor_info['name'] ?? '',
             'visitor_mobile' => $visitor_info['mobile'] ?? '',
             'host_name' => $visitor_info['host_name'] ?? 'your host',
+            'created_by' => $visitor_info['created_by'] ?? 0,
         ];
         // ⚡ STEP 1: Apache/LSAPI path
         dispatchBackgroundTask('cancel_invite', $bgPayload);
