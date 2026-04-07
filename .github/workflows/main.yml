@@ -47,8 +47,8 @@ jobs:
           cd mobile_app
           # Get current date and time
           BUILD_DATE=$(date +'%d/%m %H:%M')
-          # Use | as delimiter instead of / to avoid conflict with the date slash
-          sed -i "s|APP_VERSION = \"\(.*\)\"|APP_VERSION = \"\1 ($BUILD_DATE)\"|g" constants.js
+          # Overwrite the version line with the fresh time using the marker
+          sed -i "s|.*// CI_VERSION_MARKER|export const APP_VERSION = \"VisitPilot v2.1.4 ($BUILD_DATE)\"; // CI_VERSION_MARKER|g" constants.js
           echo "APP_VERSION updated with: $BUILD_DATE"
 
       - name: Publish Update (OTA)
