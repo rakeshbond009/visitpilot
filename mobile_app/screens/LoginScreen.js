@@ -190,12 +190,16 @@ export default function LoginScreen({ navigation }) {
         >
             <View style={styles.innerContainer}>
                 <View style={styles.header}>
-                    <Text style={{ fontSize: 12, color: '#ff00ff', fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>
-                        VisitPilot v{Constants.expoConfig?.version || '1.0.x'} (Build:{Constants.expoConfig?.android?.versionCode || '?'})
+                    <Text style={{ fontSize: 13, color: '#ff00ff', fontWeight: 'bold', marginBottom: 5, textAlign: 'center' }}>
+                        v{Constants.expoConfig?.version || '1.0.x'} (B:{Constants.expoConfig?.android?.versionCode || '?'})
+                    </Text>
+                    <Text style={{ fontSize: 10, color: '#ff00ff', marginBottom: 10, textAlign: 'center', opacity: 0.8 }}>
+                        Channel: {Updates.channel || 'default'} | RT: {Updates.runtimeVersion || 'none'}
                     </Text>
                     <Text style={[styles.title, { color: '#ff00ff' }]}>VisitPilot !!!</Text>
                     <Text style={styles.subtitle}>STATIC UPDATE TEST: SUCCESSFUL</Text>
                 </View>
+
 
 
                 <View style={styles.form}>

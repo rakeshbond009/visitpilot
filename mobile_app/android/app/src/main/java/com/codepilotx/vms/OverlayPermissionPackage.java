@@ -1,4 +1,4 @@
-package com.codepilot.vms;
+package com.codepilotx.vms;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

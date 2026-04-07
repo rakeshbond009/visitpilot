@@ -1,4 +1,4 @@
-package com.codepilot.vms;
+package com.codepilotx.vms;
 
 import android.app.Activity;
 import android.content.Intent;

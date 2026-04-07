@@ -1,4 +1,4 @@
-package com.codepilot.vms;
+package com.codepilotx.vms;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;

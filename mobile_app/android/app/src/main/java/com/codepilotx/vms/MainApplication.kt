@@ -1,4 +1,4 @@
-package com.codepilot.vms
+package com.codepilotx.vms
 
 import android.app.Application
 import android.content.res.Configuration

@@ -14,7 +14,7 @@ pluginManagement {
   }
 }
 
-rootProject.name = 'CodePilotxVMS'
+rootProject.name = 'VisitPilot'
 
 // plugins { id("com.facebook.react.settings") }
 
