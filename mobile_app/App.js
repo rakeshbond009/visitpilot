@@ -89,8 +89,6 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
 
 const Stack = createStackNavigator();
 
-const navigationRef = React.createRef();
-
 const linking = {
     prefixes: ['https://visitor.visitpilot.com', 'com.codepilotx.vms://', 'visitpilot://'],
     config: {
@@ -269,22 +267,8 @@ function AppContent() {
 
         responseListener.current = Notifications.addNotificationResponseReceivedListener(r => {
             const data = standardizeArrivalData(r.notification.request.content.data);
-            const rawData = r.notification.request.content.data;
-            const type = data?.type || rawData?.type;
-
-            if (data && (type === 'visitor_arrival' || data.is_call_priority === 'true')) {
+            if (data && (data.type === 'visitor_arrival' || data.is_call_priority === 'true')) {
                 setArrivalData(data); setShowOverlay(true);
-            } else if (data?.visit_id) {
-                // If it's an approval/rejection or history notification
-                // Navigate to the dashboard and trigger the modal
-                if (navigationRef.current) {
-                    const targetDashboard = role === 'host' ? 'HostDashboard' : (role === 'security' ? 'SecurityDashboard' : 'AdminDashboard');
-                    navigationRef.current.navigate(targetDashboard);
-                    // Emit event for the dashboard to open the modal
-                    setTimeout(() => {
-                        DeviceEventEmitter.emit('showVisitDetails', { visit_id: data.visit_id });
-                    }, 500);
-                }
             }
         });
 
@@ -345,7 +329,7 @@ function AppContent() {
     return (
         <View style={{ flex: 1 }}>
             <StatusBar style="light" />
-            <NavigationContainer linking={linking} ref={navigationRef}>
+            <NavigationContainer linking={linking}>
                 <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
                     <Stack.Screen name="Login" component={LoginScreen} />
                     <Stack.Screen name="HostDashboard" component={HostDashboard} />

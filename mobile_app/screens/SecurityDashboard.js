@@ -258,18 +258,7 @@ export default function SecurityDashboard({ navigation }) {
         useCallback(() => {
             fetchData();
             const interval = setInterval(fetchData, 15000);
-
-            // Listen for notification clicks
-            const sub = DeviceEventEmitter.addListener('showVisitDetails', (data) => {
-                if (data?.visit_id) {
-                    fetchVisitDetails(data.visit_id);
-                }
-            });
-
-            return () => {
-                clearInterval(interval);
-                sub.remove();
-            };
+            return () => clearInterval(interval);
         }, [])
     );
 
