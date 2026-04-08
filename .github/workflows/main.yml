@@ -64,7 +64,7 @@ jobs:
       - name: Publish Update (OTA)
         run: |
           cd mobile_app
-          eas update --branch preview --non-interactive
+          eas update --branch preview --message "CI/CD: System Updated" --non-interactive
 
   build:
     name: Full App Build (APK/IPA)
