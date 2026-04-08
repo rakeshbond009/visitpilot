@@ -51,15 +51,19 @@ subprojects { subproject ->
                                project.plugins.hasPlugin('com.android.application') ||
                                project.plugins.hasPlugin('com.android.library')
         
-        if (hasAndroidPlugin && project.hasProperty("android")) {
-            project.android {
-                compileOptions {
-                    sourceCompatibility JavaVersion.VERSION_11
-                    targetCompatibility JavaVersion.VERSION_11
+        if (hasAndroidPlugin) {
+            try {
+                project.android {
+                    compileOptions {
+                        sourceCompatibility JavaVersion.VERSION_11
+                        targetCompatibility JavaVersion.VERSION_11
+                    }
+                    kotlinOptions {
+                        jvmTarget = "11"
+                    }
                 }
-                kotlinOptions {
-                    jvmTarget = "11"
-                }
+            } catch (Exception e) {
+                logger.warn("Could not configure Android settings for ${project.name}: ${e.message}")
             }
         }
     }
