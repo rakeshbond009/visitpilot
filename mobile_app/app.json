@@ -5,6 +5,14 @@
     "owner": "codepilotx",
     "version": "1.0.3",
     "runtimeVersion": "1.0.3",
+    "icon": "./assets/icon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -15,7 +23,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 17
+      "versionCode": 19
     },
     "plugins": [
       [
