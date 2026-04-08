@@ -36,7 +36,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 13,
+      "versionCode": 8,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
@@ -49,16 +49,6 @@
       ]
     },
     "plugins": [
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "kotlinOptions": {
-              "jvmTarget": "11"
-            }
-          }
-        }
-      ],
       [
         "expo-notifications",
         {

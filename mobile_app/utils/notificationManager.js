@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from './apiClient';
 
 // For Overlay permission (Appear on top)
-import * as IntentLauncher from 'expo-intent-launcher';
 import { NativeModules } from 'react-native';
 const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 
@@ -25,36 +24,42 @@ export async function checkOverlayPermission(userId = null) {
       }
 
       // 2. If not granted, check if we've already prompted the user to avoid annoyance
-      const storageKey = userId ? `overlay_perm_prompt_v5_${userId}` : 'overlay_perm_prompt_v5_generic';
+      // Note: We use a persistent key that isn't cleared on logout if we use removeItem('userData') instead of clear()
+      const storageKey = userId ? `overlay_perm_prompt_v4_${userId}` : 'overlay_perm_prompt_v4_generic';
 
       const hasRequested = await AsyncStorage.getItem(storageKey);
-      if (hasRequested === 'true') return;
+      console.log(`[Permission Check] User: ${userId}, Key: ${storageKey}, PromptedBefore: ${hasRequested}`);
+
+      if (hasRequested === 'true') {
+        // We already prompted the user once, don't bother them again on every login
+        return;
+      }
 
       // If we are here, we should prompt
       Alert.alert(
         "Enable Full Screen Alerts",
-        "To receive visitor approval calls on your lock screen, you MUST enable 'Appear on top' permission. Click 'Open Settings' and look for 'VisitPilot' in the list.",
+        "To receive visitor approval calls on your lock screen, you MUST enable 'Appear on top' permission. We will now take you to the specific setting to enable it for 'VMS'.",
         [
           {
             text: "Skip",
             style: "cancel",
-            onPress: async () => await AsyncStorage.setItem(storageKey, 'true')
+            onPress: async () => {
+              // Mark as prompted to avoid loop
+              await AsyncStorage.setItem(storageKey, 'true');
+            }
           },
           {
             text: "Open Settings",
             onPress: async () => {
+              // Mark as prompted
               await AsyncStorage.setItem(storageKey, 'true');
+
+              // 3. Open the SPECIFIC overlay settings page instead of generic app settings
               if (Platform.OS === 'android') {
                 const pkg = Constants?.expoConfig?.android?.package || 'com.codepilotx.vms';
-                // Try to open the specific overlay permission page directly
-                try {
-                  await IntentLauncher.startActivityAsync('android.settings.action.MANAGE_OVERLAY_PERMISSION', {
-                    data: `package:${pkg}`,
-                  });
-                } catch (err) {
-                  // Fallback to app settings if direct intent fails
+                RNLinking.openURL(`package:${pkg}`).catch(() => {
                   RNLinking.openSettings();
-                }
+                });
               } else {
                 RNLinking.openSettings();
               }
