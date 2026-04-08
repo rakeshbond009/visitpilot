@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 14,
+      "versionCode": 15,
       "allowBackup": false,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
@@ -40,7 +40,6 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
           "color": "#ffffff"
         }
       ],
