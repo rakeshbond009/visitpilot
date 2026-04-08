@@ -10,10 +10,13 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.codepilotx.vms",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
-      "package": "com.codepilot.vms",
+      "package": "com.codepilotx.vms",
+      "googleServicesFile": "./google-services.json",
       "versionCode": 2,
       "allowBackup": false,
       "adaptiveIcon": {
