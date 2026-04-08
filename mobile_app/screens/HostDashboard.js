@@ -17,6 +17,7 @@ import {
     Pressable,
     TextInput,
     Linking,
+    Animated,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -72,6 +73,8 @@ export default function HostDashboard({ navigation }) {
     const [scheduledVisits, setScheduledVisits] = useState([]);
     const [rejectedVisits, setRejectedVisits] = useState([]);
     const [activeInvites, setActiveInvites] = useState([]);
+    const [records, setRecords] = useState({ visits: [], overstays: [] });
+    const pulseAnim = useRef(new Animated.Value(0.4)).current;
     const [stats, setStats] = useState({ pending: 0, today: 0, invites: 0, completed: 0, avg_time: '0m', rejected: 0 });
     const [aiSuggestion, setAiSuggestion] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
@@ -1419,7 +1422,11 @@ export default function HostDashboard({ navigation }) {
             <StatusBar barStyle="dark-content" />
             <View style={styles.header}>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.greeting}>Host Portal</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.greeting}>Host Portal</Text>
+                        <Animated.View style={[styles.liveIndicator, { opacity: pulseAnim }]} />
+                        <Text style={{ fontSize: 8, color: '#3b82f6', fontWeight: 'bold' }}>CLOUD MANAGED</Text>
+                    </View>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
@@ -1480,6 +1487,17 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
     loadingText: { marginTop: 15, color: '#64748b', fontWeight: '500' },
     header: { flexDirection: 'row', padding: 20, backgroundColor: '#fff', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    liveIndicator: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#3b82f6',
+        shadowColor: '#3b82f6',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 6,
+        elevation: 3,
+    },
     headerRight: { alignItems: 'flex-end', gap: 4 },
     greeting: { fontSize: 13, color: '#64748b', fontWeight: '500' },
     userName: { fontSize: 22, fontWeight: '800', color: '#1e293b' },
