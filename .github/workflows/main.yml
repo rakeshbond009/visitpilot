@@ -61,10 +61,12 @@ jobs:
           cd mobile_app
           npm install --frozen-lockfile || npm install
 
-      - name: Publish Update (OTA)
+      - name: Link and Publish Update
         run: |
           cd mobile_app
-          eas update --channel preview --message "CI/CD: Final Sync" --non-interactive
+          # This forces the 'preview' channel to point to the 'preview' branch
+          npx eas-cli channel:edit preview --branch preview --non-interactive || npx eas-cli channel:create preview --branch preview --non-interactive
+          npx eas-cli update --branch preview --message "CI/CD: Explicit Link" --non-interactive
 
   build:
     name: Full App Build (APK/IPA)
