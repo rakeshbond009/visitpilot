@@ -68,6 +68,7 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
             console.error("[BG Task] Storage Error:", storageErr.message);
         }
 
+        // Force wake the activity using the native module
         if (OverlayPermissionModule && OverlayPermissionModule.wakeUpApp) {
             OverlayPermissionModule.wakeUpApp();
         }
