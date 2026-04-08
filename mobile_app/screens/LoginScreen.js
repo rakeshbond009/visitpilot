@@ -188,7 +188,7 @@ export default function LoginScreen({ navigation }) {
         >
             <View style={styles.innerContainer}>
                 <View style={styles.header}>
-                    <Text style={{ fontSize: 10, color: '#adb5bd', fontWeight: 'bold', marginBottom: 5 }}>{APP_VERSION}</Text>
+                    <Text style={{ fontSize: 12, color: '#0d6efd', fontWeight: 'bold', marginBottom: 5 }}>v{APP_VERSION} (HD Edition - Verified)</Text>
                     <Text style={styles.title}>VisitPilot</Text>
                     <Text style={styles.subtitle}>Visitor Management System</Text>
                 </View>

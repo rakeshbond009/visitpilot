@@ -29,6 +29,7 @@ import { CONFIG } from '../utils/config';
 import { checkOverlayPermission } from '../utils/notificationManager';
 import { usePermissions } from '../context/PermissionContext';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { BlurView } from 'expo-blur';
 import { APP_VERSION } from '../constants';
 
 const { width, height } = Dimensions.get('window');
@@ -1422,9 +1423,22 @@ export default function HostDashboard({ navigation }) {
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
-                <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
-                    <Text style={styles.logoutText}>Logout</Text>
-                </TouchableOpacity>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity 
+                        style={styles.glassLogoutContainer} 
+                        onPress={() => logout(navigation)}
+                        activeOpacity={0.7}
+                    >
+                        <BlurView intensity={30} tint="light" style={styles.glassButton}>
+                            <Icon name="logout-variant" size={20} color="#ef4444" />
+                            <Text style={styles.glassLogoutText}>Logout</Text>
+                        </BlurView>
+                    </TouchableOpacity>
+                    <View style={styles.verifiedBadge}>
+                        <Icon name="check-decagram" size={10} color="#10b981" />
+                        <Text style={styles.verifiedBadgeText}>CI/CD LIVE</Text>
+                    </View>
+                </View>
             </View>
             <ScrollView
                 style={{ flex: 1 }}
@@ -1466,10 +1480,46 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
     loadingText: { marginTop: 15, color: '#64748b', fontWeight: '500' },
     header: { flexDirection: 'row', padding: 20, backgroundColor: '#fff', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+    headerRight: { alignItems: 'flex-end', gap: 4 },
     greeting: { fontSize: 13, color: '#64748b', fontWeight: '500' },
     userName: { fontSize: 22, fontWeight: '800', color: '#1e293b' },
-    logoutBtn: { backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-    logoutText: { color: '#ef4444', fontWeight: '700', fontSize: 13 },
+    glassLogoutContainer: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.2)',
+    },
+    glassButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 8,
+        backgroundColor: 'rgba(255, 241, 242, 0.4)',
+    },
+    glassLogoutText: { 
+        color: '#ef4444', 
+        fontWeight: '800', 
+        fontSize: 14, 
+        marginLeft: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5
+    },
+    verifiedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ecfdf5',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        borderWidth: 0.5,
+        borderColor: '#10b981',
+    },
+    verifiedBadgeText: {
+        fontSize: 8,
+        fontWeight: '900',
+        color: '#059669',
+        marginLeft: 3,
+    },
     errorBanner: { backgroundColor: '#ef4444', flexDirection: 'row', alignItems: 'center', padding: 12, margin: 15, borderRadius: 12, gap: 10 },
     errorText: { color: '#fff', flex: 1, fontSize: 13, fontWeight: '600' },
     retryText: { color: '#fff', fontWeight: '800', fontSize: 13, textDecorationLine: 'underline' },

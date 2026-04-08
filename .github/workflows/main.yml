@@ -8,7 +8,7 @@ on:
       platform:
         description: 'Platform to build'
         required: true
-        default: 'all'
+        default: 'android'
         type: choice
         options:
         - android
@@ -16,8 +16,27 @@ on:
         - all
 
 jobs:
+  check_changes:
+    name: Check for Native Changes
+    runs-on: ubuntu-latest
+    outputs:
+      native: ${{ steps.filter.outputs.native }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            native:
+              - 'mobile_app/android/**'
+              - 'mobile_app/ios/**'
+              - 'mobile_app/app.json'
+              - 'mobile_app/package.json'
+              - 'mobile_app/package-lock.json'
+
   update:
-    name: Expo OTA Update (No Re-install)
+    name: Expo OTA Update (JS/UI)
+    needs: check_changes
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -45,12 +64,14 @@ jobs:
       - name: Publish Update (OTA)
         run: |
           cd mobile_app
-          # Using --no-install to prevent EAS from trying to run yarn automatically
           eas update --auto --non-interactive --branch production
 
   build:
     name: Full App Build (APK/IPA)
-    if: github.event_name == 'workflow_dispatch'
+    needs: check_changes
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'push' && needs.check_changes.outputs.native == 'true')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -77,4 +98,6 @@ jobs:
       - name: Build App
         run: |
           cd mobile_app
-          eas build --platform ${{ github.event.inputs.platform }} --profile preview --non-interactive
+          # Default to android if it's a push event, otherwise use the input
+          PLATFORM=${{ github.event.inputs.platform || 'android' }}
+          eas build --platform $PLATFORM --profile preview --non-interactive

@@ -4,9 +4,14 @@
     "slug": "visitpilot",
     "owner": "codepilotx",
     "version": "1.0.2",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/circular-icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/circular-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],

@@ -55,10 +55,12 @@ export async function checkOverlayPermission(userId = null) {
               await AsyncStorage.setItem(storageKey, 'true');
 
               // 3. Open the SPECIFIC overlay settings page instead of generic app settings
-              if (OverlayPermissionModule && OverlayPermissionModule.openOverlaySettings) {
-                OverlayPermissionModule.openOverlaySettings();
+              if (Platform.OS === 'android') {
+                const pkg = Constants?.expoConfig?.android?.package || 'com.codepilotx.vms';
+                RNLinking.openURL(`package:${pkg}`).catch(() => {
+                  RNLinking.openSettings();
+                });
               } else {
-                // Fallback to generic if module fails
                 RNLinking.openSettings();
               }
             }
