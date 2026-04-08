@@ -28,7 +28,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 15,
+      "versionCode": 16,
       "allowBackup": false,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
