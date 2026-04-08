@@ -5,11 +5,11 @@
     "owner": "codepilotx",
     "version": "1.0.3",
     "runtimeVersion": "1.0.3",
-    "icon": "./assets/circular-icon.png",
+    "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/circular-icon.png",
+      "image": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -38,6 +38,10 @@
       "package": "com.codepilotx.vms",
       "versionCode": 4,
       "allowBackup": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.png",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "SYSTEM_ALERT_WINDOW",
