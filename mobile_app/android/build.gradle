@@ -43,28 +43,3 @@ allprojects {
 def expoCameraMavenPath = new File(["node", "--print", "require.resolve('expo-camera/package.json')"].execute(null, rootDir).text.trim(), "../android/maven")
 allprojects { repositories { maven { url(expoCameraMavenPath) } } }
 // @generated end expo-camera-import
-
-subprojects { subproject ->
-    subproject.afterEvaluate { project ->
-        def hasAndroidPlugin = project.plugins.hasPlugin('android') || 
-                               project.plugins.hasPlugin('android-library') ||
-                               project.plugins.hasPlugin('com.android.application') ||
-                               project.plugins.hasPlugin('com.android.library')
-        
-        if (hasAndroidPlugin) {
-            try {
-                project.android {
-                    compileOptions {
-                        sourceCompatibility JavaVersion.VERSION_11
-                        targetCompatibility JavaVersion.VERSION_11
-                    }
-                    kotlinOptions {
-                        jvmTarget = "11"
-                    }
-                }
-            } catch (Exception e) {
-                logger.warn("Could not configure Android settings for ${project.name}: ${e.message}")
-            }
-        }
-    }
-}

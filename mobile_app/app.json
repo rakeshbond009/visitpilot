@@ -16,6 +16,19 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.codepilotx.vms",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app uses the camera to scan visitor QR codes and take visitor photos.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photos to save or upload visitor identification."
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d839753e-5116-49cd-b79d-754e9ae05c9b"
+    },
     "extra": {
       "eas": {
         "projectId": "d839753e-5116-49cd-b79d-754e9ae05c9b"
@@ -23,12 +36,23 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 20
+      "versionCode": 22,
+      "allowBackup": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "SYSTEM_ALERT_WINDOW",
+        "VIBRATE"
+      ]
     },
     "plugins": [
       [
         "expo-notifications",
         {
+          "icon": "./assets/icon.png",
           "color": "#ffffff"
         }
       ],

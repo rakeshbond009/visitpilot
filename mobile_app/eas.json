@@ -11,6 +11,13 @@
                 "buildType": "apk"
             }
         },
+        "apk-debug": {
+            "channel": "preview",
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            }
+        },
         "production": {
             "channel": "production"
         }
