@@ -102,10 +102,4 @@ jobs:
           cd mobile_app
           # Default to android if it's a push event, otherwise use the input
           PLATFORM=${{ github.event.inputs.platform || 'android' }}
-          eas build --platform $PLATFORM --profile apk-debug --non-interactive --local
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release
-          path: mobile_app/**/*.apk
+          eas build --platform $PLATFORM --profile preview --non-interactive --local

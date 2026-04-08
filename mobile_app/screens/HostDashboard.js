@@ -49,17 +49,10 @@ const getStatusColor = (status) => {
 };
 
 const getPhotoUrl = (path) => {
-    if (!path || typeof path !== 'string') return `https://ui-avatars.com/api/?name=Visitor&background=random`;
+    if (!path) return `https://ui-avatars.com/api/?name=Visitor&background=random`;
     if (path.startsWith('http')) return path;
-
-    // Clean the path: remove any leading slashes or backtrack dots
-    const cleanPath = path.replace(/^[\.\/]+/, '');
-
-    // Construct the full URL
-    const baseUrl = CONFIG.API_BASE_URL.endsWith('/') ? CONFIG.API_BASE_URL : `${CONFIG.API_BASE_URL}/`;
-
-    // Final encoded URL to handle spaces/special chars
-    return encodeURI(`${baseUrl}${cleanPath}`);
+    const cleanPath = path.replace(/^(\.\.\/)+/, '');
+    return `${CONFIG.API_BASE_URL}${cleanPath}`;
 };
 
 export default function HostDashboard({ navigation }) {

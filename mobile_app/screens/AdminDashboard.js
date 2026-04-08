@@ -174,17 +174,15 @@ export default function AdminDashboard({ navigation }) {
     };
 
     const getPhotoUrl = (url) => {
-        if (!url || typeof url !== 'string') return null;
+        if (!url) return null;
         if (url.startsWith('http')) return url;
 
-        // Clean the path: remove any leading slashes or backtrack dots
-        let cleanUrl = url.replace(/^[\.\/]+/, '');
+        // Clean the URL: remove leading slash or ../ if present
+        let cleanUrl = url.startsWith('/') ? url.substring(1) : url;
+        cleanUrl = cleanUrl.replace(/^(\.\.\/)+/, '');
 
-        // Construct the full URL
-        const baseUrl = CONFIG.API_BASE_URL.endsWith('/') ? CONFIG.API_BASE_URL : `${CONFIG.API_BASE_URL}/`;
-
-        // Final encoded URL to handle spaces/special chars
-        return encodeURI(`${baseUrl}${cleanUrl}`);
+        // Photos are relative to the root, which matches API_BASE_URL now
+        return `${CONFIG.API_BASE_URL}${cleanUrl}`;
     };
 
     const fetchVisitDetails = async (visitId) => {

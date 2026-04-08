@@ -6,7 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from './apiClient';
 
 // For Overlay permission (Appear on top)
-import * as IntentLauncher from 'expo-intent-launcher';
 import { NativeModules } from 'react-native';
 const OverlayPermissionModule = NativeModules?.OverlayPermissionModule;
 
@@ -58,15 +57,9 @@ export async function checkOverlayPermission(userId = null) {
               // 3. Open the SPECIFIC overlay settings page instead of generic app settings
               if (Platform.OS === 'android') {
                 const pkg = Constants?.expoConfig?.android?.package || 'com.codepilotx.vms';
-                // Try to open the specific overlay permission page directly
-                try {
-                  await IntentLauncher.startActivityAsync('android.settings.action.MANAGE_OVERLAY_PERMISSION', {
-                    data: `package:${pkg}`,
-                  });
-                } catch (err) {
-                  // Fallback to app settings if direct intent fails
+                RNLinking.openURL(`package:${pkg}`).catch(() => {
                   RNLinking.openSettings();
-                }
+                });
               } else {
                 RNLinking.openSettings();
               }
