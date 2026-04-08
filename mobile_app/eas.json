@@ -5,15 +5,12 @@
             "distribution": "internal"
         },
         "preview": {
-            "channel": "preview",
             "distribution": "internal",
             "android": {
                 "buildType": "apk"
             }
         },
-        "production": {
-            "channel": "production"
-        }
+        "production": {}
     },
     "submit": {
         "production": {}

@@ -2,46 +2,27 @@
   "expo": {
     "name": "VisitPilot",
     "slug": "visitpilot",
-    "owner": "codepilotx",
-    "version": "1.0.3",
-    "runtimeVersion": "1.0.3",
-    "icon": "./assets/icon.png",
+    "version": "1.0.2",
+    "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.codepilotx.vms",
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "This app uses the camera to scan visitor QR codes and take visitor photos.",
-        "NSPhotoLibraryUsageDescription": "This app accesses your photos to save or upload visitor identification."
-      }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/d839753e-5116-49cd-b79d-754e9ae05c9b"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "d839753e-5116-49cd-b79d-754e9ae05c9b"
-      }
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.codepilotx.vms",
-      "versionCode": 8,
+      "package": "com.codepilot.vms",
+      "versionCode": 2,
       "allowBackup": false,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
+        "backgroundColor": "#FFFFFF"
       },
+      "queries": [
+        "whatsapp"
+      ],
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "SYSTEM_ALERT_WINDOW",
@@ -52,7 +33,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/app-icon-for-a-visitor-management-system-ultra-hd.jpeg",
           "color": "#ffffff"
         }
       ],
