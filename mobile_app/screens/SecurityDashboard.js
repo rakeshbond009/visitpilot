@@ -22,7 +22,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import apiClient, { logout } from '../utils/apiClient';
-import { BlurView } from 'expo-blur';
 import { CONFIG } from '../utils/config';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { APP_VERSION } from '../constants';
@@ -1585,22 +1584,9 @@ export default function SecurityDashboard({ navigation }) {
                     <Text style={styles.userName}>{userData?.full_name || 'Officer'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
                 </View>
-                <View style={styles.headerRight}>
-                    <TouchableOpacity 
-                        style={styles.glassLogoutContainer} 
-                        onPress={() => logout(navigation)}
-                        activeOpacity={0.7}
-                    >
-                        <BlurView intensity={30} tint="light" style={styles.glassButton}>
-                            <Icon name="logout-variant" size={20} color="#ef4444" />
-                            <Text style={styles.glassLogoutText}>Logout</Text>
-                        </BlurView>
-                    </TouchableOpacity>
-                    <View style={styles.verifiedBadge}>
-                        <Icon name="check-decagram" size={10} color="#10b981" />
-                        <Text style={styles.verifiedBadgeText}>SEC CI/CD</Text>
-                    </View>
-                </View>
+                <TouchableOpacity style={styles.logoutBtn} onPress={() => logout(navigation)}>
+                    <Text style={styles.logoutText}>Logout</Text>
+                </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />} showsVerticalScrollIndicator={false}>
@@ -1743,46 +1729,10 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' },
     loadingText: { marginTop: 15, color: '#64748b', fontWeight: '600' },
     header: { flexDirection: 'row', padding: 20, backgroundColor: '#fff', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-    headerRight: { alignItems: 'flex-end', gap: 4 },
     greeting: { fontSize: 13, color: '#64748b', fontWeight: '500' },
-    userName: { fontSize: 22, fontWeight: '800', color: '#1e293b' },
-    glassLogoutContainer: {
-        borderRadius: 20,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.2)',
-    },
-    glassButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        backgroundColor: 'rgba(255, 241, 242, 0.4)',
-    },
-    glassLogoutText: { 
-        color: '#ef4444', 
-        fontWeight: '800', 
-        fontSize: 14, 
-        marginLeft: 6,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5
-    },
-    verifiedBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#ecfdf5',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 6,
-        borderWidth: 0.5,
-        borderColor: '#10b981',
-    },
-    verifiedBadgeText: {
-        fontSize: 8,
-        fontWeight: '900',
-        color: '#059669',
-        marginLeft: 3,
-    },
+    userName: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
+    logoutBtn: { backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+    logoutText: { color: '#ef4444', fontWeight: '700', fontSize: 12 },
     scrollContent: { paddingBottom: 100 },
     scrollPadding: { paddingHorizontal: 15, paddingTop: 15 },
     metricsGrid: { flexDirection: 'row', gap: 10, marginBottom: 15 },

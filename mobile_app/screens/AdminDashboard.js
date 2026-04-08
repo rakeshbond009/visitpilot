@@ -23,7 +23,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import apiClient, { logout } from '../utils/apiClient';
-import { BlurView } from 'expo-blur';
 import { CONFIG } from '../utils/config';
 import { APP_VERSION } from '../constants';
 import { usePermissions } from '../context/PermissionContext';
@@ -2095,22 +2094,12 @@ export default function AdminDashboard({ navigation }) {
                         >
                             <Icon name="magnify" size={24} color="#3b82f6" />
                         </TouchableOpacity>
-                        <View style={styles.headerRightActions}>
-                            <TouchableOpacity
-                                style={styles.glassLogoutContainer}
-                                onPress={() => logout(navigation)}
-                                activeOpacity={0.7}
-                            >
-                                <BlurView intensity={30} tint="light" style={styles.glassButton}>
-                                    <Icon name="power" size={18} color="#ef4444" />
-                                    <Text style={styles.glassLogoutText}>Logout</Text>
-                                </BlurView>
-                            </TouchableOpacity>
-                            <View style={styles.verifiedBadge}>
-                                <Icon name="check-decagram" size={10} color="#10b981" />
-                                <Text style={styles.verifiedBadgeText}>PRO CI/CD</Text>
-                            </View>
-                        </View>
+                        <TouchableOpacity
+                            style={styles.logoutBtn}
+                            onPress={() => logout(navigation)}
+                        >
+                            <Text style={styles.logoutText}>Logout</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
             </View>
@@ -2279,46 +2268,6 @@ export default function AdminDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    headerRightActions: {
-        alignItems: 'flex-end',
-        gap: 4
-    },
-    glassLogoutContainer: {
-        borderRadius: 20,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.2)',
-    },
-    glassButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: 'rgba(255, 241, 242, 0.4)',
-    },
-    glassLogoutText: { 
-        color: '#ef4444', 
-        fontWeight: '800', 
-        fontSize: 12, 
-        marginLeft: 4,
-        textTransform: 'uppercase'
-    },
-    verifiedBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#ecfdf5',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 6,
-        borderWidth: 0.5,
-        borderColor: '#10b981',
-    },
-    verifiedBadgeText: {
-        fontSize: 8,
-        fontWeight: '900',
-        color: '#059669',
-        marginLeft: 3,
-    },
     fullModalHeader: {
         flexDirection: 'row',
         alignItems: 'center',
