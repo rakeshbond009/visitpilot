@@ -36,7 +36,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         return false;
     }
 
-    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-78d91d684a.json';
     if (!file_exists($certPath)) {
         $log("CRITICAL ERROR: Firebase JSON not found");
         return false;
@@ -209,7 +209,7 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         return false;
     }
 
-    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-78d91d684a.json';
     if (!file_exists($certPath)) {
         $log("CRITICAL ERROR: Firebase Service Account JSON not found");
         return false;
@@ -338,7 +338,7 @@ function sendPushNotificationToUser($pdo, $user_id, $title, $body, $data = [])
         return false;
     }
 
-    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-78d91d684a.json';
     if (!file_exists($certPath))
         return false;
 
