@@ -47,7 +47,7 @@ allprojects { repositories { maven { url(expoCameraMavenPath) } } }
 subprojects {
     afterEvaluate { project ->
         if (project.hasProperty("android")) {
-            android {
+            project.android {
                 kotlinOptions {
                     jvmTarget = "11"
                 }

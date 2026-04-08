@@ -5,11 +5,11 @@
     "owner": "codepilotx",
     "version": "1.0.3",
     "runtimeVersion": "1.0.3",
-    "icon": "./assets/circular-icon.jpg",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/circular-icon.jpg",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -39,7 +39,7 @@
       "versionCode": 4,
       "allowBackup": false,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/circular-icon.jpg",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
@@ -52,7 +52,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/circular-icon.jpg",
+          "icon": "./assets/icon.png",
           "color": "#ffffff"
         }
       ],
