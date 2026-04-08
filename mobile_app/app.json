@@ -23,7 +23,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 19
+      "versionCode": 20
     },
     "plugins": [
       [
