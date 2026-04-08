@@ -32,6 +32,7 @@ jobs:
               - 'mobile_app/ios/**'
               - 'mobile_app/app.json'
               - 'mobile_app/package.json'
+              - 'mobile_app/.gitignore'
               - 'mobile_app/package-lock.json'
 
   update:
