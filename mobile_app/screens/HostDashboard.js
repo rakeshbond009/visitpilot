@@ -17,6 +17,7 @@ import {
     Pressable,
     TextInput,
     Linking,
+    DeviceEventEmitter
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -240,7 +241,18 @@ export default function HostDashboard({ navigation }) {
         useCallback(() => {
             fetchData();
             const interval = setInterval(fetchData, 10000);
-            return () => clearInterval(interval);
+
+            // Listen for notification clicks that want to show details
+            const sub = DeviceEventEmitter.addListener('showVisitDetails', (data) => {
+                if (data?.visit_id) {
+                    fetchVisitDetails(data.visit_id);
+                }
+            });
+
+            return () => {
+                clearInterval(interval);
+                sub.remove();
+            };
         }, [loading])
     );
 
