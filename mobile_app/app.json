@@ -36,7 +36,7 @@
     },
     "android": {
       "package": "com.codepilotx.vms",
-      "versionCode": 4,
+      "versionCode": 5,
       "allowBackup": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
