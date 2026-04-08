@@ -64,7 +64,7 @@ jobs:
       - name: Publish Update (OTA)
         run: |
           cd mobile_app
-          eas update --auto --non-interactive --branch preview
+          eas update --auto --non-interactive --channel preview
 
   build:
     name: Full App Build (APK/IPA)

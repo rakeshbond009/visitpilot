@@ -1425,7 +1425,7 @@ export default function HostDashboard({ navigation }) {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <Text style={styles.greeting}>Host Portal</Text>
                         <Animated.View style={[styles.liveIndicator, { opacity: pulseAnim }]} />
-                        <Text style={{ fontSize: 8, color: '#3b82f6', fontWeight: 'bold' }}>CLOUD MANAGED</Text>
+                        <Text style={{ fontSize: 8, color: '#f59e0b', fontWeight: 'bold' }}>OTA SUCCESS</Text>
                     </View>
                     <Text style={styles.userName}>{userData?.full_name || 'Host User'}</Text>
                     <Text style={{ fontSize: 9, color: '#94a3b8', fontWeight: '800', marginTop: 2 }}>{APP_VERSION}</Text>
@@ -1491,8 +1491,8 @@ const styles = StyleSheet.create({
         width: 8,
         height: 8,
         borderRadius: 4,
-        backgroundColor: '#3b82f6',
-        shadowColor: '#3b82f6',
+        backgroundColor: '#f59e0b',
+        shadowColor: '#f59e0b',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 6,
