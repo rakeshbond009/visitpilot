@@ -39,6 +39,13 @@ try {
         $newVisit = ['approval_status' => 'approved', 'status' => 'approved'];
         logAction($pdo, $user_id, "Approved visit$vRef", $oldVisit, array_merge($oldVisit, $newVisit));
 
+        // 📡 Sync Visitor to Dahua Hardware
+        try {
+            DahuaHelper::syncVisitor($id);
+        } catch (Exception $e) {
+            error_log("Dahua Sync Error (ID $id): " . $e->getMessage());
+        }
+
         $bgPayload = ['visit_id' => $id];
         // ⚡ STEP 1: Apache/LSAPI path
         dispatchBackgroundTask('approve_visit', $bgPayload);

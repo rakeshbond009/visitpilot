@@ -440,7 +440,7 @@ $email_defaults = [
     'whatsapp_template_language' => 'en',
     'whatsapp_enabled_processes' => '["visitor_arrival_host_alert","visitor_otp_verification","visit_approval_visitor_notify","visit_rejection_visitor_notify","visitor_meet_notify","invite_cancelled"]',
     'ai_api_key' => '',
-    'ai_model' => 'gemini-1.5-flash',
+    'ai_model' => 'gemma-4-e4b',
     'mandatory_registration_fields' => '["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"]'
 ];
 $config = array_merge($email_defaults, $raw_settings);
@@ -1265,6 +1265,18 @@ $active_tab_id = false;
                             </div>
                             <form method="POST">
                                 <div class="mb-4">
+                                    <label class="form-label fw-bold small text-uppercase text-muted">Dahua Webhook URL (For Portal)</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control bg-light border-0 py-2" id="webhook_url_final_v4" 
+                                               value="<?php echo BASE_URL; ?>api/dahua/webhook.php?tenant=<?php echo $_SESSION['tenant_key'] ?? 'default'; ?>" readonly>
+                                        <button class="btn btn-primary px-4" type="button" onclick="copyWebhookV4()">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted mt-2 d-block small"><i class="bi bi-info-circle me-1"></i> Copy this to Dahua Portal > Message Subscription.</small>
+                                </div>
+                                <hr class="my-3 opacity-10">
+                                <div class="mb-4">
                                     <label class="form-label fw-bold small text-uppercase text-muted">Cloud App Identifier
                                         (Client ID)</label>
                                     <div class="input-group">
@@ -1573,11 +1585,15 @@ $active_tab_id = false;
                                         Selection</label>
                                     <select name="ai_model"
                                         class="form-select border-0 bg-light rounded-pill px-4 shadow-sm">
-                                        <option value="gemini-flash-latest" <?php echo ($config['ai_model'] ?? '') == 'gemini-flash-latest' ? 'selected' : ''; ?>>Gemini 1.5 Flash (Latest -
-                                            Recommended)</option>
-                                        <option value="gemini-pro-latest" <?php echo ($config['ai_model'] ?? '') == 'gemini-pro-latest' ? 'selected' : ''; ?>>Gemini 1.5 Pro (Latest)</option>
-                                        <option value="gemini-2.0-flash" <?php echo ($config['ai_model'] ?? '') == 'gemini-2.0-flash' ? 'selected' : ''; ?>>Gemini 2.0 Flash (Experimental /
-                                            Quota Limited)</option>
+                                        <option value="gemini-1.5-flash" <?php echo ($config['ai_model'] ?? '') == 'gemini-1.5-flash' ? 'selected' : ''; ?>>Gemini 1.5 Flash (Reliable)
+                                        </option>
+                                        <option value="gemini-1.5-pro" <?php echo ($config['ai_model'] ?? '') == 'gemini-1.5-pro' ? 'selected' : ''; ?>>Gemini 1.5 Pro</option>
+                                        <option value="gemma-4-31b-it" <?php echo ($config['ai_model'] ?? '') == 'gemma-4-31b-it' ? 'selected' : ''; ?>>Gemma 4 31B (Elite Intelligence -
+                                            Best for SQL)</option>
+                                        <option value="gemma-4-26b-a4b-it" <?php echo ($config['ai_model'] ?? '') == 'gemma-4-26b-a4b-it' ? 'selected' : ''; ?>>Gemma 4 26B (Advanced Search)
+                                        </option>
+                                        <option value="gemma-3-27b-it" <?php echo ($config['ai_model'] ?? '') == 'gemma-3-27b-it' ? 'selected' : ''; ?>>Gemma 3 27B (Fast Reasoning)
+                                        </option>
                                     </select>
                                 </div>
                                 <button type="submit" name="save_ai"
@@ -1609,7 +1625,7 @@ $active_tab_id = false;
     endif; ?>
 
     <!-- Tab: Visitor Form Config -->
-    <?php if (canView('settings_registration')): 
+    <?php if (canView('settings_registration')):
         $mandatory_config = json_decode($config['mandatory_registration_fields'], true) ?: [];
         $fields_list = [
             'visitor_name' => 'Visitor Full Name',
@@ -1625,8 +1641,9 @@ $active_tab_id = false;
             'assets_carried' => 'Assets Carried',
             'photo' => 'Visitor Photo'
         ];
-    ?>
-        <div class="tab-pane fade <?php echo ($active_tab_id === 'registration') ? 'show active' : ''; ?>" id="registration" role="tabpanel">
+        ?>
+        <div class="tab-pane fade <?php echo ($active_tab_id === 'registration') ? 'show active' : ''; ?>" id="registration"
+            role="tabpanel">
             <div class="row g-4">
                 <div class="col-lg-8">
                     <div class="card shadow-sm rounded-4 border-0 hover-shadow transition-all">
@@ -1634,28 +1651,31 @@ $active_tab_id = false;
                             <h5 class="mb-0 fw-bold"><i class="bi bi-ui-checks me-2"></i> Registration Mandatory Fields</h5>
                         </div>
                         <div class="card-body p-4">
-                            <p class="text-muted small mb-4">Select which fields should be <strong>Mandatory</strong> in the visitor registration form. Fields checked here will require input before the form can be submitted.</p>
-                            
+                            <p class="text-muted small mb-4">Select which fields should be <strong>Mandatory</strong> in the
+                                visitor registration form. Fields checked here will require input before the form can be
+                                submitted.</p>
+
                             <form method="POST">
                                 <div class="row row-cols-1 row-cols-md-2 g-4 mb-4">
-                                    <?php foreach ($fields_list as $key => $label): 
+                                    <?php foreach ($fields_list as $key => $label):
                                         $is_checked = in_array($key, $mandatory_config);
                                         $is_core = in_array($key, ['visitor_name', 'mobile_number']);
-                                    ?>
+                                        ?>
                                         <div class="col">
-                                            <div class="form-check form-switch p-3 border rounded-4 hover-bg-light transition-all d-flex align-items-center justify-content-between">
+                                            <div
+                                                class="form-check form-switch p-3 border rounded-4 hover-bg-light transition-all d-flex align-items-center justify-content-between">
                                                 <div class="ms-1">
-                                                    <label class="form-check-label fw-bold <?php echo $is_core ? 'text-primary' : 'text-dark'; ?>" for="check_<?php echo $key; ?>">
+                                                    <label
+                                                        class="form-check-label fw-bold <?php echo $is_core ? 'text-primary' : 'text-dark'; ?>"
+                                                        for="check_<?php echo $key; ?>">
                                                         <?php echo $label; ?>
                                                     </label>
                                                     <div class="small text-muted">
                                                         <?php echo $is_core ? 'Required for basic identification' : 'Optional requirement'; ?>
                                                     </div>
                                                 </div>
-                                                <input class="form-check-input ms-3 me-0" type="checkbox" name="reg_fields[]" 
-                                                       value="<?php echo $key; ?>" id="check_<?php echo $key; ?>"
-                                                       <?php echo $is_checked ? 'checked' : ''; ?>
-                                                       style="width: 2.5rem; height: 1.25rem;">
+                                                <input class="form-check-input ms-3 me-0" type="checkbox" name="reg_fields[]"
+                                                    value="<?php echo $key; ?>" id="check_<?php echo $key; ?>" <?php echo $is_checked ? 'checked' : ''; ?> style="width: 2.5rem; height: 1.25rem;">
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
@@ -1666,13 +1686,16 @@ $active_tab_id = false;
                                         <i class="bi bi-info-circle-fill fs-3 me-3 text-primary opacity-50"></i>
                                         <div class="small">
                                             <div class="fw-bold">Default Policy Applied</div>
-                                            Checkboxes reflect your current system configuration. Non-essential fields like <strong>Email</strong> and <strong>Photo</strong> are typically optional unless explicitly checked.
+                                            Checkboxes reflect your current system configuration. Non-essential fields like
+                                            <strong>Email</strong> and <strong>Photo</strong> are typically optional unless
+                                            explicitly checked.
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="mt-5 pt-3">
-                                    <button type="submit" name="save_registration_fields" class="btn btn-dark w-100 py-3 rounded-pill fw-bold shadow-sm">
+                                    <button type="submit" name="save_registration_fields"
+                                        class="btn btn-dark w-100 py-3 rounded-pill fw-bold shadow-sm">
                                         <i class="bi bi-save me-2"></i> Save Form Requirements
                                     </button>
                                 </div>
@@ -1681,13 +1704,15 @@ $active_tab_id = false;
                     </div>
                 </div>
                 <div class="col-lg-4">
-                    <div class="card border-0 rounded-4 bg-light p-5 h-100 d-flex flex-column justify-content-center text-center">
+                    <div
+                        class="card border-0 rounded-4 bg-light p-5 h-100 d-flex flex-column justify-content-center text-center">
                         <div class="mb-4">
                             <i class="bi bi-layout-text-window-reverse display-3 text-dark opacity-10"></i>
                         </div>
                         <h4 class="fw-bold">Dynamic Registration</h4>
-                        <p class="text-muted mb-0">Changes here will instantly affect both the <strong>Web Dashboard</strong> and the <strong>Mobile Application</strong> registration screens.</p>
-                        
+                        <p class="text-muted mb-0">Changes here will instantly affect both the <strong>Web
+                                Dashboard</strong> and the <strong>Mobile Application</strong> registration screens.</p>
+
                         <div class="mt-5 text-start">
                             <div class="fw-bold small text-uppercase text-muted mb-3 opacity-75">Visual Indicators</div>
                             <div class="d-flex align-items-center mb-3">
@@ -1711,7 +1736,8 @@ $active_tab_id = false;
 
     <!-- Tab: Build Mobile App -->
     <?php if (canView('super_admin_build') || !empty($_SESSION['is_super'])): ?>
-        <div class="tab-pane fade <?php echo ($active_tab_id === 'build') ? 'show active' : ''; ?>" id="build" role="tabpanel">
+        <div class="tab-pane fade <?php echo ($active_tab_id === 'build') ? 'show active' : ''; ?>" id="build"
+            role="tabpanel">
             <div class="row g-4">
                 <div class="col-lg-6">
                     <div class="card shadow-sm rounded-4 border-0 hover-shadow transition-all">
@@ -1723,9 +1749,12 @@ $active_tab_id = false;
                                 <i class="bi bi-android display-1 text-success opacity-25"></i>
                             </div>
                             <h4 class="fw-bold mb-3">Rebuild Mobile Application</h4>
-                            <p class="text-muted mb-5">Clicking the button below will trigger a new production build of the VisitPilot Android app. This process takes 5-10 minutes and runs in the background. The final APK will be moved to the project root.</p>
+                            <p class="text-muted mb-5">Clicking the button below will trigger a new production build of the
+                                VisitPilot Android app. This process takes 5-10 minutes and runs in the background. The
+                                final APK will be moved to the project root.</p>
 
-                            <button id="startBuildBtn" class="btn btn-dark btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm mb-3">
+                            <button id="startBuildBtn"
+                                class="btn btn-dark btn-lg w-100 rounded-pill py-3 fw-bold shadow-sm mb-3">
                                 <i class="bi bi-play-fill me-2"></i> Start Build Process
                             </button>
 
@@ -1735,7 +1764,9 @@ $active_tab_id = false;
                                     <span class="fw-bold text-primary">Build in progress...</span>
                                 </div>
                                 <div class="progress rounded-pill mb-3" style="height: 10px;">
-                                    <div id="buildProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                                    <div id="buildProgressBar"
+                                        class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1743,12 +1774,14 @@ $active_tab_id = false;
                 </div>
                 <div class="col-lg-6">
                     <div class="card shadow-sm rounded-4 border-0 h-100">
-                        <div class="card-header bg-light py-3 border-0 rounded-top-4 d-flex justify-content-between align-items-center">
+                        <div
+                            class="card-header bg-light py-3 border-0 rounded-top-4 d-flex justify-content-between align-items-center">
                             <h6 class="mb-0 fw-bold"><i class="bi bi-terminal me-2"></i> Build Logs</h6>
                             <span id="logStatus" class="badge bg-secondary rounded-pill">Idle</span>
                         </div>
                         <div class="card-body p-0">
-                            <div id="buildLogs" class="p-4 font-monospace small bg-dark text-light overflow-auto" style="height: 400px; line-height: 1.6;">
+                            <div id="buildLogs" class="p-4 font-monospace small bg-dark text-light overflow-auto"
+                                style="height: 400px; line-height: 1.6;">
                                 <div class="text-muted italic">// Click 'Start Build' to see live output here...</div>
                             </div>
                         </div>
@@ -1758,75 +1791,75 @@ $active_tab_id = false;
         </div>
 
         <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const startBtn = document.getElementById('startBuildBtn');
-            const progressSection = document.getElementById('buildProgressSection');
-            const logContainer = document.getElementById('buildLogs');
-            const logStatus = document.getElementById('logStatus');
-            let lastMessage = "";
+            document.addEventListener('DOMContentLoaded', function () {
+                const startBtn = document.getElementById('startBuildBtn');
+                const progressSection = document.getElementById('buildProgressSection');
+                const logContainer = document.getElementById('buildLogs');
+                const logStatus = document.getElementById('logStatus');
+                let lastMessage = "";
 
-            function triggerUpdate() {
-                 fetch('api/build_status.php')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.last_message && data.last_message !== lastMessage) {
-                            lastMessage = data.last_message;
-                            logContainer.innerHTML += `<div class="mb-1 text-info">> ${data.last_message}</div>`;
-                            logContainer.scrollTop = logContainer.scrollHeight;
-                        }
+                function triggerUpdate() {
+                    fetch('api/build_status.php')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.last_message && data.last_message !== lastMessage) {
+                                lastMessage = data.last_message;
+                                logContainer.innerHTML += `<div class="mb-1 text-info">> ${data.last_message}</div>`;
+                                logContainer.scrollTop = logContainer.scrollHeight;
+                            }
 
-                        if (data.status === 'processing') {
-                            startBtn.disabled = true;
-                            startBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Building...';
-                            progressSection.classList.remove('d-none');
-                            logStatus.className = 'badge bg-primary rounded-pill';
-                            logStatus.innerText = 'Building';
-                        } else if (data.status === 'complete') {
-                            clearInterval(pollInterval);
-                            startBtn.disabled = false;
-                            startBtn.classList.replace('btn-dark', 'btn-success');
-                            startBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Build Complete!';
-                            progressSection.classList.add('d-none');
-                            logStatus.className = 'badge bg-success rounded-pill';
-                            logStatus.innerText = 'Success';
+                            if (data.status === 'processing') {
+                                startBtn.disabled = true;
+                                startBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Building...';
+                                progressSection.classList.remove('d-none');
+                                logStatus.className = 'badge bg-primary rounded-pill';
+                                logStatus.innerText = 'Building';
+                            } else if (data.status === 'complete') {
+                                clearInterval(pollInterval);
+                                startBtn.disabled = false;
+                                startBtn.classList.replace('btn-dark', 'btn-success');
+                                startBtn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Build Complete!';
+                                progressSection.classList.add('d-none');
+                                logStatus.className = 'badge bg-success rounded-pill';
+                                logStatus.innerText = 'Success';
 
-                            if (data.apk_name) {
-                                logContainer.innerHTML += `<div class="mt-3 p-3 bg-dark-subtle border rounded text-center">
+                                if (data.apk_name) {
+                                    logContainer.innerHTML += `<div class="mt-3 p-3 bg-dark-subtle border rounded text-center">
                                     <div class="text-success mb-2"><i class="bi bi-check-circle-fill"></i> Build moved to root: <strong>${data.apk_name}</strong></div>
                                     <a href="../${data.apk_name}" class="btn btn-sm btn-primary" download>
                                         <i class="bi bi-download me-1"></i> Download Ready APK
                                     </a>
                                 </div>`;
+                                }
+                            } else if (data.status === 'error') {
+                                clearInterval(pollInterval);
+                                startBtn.disabled = false;
+                                startBtn.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Build Failed';
+                                progressSection.classList.add('d-none');
+                                logStatus.className = 'badge bg-danger rounded-pill';
+                                logStatus.innerText = 'Error';
                             }
-                        } else if (data.status === 'error') {
-                            clearInterval(pollInterval);
-                            startBtn.disabled = false;
-                            startBtn.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> Build Failed';
-                            progressSection.classList.add('d-none');
-                            logStatus.className = 'badge bg-danger rounded-pill';
-                            logStatus.innerText = 'Error';
-                        }
-                    });
-            }
+                        });
+                }
 
-            startBtn.addEventListener('click', function() {
-                this.disabled = true;
-                this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Initializing...';
-                logContainer.innerHTML = '<div class="text-info">> Triggering build script...</div>';
+                startBtn.addEventListener('click', function () {
+                    this.disabled = true;
+                    this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Initializing...';
+                    logContainer.innerHTML = '<div class="text-info">> Triggering build script...</div>';
 
-                fetch('api/trigger_build.php')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            progressSection.classList.remove('d-none');
-                            pollInterval = setInterval(triggerUpdate, 3000);
-                        } else {
-                            alert(data.message);
-                            this.disabled = false;
-                        }
-                    });
+                    fetch('api/trigger_build.php')
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                progressSection.classList.remove('d-none');
+                                pollInterval = setInterval(triggerUpdate, 3000);
+                            } else {
+                                alert(data.message);
+                                this.disabled = false;
+                            }
+                        });
+                });
             });
-        });
         </script>
     <?php endif; ?>
 
@@ -1914,7 +1947,8 @@ $active_tab_id = false;
                                         <div class="input-group p-1 bg-light rounded-pill border">
                                             <span class="input-group-text bg-transparent border-0 ps-3 text-success"><i
                                                     class="bi bi-cpu fs-5"></i></span>
-                                            <input type="text" name="machine_id" class="form-control border-0 bg-transparent"
+                                            <input type="text" name="machine_id"
+                                                class="form-control border-0 bg-transparent"
                                                 placeholder="Machine ID (Optional)">
                                         </div>
                                     </div>
@@ -1942,9 +1976,12 @@ $active_tab_id = false;
                                                 <i class="bi bi-geo-alt-fill"></i>
                                             </div>
                                             <div>
-                                                <span class="fw-bold text-dark"><?php echo htmlspecialchars($area['area_name']); ?></span>
+                                                <span
+                                                    class="fw-bold text-dark"><?php echo htmlspecialchars($area['area_name']); ?></span>
                                                 <?php if (!empty($area['machine_id'])): ?>
-                                                    <div class="small text-muted"><i class="bi bi-cpu me-1"></i>Machine ID: <?php echo htmlspecialchars($area['machine_id']); ?></div>
+                                                    <div class="small text-muted"><i class="bi bi-cpu me-1"></i>Machine ID:
+                                                        <?php echo htmlspecialchars($area['machine_id']); ?>
+                                                    </div>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -2042,6 +2079,16 @@ $active_tab_id = false;
             <?php
         endif; ?>
     });
+
+    function copyWebhookV4() {
+        var copyText = document.getElementById("webhook_url_final_v4");
+        if (copyText) {
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            alert("Webhook Link Copied!");
+        }
+    }
 </script>
 
 <?php require_once 'footer.php'; ?>

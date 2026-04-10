@@ -38,6 +38,11 @@ try {
         $visit['visit_photo'] = $v_photo;
         $visit['photo_path'] = $p_photo;
         $visit['qr_url'] = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
+        
+        // Add Dahua fields for UI consumption
+        $visit['machine_captured_photo'] = isset($visit['machine_captured_photo']) ? (strpos($visit['machine_captured_photo'], 'http') === 0 ? $visit['machine_captured_photo'] : 'data:image/jpeg;base64,' . $visit['machine_captured_photo']) : null;
+        $visit['machine_scan_time'] = $visit['machine_scan_time'] ?? null;
+        $visit['machine_id'] = $visit['machine_id'] ?? null;
 
         sendResponse('success', 'Visit details found', $visit);
     } else {
