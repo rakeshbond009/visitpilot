@@ -59,15 +59,12 @@ class DahuaHelper
         $traceId = bin2hex(random_bytes(16));
         
         $cleanBody = self::deleteWhitespace($body);
-        $bodyHash = hash('sha512', $cleanBody);
-        
-        // Pure Concatenation as seen in successful portal debug
+        // For V2, stringToSign is simply the Method (e.g., POST).
+        // Some endpoints may require the body hash, but the Token success showed pure Method signing.
         $stringToSign = $method;
-        if ($cleanBody !== "{}" && $cleanBody !== "") {
-            $stringToSign .= $bodyHash;
-        }
 
         // strAuthFactor = AccessKey + AppAccessToken + Timestamp + Nonce + stringToSign
+        // Matching the successful 01:37:48 handshake pattern.
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
