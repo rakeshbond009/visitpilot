@@ -51,42 +51,38 @@ class DahuaHelper
     {
         $appId = $config['client_id'] ?? '';
         $secret = $config['client_secret'] ?? '';
-        $timestamp = (string)round(microtime(true) * 1000);
-        $nonce = self::generateNonce();
         $productId = $config['product_id'] ?? '';
-        $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
+        $timestamp = (string)round(microtime(true) * 1000);
         
-        // stringToSign = method + SHA512(bodyStr without whitespace)
+        // Match Portal Nonce: web-{random}-{timestamp}
+        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        $traceId = bin2hex(random_bytes(16));
+        
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
         
-        // For Business APIs, stringToSign is: Method + BodyHash (Concatenated, no newlines)
-        // For Auth APIs, stringToSign is just: Method
+        // Pure Concatenation as seen in successful portal debug
         $stringToSign = $method;
         if ($cleanBody !== "{}" && $cleanBody !== "") {
             $stringToSign .= $bodyHash;
         }
 
-        // strAuthFactor = AccessKey + Timestamp + Nonce + stringToSign
-        $strAuthFactor = $appId . $timestamp . $nonce . $stringToSign;
-        
-        // For Business APIs, sometimes the Token is appended to the Secret as the HMAC key
-        $hmacKey = $secret . ($appAccessToken ?: '');
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $hmacKey));
+        // strAuthFactor = AccessKey + AppAccessToken + Timestamp + Nonce + stringToSign
+        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
         self::log("=== GENERATED SIGN ===\n" . $sign);
 
         $headers = [
             'Content-Type: application/json',
-            'Version: V1',
+            'Version: v1', // MUST BE LOWERCASE
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductID: ' . $productId,
             'X-TraceId-Header: ' . $traceId,
-            'Accept-Language: en-US'
+            'ProductId: ' . $productId
         ];
 
         if ($appAccessToken) {
