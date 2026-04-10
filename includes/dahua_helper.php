@@ -25,7 +25,7 @@ class DahuaHelper {
                 'client_id' => $settings['dahua_app_id'] ?? null,
                 'client_secret' => $settings['dahua_app_secret'] ?? null,
                 'device_sns' => $settings['dahua_device_sns'] ?? '',
-                'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api.dolynkcloud.com', '/')
+                'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://api-openapi.dolynkcloud.com', '/')
             ];
         } catch (Exception $e) {
             self::log("Config ERROR: " . $e->getMessage());
