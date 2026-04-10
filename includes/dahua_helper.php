@@ -1,20 +1,26 @@
 <?php
-class DahuaHelper {
-    
-    private static function log($msg) {
+class DahuaHelper
+{
+
+    private static function log($msg)
+    {
         $logFile = dirname(__DIR__) . '/dahua_debug.txt';
         $time = date('Y-m-d H:i:s');
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null) {
-        if (!$pdo) { global $pdo; }
-        if (!$pdo) return [];
+    private static function get_config($pdo = null)
+    {
+        if (!$pdo) {
+            global $pdo;
+        }
+        if (!$pdo)
+            return [];
 
         try {
             $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
             $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-            
+
             return [
                 'client_id' => $settings['dahua_app_id'] ?? null,
                 'client_secret' => $settings['dahua_app_secret'] ?? null,
@@ -28,31 +34,34 @@ class DahuaHelper {
         }
     }
 
-    private static function deleteWhitespace($str) {
-        if (!$str) return $str;
+    private static function deleteWhitespace($str)
+    {
+        if (!$str)
+            return $str;
         // Characters to remove: Space, Tab, Newline, Carriage return, Form feed, Vertical Tab
         return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "") {
-        $timestamp = (string)round(microtime(true) * 1000);
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "")
+    {
+        $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
-        
+
         // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-        
+
         // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-        
+
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
-        
+
         $headers = [
             'Content-Type: application/json',
             'Version: V1',
@@ -72,7 +81,8 @@ class DahuaHelper {
         return $headers;
     }
 
-    public static function getAccessToken($pdo = null, $forceRefresh = false) {
+    public static function getAccessToken($pdo = null)
+    {
         $config = self::get_config($pdo);
         if (empty($config['client_id']) || empty($config['client_secret'])) {
             self::log("FAIL: Credentials missing.");
@@ -80,7 +90,7 @@ class DahuaHelper {
         }
 
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
-        if (!$forceRefresh && file_exists($cacheFile)) {
+        if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) {
                 return $tokenData['access_token'];
@@ -90,9 +100,9 @@ class DahuaHelper {
         $path = '/open-api/api-base/auth/getAppAccessToken';
         $body = "{}";
         $url = $config['base_url'] . $path;
-        
+
         self::log("Auth: Requesting v2 token for path $path...");
-        
+
         $headers = self::generateSignV2($config, "POST", $body);
 
         $ch = curl_init($url);
@@ -102,7 +112,7 @@ class DahuaHelper {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        
+
         $response = curl_exec($ch);
         $err = curl_error($ch);
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -113,7 +123,8 @@ class DahuaHelper {
             self::log("Auth Success.");
             $token = $data['data']['appAccessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
-            if (!is_dir(dirname($cacheFile))) @mkdir(dirname($cacheFile), 0777, true);
+            if (!is_dir(dirname($cacheFile)))
+                @mkdir(dirname($cacheFile), 0777, true);
             file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
             return $token;
         }
@@ -122,13 +133,20 @@ class DahuaHelper {
         return null;
     }
 
-    public static function syncVisitor($visitId, $pdo = null) {
-        if (!$pdo) { global $pdo; }
-        if (!$pdo) { self::log("FAIL: No DB Connection."); return false; }
+    public static function syncVisitor($visitId, $pdo = null)
+    {
+        if (!$pdo) {
+            global $pdo;
+        }
+        if (!$pdo) {
+            self::log("FAIL: No DB Connection.");
+            return false;
+        }
 
         self::log("Sync: Starting v2 sync for Visit ID $visitId");
         $token = self::getAccessToken($pdo);
-        if (!$token) return false;
+        if (!$token)
+            return false;
 
         $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, v.visit_code 
                                FROM visits v 
@@ -137,25 +155,30 @@ class DahuaHelper {
         $stmt->execute([$visitId]);
         $visit = $stmt->fetch();
 
-        if (!$visit) { self::log("FAIL: Visit $visitId not found."); return false; }
+        if (!$visit) {
+            self::log("FAIL: Visit $visitId not found.");
+            return false;
+        }
 
         $config = self::get_config($pdo);
         $deviceId = $sns = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
-        
+
         // --- STEP 1: Add User ---
         self::log("Sync Step 1: Adding user...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userUrl = $config['base_url'] . $userPath;
         $userPayload = [
             'deviceId' => $deviceId,
-            'users' => [[
-                'userId' => 'VP' . $visitId,
-                'userName' => $visit['visitor_name'],
-                'userType' => 0 // General user
-            ]]
+            'users' => [
+                [
+                    'userId' => 'VP' . $visitId,
+                    'userName' => $visit['visitor_name'],
+                    'userType' => 0 // General user
+                ]
+            ]
         ];
         $userBody = json_encode($userPayload);
-        
+
         $userHeaders = self::generateSignV2($config, "POST", $userBody, $token);
 
         $ch = curl_init($userUrl);
@@ -176,20 +199,22 @@ class DahuaHelper {
         // --- STEP 2: Authorize Face ---
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
-        
+
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             self::log("Sync Step 2: Authorizing face...");
             $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
             $faceUrl = $config['base_url'] . $facePath;
             $facePayload = [
                 'deviceId' => $deviceId,
-                'faces' => [[
-                    'userId' => 'VP' . $visitId,
-                    'faceImage' => base64_encode(file_get_contents($photoPath))
-                ]]
+                'faces' => [
+                    [
+                        'userId' => 'VP' . $visitId,
+                        'faceImage' => base64_encode(file_get_contents($photoPath))
+                    ]
+                ]
             ];
             $faceBody = json_encode($facePayload);
-            
+
             $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $token);
 
             $ch = curl_init($faceUrl);
@@ -210,11 +235,13 @@ class DahuaHelper {
             $cardUrl = $config['base_url'] . $cardPath;
             $cardPayload = [
                 'deviceId' => $deviceId,
-                'cards' => [[
-                    'userId' => 'VP' . $visitId,
-                    'cardNo' => $visit['visit_code'],
-                    'cardStatus' => 0
-                ]]
+                'cards' => [
+                    [
+                        'userId' => 'VP' . $visitId,
+                        'cardNo' => $visit['visit_code'],
+                        'cardStatus' => 0
+                    ]
+                ]
             ];
             $cardBody = json_encode($cardPayload);
             $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $token);
@@ -234,16 +261,21 @@ class DahuaHelper {
         return true;
     }
 
-    public static function processEvent($data, $pdo = null) {
-        if (!$pdo) { global $pdo; }
-        if (!$pdo) return false;
-        
+    public static function processEvent($data, $pdo = null)
+    {
+        if (!$pdo) {
+            global $pdo;
+        }
+        if (!$pdo)
+            return false;
+
         $msgBody = $data['msgBody'] ?? [];
         $events = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : []);
 
         foreach ($events as $event) {
             $personId = $event['personId'] ?? null;
-            if (!$personId) continue;
+            if (!$personId)
+                continue;
 
             $stmt = $pdo->prepare("SELECT id FROM visits WHERE dahua_person_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1");
             $stmt->execute([$personId]);
@@ -251,7 +283,7 @@ class DahuaHelper {
 
             if ($visit) {
                 $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")
-                    ->execute([$event['capturedImage'] ?? null, date('Y-m-d H:i:s', ($event['time'] ?? time()*1000) / 1000), $event['deviceId'] ?? 'Dahua', $visit['id']]);
+                    ->execute([$event['capturedImage'] ?? null, date('Y-m-d H:i:s', ($event['time'] ?? time() * 1000) / 1000), $event['deviceId'] ?? 'Dahua', $visit['id']]);
             }
         }
         return true;
