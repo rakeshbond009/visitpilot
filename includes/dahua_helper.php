@@ -68,9 +68,11 @@ class DahuaHelper
         }
 
         // strAuthFactor = AccessKey + Timestamp + Nonce + stringToSign
-        // Following the exact 01:37:48 success pattern: appId.timestamp.nonce.stringToSign
         $strAuthFactor = $appId . $timestamp . $nonce . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+        
+        // For Business APIs, sometimes the Token is appended to the Secret as the HMAC key
+        $hmacKey = $secret . ($appAccessToken ?: '');
+        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $hmacKey));
         
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
         self::log("=== GENERATED SIGN ===\n" . $sign);
