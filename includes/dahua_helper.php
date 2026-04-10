@@ -111,21 +111,29 @@ class DahuaHelper {
     /**
      * Process incoming hardware event
      */
-    public static function processEvent($data) {
+    public static function processEvent($data, $tenant = 'default') {
         global $pdo;
         
+        // Dahua DoLynk message wrapper
         $msgBody = $data['msgBody'] ?? [];
         $events = $msgBody['data'] ?? [];
 
+        // If it's a single event not in an array
+        if (isset($msgBody['personId'])) {
+            $events = [$msgBody];
+        }
+
+        $processed = false;
         foreach ($events as $event) {
             $personId = $event['personId'] ?? null;
-            $photo = $event['capturedImage'] ?? null;
+            $photo = $event['capturedImage'] ?? null; // Base64 or URL
             $machineId = $event['deviceId'] ?? 'Dahua Terminal';
-            $scanTime = isset($event['scanTime']) ? date('Y-m-d H:i:s', $event['scanTime'] / 1000) : date('Y-m-d H:i:s');
+            $scanTime = isset($event['time']) ? date('Y-m-d H:i:s', $event['time'] / 1000) : date('Y-m-d H:i:s');
 
             if (!$personId) continue;
 
-            // Find visit by personId
+            // Find the visit for this specific person that is approved
+            // Note: In a multi-tenant DB, you'd filter by tenant_id here
             $stmt = $pdo->prepare("SELECT id, status FROM visits WHERE dahua_person_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1");
             $stmt->execute([$personId]);
             $visit = $stmt->fetch();
@@ -139,7 +147,9 @@ class DahuaHelper {
                     check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time)
                     WHERE id = ?");
                 $update->execute([$photo, $scanTime, $machineId, $visit['id']]);
+                $processed = true;
             }
         }
+        return $processed;
     }
 }
