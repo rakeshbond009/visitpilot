@@ -12,11 +12,14 @@ class DahuaHelper {
         if (!$pdo) return [];
 
         try {
-            // Direct query to bypass any caching issues in get_setting
+            // Log which database we are using to confirm tenant separation
+            $dbName = $pdo->query("SELECT DATABASE()")->fetchColumn();
+            self::log("Tenant Context: Database name is [$dbName]");
+
             $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
             $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
             
-            self::log("Config: Fetched " . count($settings) . " dahua_ settings from DB.");
+            self::log("Config: Found " . count($settings) . " dahua_ keys in database.");
             
             return [
                 'client_id' => $settings['dahua_app_id'] ?? null,
@@ -33,11 +36,11 @@ class DahuaHelper {
     public static function getAccessToken($pdo = null) {
         $config = self::get_config($pdo);
         if (empty($config['client_id']) || empty($config['client_secret'])) {
-            self::log("FAIL: Missing Dahua App ID or Secret. ID: " . ($config['client_id'] ? 'YES' : 'MISSING') . ", Secret: " . ($config['client_secret'] ? 'YES' : 'MISSING'));
+            self::log("FAIL: Credentials not found in this tenant database.");
             return null;
         }
 
-        $cacheFile = dirname(__DIR__) . '/scratch/dahua_token.json';
+        $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) {
@@ -45,42 +48,37 @@ class DahuaHelper {
             }
         }
 
-        self::log("Auth: Requesting new token from Dahua...");
+        self::log("Auth: Requesting token for Client ID: " . substr($config['client_id'], 0, 5) . "...");
         $url = $config['base_url'] . '/auth/v1.0/token';
-        $payload = [
-            'clientId' => $config['client_id'],
-            'clientSecret' => $config['client_secret'],
-            'grantType' => 'client_credentials'
-        ];
+        $payload = ['clientId' => $config['client_id'], 'clientSecret' => $config['client_secret'], 'grantType' => 'client_credentials'];
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Added for hosting stability
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         $response = curl_exec($ch);
-        $data = json_decode($response, true);
+        $err = curl_error($ch);
         curl_close($ch);
 
+        $data = json_decode($response, true);
         if (isset($data['data']['accessToken'])) {
-            self::log("Auth: Token obtained successfully.");
+            self::log("Auth: Success.");
             $token = $data['data']['accessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
             file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
             return $token;
         }
 
-        self::log("Auth FAIL: " . ($data['message'] ?? 'API connection error.'));
+        self::log("Auth FAIL. Response: " . ($response ?: $err));
         return null;
     }
 
     public static function syncVisitor($visitId, $pdo = null) {
         if (!$pdo) { global $pdo; }
-        if (!$pdo) {
-            self::log("FAIL: No DB Connection.");
-            return false;
-        }
+        if (!$pdo) { self::log("FAIL: No DB Connection."); return false; }
 
         self::log("Sync: Starting for Visit ID $visitId");
         $token = self::getAccessToken($pdo);
@@ -93,21 +91,16 @@ class DahuaHelper {
         $stmt->execute([$visitId]);
         $visit = $stmt->fetch();
 
-        if (!$visit) {
-            self::log("FAIL: Visit record $visitId not found in DB.");
-            return false;
-        }
+        if (!$visit) { self::log("FAIL: Visit $visitId not found."); return false; }
 
-        // Convert local photo to base64
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
         
         if (!file_exists($photoPath) || empty($visit['photo_path'])) {
-            self::log("FAIL: Visitor photo not found at path: $photoPath");
+            self::log("FAIL: Photo missing: $photoPath");
             return false;
         }
         
-        self::log("API: Pushing face biometric to Dahua...");
         $photoBase64 = base64_encode(file_get_contents($photoPath));
         $config = self::get_config($pdo);
         $url = $config['base_url'] . '/person/v1.0/person/add';
@@ -122,10 +115,11 @@ class DahuaHelper {
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
         $data = json_decode($response, true);
@@ -133,18 +127,16 @@ class DahuaHelper {
 
         if (isset($data['data']['personId'])) {
             $personId = $data['data']['personId'];
-            self::log("SUCCESS: Visitor synced. Dahua ID: $personId");
-            
-            $update = $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?");
-            $update->execute([$personId, $visitId]);
+            self::log("SUCCESS: Synced. Person ID: $personId");
+            $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$personId, $visitId]);
 
-            // Device Authorization
             if (!empty($config['device_sns'])) {
-                self::log("Auth: Granting access to devices: " . $config['device_sns']);
+                self::log("Auth: Authorizing devices...");
                 $sns = array_map('trim', explode(',', $config['device_sns']));
                 $authUrl = $config['base_url'] . '/person/v1.0/person/authorization/add';
                 $ch = curl_init($authUrl);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 curl_setopt($ch, CURLOPT_POST, true);
                 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['personId' => $personId, 'deviceIdList' => $sns]));
                 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
@@ -154,30 +146,7 @@ class DahuaHelper {
             return $personId;
         }
 
-        self::log("API FAIL: " . ($data['message'] ?? 'Cloud API error code: ' . ($data['code'] ?? 'Unknown')));
+        self::log("API FAIL: " . ($response ?: "No response from cloud."));
         return false;
-    }
-
-    public static function processEvent($data, $pdo = null) {
-        if (!$pdo) { global $pdo; }
-        if (!$pdo) return false;
-        
-        $msgBody = $data['msgBody'] ?? [];
-        $events = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : []);
-
-        foreach ($events as $event) {
-            $personId = $event['personId'] ?? null;
-            if (!$personId) continue;
-
-            $stmt = $pdo->prepare("SELECT id FROM visits WHERE dahua_person_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1");
-            $stmt->execute([$personId]);
-            $visit = $stmt->fetch();
-
-            if ($visit) {
-                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")
-                    ->execute([$event['capturedImage'] ?? null, date('Y-m-d H:i:s', ($event['time'] ?? time()*1000) / 1000), $event['deviceId'] ?? 'Dahua', $visit['id']]);
-            }
-        }
-        return true;
     }
 }
