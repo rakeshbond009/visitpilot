@@ -9,17 +9,31 @@ class DahuaHelper {
 
     private static function get_config($pdo = null) {
         if (!$pdo) { global $pdo; }
-        return [
-            'client_id' => get_setting('dahua_client_id', null, $pdo),
-            'client_secret' => get_setting('dahua_client_secret', null, $pdo),
-            'base_url' => rtrim(get_setting('dahua_base_url', 'https://open-api.dolynkcloud.com', $pdo), '/')
-        ];
+        if (!$pdo) return [];
+
+        try {
+            // Direct query to bypass any caching issues in get_setting
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
+            $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+            
+            self::log("Config: Fetched " . count($settings) . " dahua_ settings from DB.");
+            
+            return [
+                'client_id' => $settings['dahua_app_id'] ?? null,
+                'client_secret' => $settings['dahua_app_secret'] ?? null,
+                'device_sns' => $settings['dahua_device_sns'] ?? '',
+                'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api.dolynkcloud.com', '/')
+            ];
+        } catch (Exception $e) {
+            self::log("Config ERROR: " . $e->getMessage());
+            return [];
+        }
     }
 
     public static function getAccessToken($pdo = null) {
         $config = self::get_config($pdo);
         if (empty($config['client_id']) || empty($config['client_secret'])) {
-            self::log("FAIL: Missing Dahua App ID or Secret in settings.");
+            self::log("FAIL: Missing Dahua App ID or Secret. ID: " . ($config['client_id'] ? 'YES' : 'MISSING') . ", Secret: " . ($config['client_secret'] ? 'YES' : 'MISSING'));
             return null;
         }
 
@@ -33,7 +47,11 @@ class DahuaHelper {
 
         self::log("Auth: Requesting new token from Dahua...");
         $url = $config['base_url'] . '/auth/v1.0/token';
-        $payload = ['clientId' => $config['client_id'], 'clientSecret' => $config['client_secret'], 'grantType' => 'client_credentials'];
+        $payload = [
+            'clientId' => $config['client_id'],
+            'clientSecret' => $config['client_secret'],
+            'grantType' => 'client_credentials'
+        ];
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -46,14 +64,14 @@ class DahuaHelper {
         curl_close($ch);
 
         if (isset($data['data']['accessToken'])) {
-            self::log("Auth: Success.");
+            self::log("Auth: Token obtained successfully.");
             $token = $data['data']['accessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
             file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
             return $token;
         }
 
-        self::log("Auth FAIL: " . ($data['message'] ?? 'Check your credentials in settings.'));
+        self::log("Auth FAIL: " . ($data['message'] ?? 'API connection error.'));
         return null;
     }
 
@@ -76,19 +94,20 @@ class DahuaHelper {
         $visit = $stmt->fetch();
 
         if (!$visit) {
-            self::log("FAIL: Visit record not found in DB.");
+            self::log("FAIL: Visit record $visitId not found in DB.");
             return false;
         }
 
-        $photoRelative = ltrim($visit['photo_path'], './'); // Fix leading path characters
+        // Convert local photo to base64
+        $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
         
         if (!file_exists($photoPath) || empty($visit['photo_path'])) {
-            self::log("FAIL: Photo not found at $photoPath");
+            self::log("FAIL: Visitor photo not found at path: $photoPath");
             return false;
         }
         
-        self::log("API: Sending to Dahua person/add...");
+        self::log("API: Pushing face biometric to Dahua...");
         $photoBase64 = base64_encode(file_get_contents($photoPath));
         $config = self::get_config($pdo);
         $url = $config['base_url'] . '/person/v1.0/person/add';
@@ -106,7 +125,7 @@ class DahuaHelper {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 25);
 
         $response = curl_exec($ch);
         $data = json_decode($response, true);
@@ -114,23 +133,20 @@ class DahuaHelper {
 
         if (isset($data['data']['personId'])) {
             $personId = $data['data']['personId'];
-            self::log("SUCCESS: Dahua Person ID: $personId");
+            self::log("SUCCESS: Visitor synced. Dahua ID: $personId");
             
             $update = $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?");
             $update->execute([$personId, $visitId]);
 
             // Device Authorization
-            $deviceSNs = get_setting('dahua_device_sns', '', $pdo);
-            if ($deviceSNs) {
-                self::log("Auth: Syncing to devices: $deviceSNs");
-                $sns = array_map('trim', explode(',', $deviceSNs));
+            if (!empty($config['device_sns'])) {
+                self::log("Auth: Granting access to devices: " . $config['device_sns']);
+                $sns = array_map('trim', explode(',', $config['device_sns']));
                 $authUrl = $config['base_url'] . '/person/v1.0/person/authorization/add';
-                $authPayload = ['personId' => $personId, 'deviceIdList' => $sns];
-
                 $ch = curl_init($authUrl);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($authPayload));
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['personId' => $personId, 'deviceIdList' => $sns]));
                 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
                 curl_exec($ch);
                 curl_close($ch);
@@ -138,7 +154,7 @@ class DahuaHelper {
             return $personId;
         }
 
-        self::log("API FAIL: " . ($data['message'] ?? 'Device or Cloud rejected the request.'));
+        self::log("API FAIL: " . ($data['message'] ?? 'Cloud API error code: ' . ($data['code'] ?? 'Unknown')));
         return false;
     }
 
@@ -149,7 +165,6 @@ class DahuaHelper {
         $msgBody = $data['msgBody'] ?? [];
         $events = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : []);
 
-        $processed = false;
         foreach ($events as $event) {
             $personId = $event['personId'] ?? null;
             if (!$personId) continue;
@@ -161,9 +176,8 @@ class DahuaHelper {
             if ($visit) {
                 $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")
                     ->execute([$event['capturedImage'] ?? null, date('Y-m-d H:i:s', ($event['time'] ?? time()*1000) / 1000), $event['deviceId'] ?? 'Dahua', $visit['id']]);
-                $processed = true;
             }
         }
-        return $processed;
+        return true;
     }
 }
