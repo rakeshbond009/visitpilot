@@ -22,8 +22,12 @@ try {
     $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     
     if (empty($settings['dahua_app_id'])) {
+        echo "DATABASE CHECK: No settings found for this tenant. Found keys: " . implode(', ', array_keys($settings)) . "\n";
         die("ERROR: Dahua configuration not found in database.\n");
     }
+
+    echo "DATABASE CHECK: App ID found (" . substr($settings['dahua_app_id'], 0, 5) . "...)\n";
+    echo "DATABASE CHECK: App Secret found? " . (!empty($settings['dahua_app_secret']) ? 'YES' : 'NO') . "\n\n";
 
     echo "[1/3] Fetching Access Token...\n";
     // We call it normally since you reverted the forceRefresh signature
