@@ -27,7 +27,9 @@ $variants[] = $appId . $token . $time . $nonce . "POST" . hash('sha512', "{}");
 $variants_sha = [
     $appId . $token . $time . $nonce . "POST" . $secret,
     $appId . $time . $nonce . "POST" . $secret,
-    $appId . $productId . $time . $nonce . "v1" . $secret, // User's MD5 model from Request #2
+    $appId . "1539964762" . $time . $nonce . "v1" . $secret, // Legacy Concat
+    $appId . $time . $nonce . "v1" . $secret,
+    $appId . $token . $time . $nonce . "v1" . $secret,
 ];
 
 foreach ($variants as $v) {
