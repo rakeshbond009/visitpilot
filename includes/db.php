@@ -102,12 +102,15 @@ function log_db_msg($msg)
 /**
  * Global Helper to fetch system settings
  */
-function get_setting($key, $default = null) {
+function get_setting($key, $default = null, $pdo_passed = null) {
     global $pdo;
+    $db = $pdo_passed ?: $pdo;
+    if (!$db) return $default;
+
     static $settings_cache = null;
     if ($settings_cache === null) {
         try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+            $stmt = $db->query("SELECT setting_key, setting_value FROM system_settings");
             $settings_cache = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
         } catch (Exception $e) {
             $settings_cache = [];
