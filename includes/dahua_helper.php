@@ -29,29 +29,35 @@ class DahuaHelper {
     }
 
     private static function generateSign($config, $token = null) {
-        $timestamp = round(microtime(true) * 1000);
-        $nonce = uniqid('vp_');
+        $timestamp = (string)round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(8));
         
-        // Simplified Mode Logic from Docs
         if ($token) {
             $strToSign = $config['client_id'] . $token . $timestamp . $nonce;
         } else {
+            // Re-order to match typical Documentation: Key + Timestamp + Nonce
             $strToSign = $config['client_id'] . $timestamp . $nonce;
         }
         
-        $sign = strtoupper(hash_hmac('sha512', $strToSign, $config['client_secret']));
+        $sign = hash_hmac('sha512', $strToSign, $config['client_secret']);
         
-        return [
+        $headers = [
             'AccessKey' => $config['client_id'],
             'Timestamp' => (string)$timestamp,
             'Nonce' => $nonce,
             'Sign' => $sign,
-            'ProductId' => $config['product_id'],
+            'ProductId' => (string)$config['product_id'],
             'Version' => 'v1',
-            'X-TraceId-Header' => uniqid('tid_'),
+            'X-TraceId-Header' => bin2hex(random_bytes(16)),
             'Sign-Type' => 'simple',
             'Content-Type' => 'application/json'
         ];
+
+        if ($token) {
+            $headers['AppAccessToken'] = $token;
+        }
+
+        return $headers;
     }
 
     public static function getAccessToken($pdo = null) {
