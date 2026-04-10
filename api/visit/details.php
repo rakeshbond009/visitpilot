@@ -16,7 +16,8 @@ try {
                    u1.full_name as created_by_name,
                    u2.full_name as approved_by_name,
                    u3.full_name as checked_in_by_name,
-                   u4.full_name as checked_out_by_name
+                   u4.full_name as checked_out_by_name,
+                   v.dahua_person_id
             FROM visits v 
             JOIN visitors vis ON v.visitor_id = vis.id 
             JOIN employees emp ON v.employee_id = emp.id 

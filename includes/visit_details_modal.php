@@ -257,16 +257,38 @@
                                         <strong style="font-size: 0.85rem;">${v.id_proof_type || 'N/A'}</strong>
                                     </div>
                                 </div>
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-hash fs-5 me-2 text-warning"></i>
-                                    <div class="flex-grow-1">
-                                        <small class="d-block opacity-75" style="font-size: 0.7rem;">ID Number</small>
-                                        <strong style="font-size: 0.85rem;">${v.id_proof_number || 'N/A'}</strong>
+                                 <div class="d-flex align-items-center">
+                                     <i class="bi bi-hash fs-5 me-2 text-warning"></i>
+                                     <div class="flex-grow-1">
+                                         <small class="d-block opacity-75" style="font-size: 0.7rem;">ID Number</small>
+                                         <strong style="font-size: 0.85rem;">${v.id_proof_number || 'N/A'}</strong>
+                                     </div>
+                                 </div>
+                             </div>
+ 
+                             <!-- Hardware Sync Status -->
+                             ${v.dahua_person_id ? `
+                                <div class="mt-3 p-2 bg-white bg-opacity-10 border border-white border-opacity-25 rounded-3 d-flex align-items-center text-white">
+                                    <i class="bi bi-cpu-fill text-info me-2 fs-5"></i>
+                                    <div class="text-start">
+                                        <small class="d-block opacity-75" style="font-size: 0.65rem;">Hardware Synced</small>
+                                        <strong style="font-size: 0.75rem;">ID: ${v.dahua_person_id.substring(0, 10)}...</strong>
+                                    </div>
+                                    <i class="bi bi-check-circle-fill text-info ms-auto"></i>
+                                </div>
+                             ` : (v.status === 'approved' || v.status === 'checked_in' ? `
+                                <div class="mt-3 p-2 bg-warning bg-opacity-25 border border-warning border-opacity-25 rounded-3 d-flex align-items-center text-white">
+                                    <i class="bi bi-hourglass-split text-warning me-2 fs-5"></i>
+                                    <div class="text-start">
+                                        <small class="d-block opacity-75" style="font-size: 0.65rem;">Syncing Hardware...</small>
+                                        <div class="progress mt-1" style="height: 3px; width: 60px;">
+                                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" style="width: 100%"></div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- QR Code at Left Bottom -->
+                             ` : '')}
+ 
+                             <!-- QR Code at Left Bottom -->
                             <div class="mt-4 p-3 bg-white rounded-4 shadow-sm d-inline-block">
                                 <img src="${v.qr_url}" class="img-fluid" style="width: 100px; height: 100px;" 
                                      onerror="this.src='../assets/img/qr-placeholder.png'">
