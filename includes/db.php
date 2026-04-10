@@ -699,11 +699,12 @@ if (isset($_SESSION['user_id']) && isset($_SESSION['tenant_key'])) {
     // --- FORCE STAMP: Only for mobile-facing roles (Security/Employee/Host) ---
     $is_web_admin = (isset($_SESSION['is_super']) && $_SESSION['is_super']) || (($_SESSION['role'] ?? '') === 'admin');
 
-    if ($is_api && !$is_web_admin && !isset($_SESSION['device_id'])) {
+    if ($is_api && !$is_web_admin && !isset($_SESSION['device_id']) && !isset($_COOKIE['vms_token'])) {
         session_unset();
         session_destroy();
         header('Content-Type: application/json');
-        die(json_encode(['status' => 'error', 'message' => 'Security Update: Your mobile session has been refreshed. Please login again.']));
+        http_response_code(401);
+        die(json_encode(['status' => 'error', 'message' => 'Security Update: Your session has been refreshed. Please login again.']));
     }
 
     // --- INSTANT BLOCK: Check if the stamped hardware is blocked ---
