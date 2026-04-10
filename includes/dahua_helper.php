@@ -72,7 +72,7 @@ class DahuaHelper {
         return $headers;
     }
 
-    public static function getAccessToken($pdo = null) {
+    public static function getAccessToken($pdo = null, $forceRefresh = false) {
         $config = self::get_config($pdo);
         if (empty($config['client_id']) || empty($config['client_secret'])) {
             self::log("FAIL: Credentials missing.");
@@ -80,7 +80,7 @@ class DahuaHelper {
         }
 
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
-        if (file_exists($cacheFile)) {
+        if (!$forceRefresh && file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) {
                 return $tokenData['access_token'];
