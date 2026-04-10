@@ -242,7 +242,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $settings = [
             'dahua_app_id' => $_POST['dahua_app_id'],
             'dahua_app_secret' => $_POST['dahua_app_secret'],
-            'dahua_device_sns' => $_POST['dahua_device_sns']
+            'dahua_device_sns' => $_POST['dahua_device_sns'],
+            'dahua_product_id' => $_POST['dahua_product_id'] ?? '',
+            'dahua_base_url' => $_POST['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com'
         ];
 
         $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
@@ -432,6 +434,8 @@ $email_defaults = [
     'tenant_gst' => '',
     'dahua_app_id' => '',
     'dahua_app_secret' => '',
+    'dahua_product_id' => '',
+    'dahua_base_url' => 'https://open-api-sg.dolynkcloud.com',
     'dahua_device_sns' => '',
     'whatsapp_access_token' => '',
     'whatsapp_phone_number_id' => '',
@@ -1297,6 +1301,28 @@ $active_tab_id = false;
                                             class="form-control border-0 bg-light py-2 rounded-end"
                                             value="<?php echo htmlspecialchars($config['dahua_app_secret']); ?>"
                                             placeholder="Enter App Secret">
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label fw-bold small text-uppercase text-muted">Dahua Product ID (v2)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-0"><i class="bi bi-box-seam text-primary"></i></span>
+                                            <input type="text" name="dahua_product_id"
+                                                class="form-control border-0 bg-light rounded-end"
+                                                value="<?php echo htmlspecialchars($config['dahua_product_id'] ?? ''); ?>"
+                                                placeholder="Enter Product ID">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-4">
+                                        <label class="form-label fw-bold small text-uppercase text-muted">API Base URL</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-0"><i class="bi bi-globe text-primary"></i></span>
+                                            <input type="text" name="dahua_base_url"
+                                                class="form-control border-0 bg-light rounded-end"
+                                                value="<?php echo htmlspecialchars($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com'); ?>"
+                                                placeholder="https://open-api-sg.dolynkcloud.com">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="mb-4">

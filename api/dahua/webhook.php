@@ -25,7 +25,7 @@ $tenant_key = $_GET['tenant'] ?? 'default';
 
 // Process the event
 try {
-    $result = DahuaHelper::processEvent($data, $tenant_key);
+    $result = DahuaHelper::processEvent($data, $pdo);
     
     if ($result) {
         http_response_code(200);
