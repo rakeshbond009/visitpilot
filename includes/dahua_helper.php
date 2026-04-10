@@ -58,9 +58,10 @@ class DahuaHelper
 
         // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+        $sign = base64_encode(hash_hmac('sha512', $strAuthFactor, $secret, true));
 
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
+        self::log("=== GENERATED SIGN ===\n" . $sign);
 
         $headers = [
             'Content-Type: application/json',
