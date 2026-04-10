@@ -81,7 +81,7 @@ function runJob_registerVisitor($pdo, $payload)
 
     // 4. Dahua sync (invitation flow only)
     if (!empty($payload['sync_dahua'])) {
-        bgHelper_syncDahua($pdo, $visit_id, $visitor_id, $visitor_name, $photo_path, $visit_code);
+        bgHelper_syncDahua($pdo, $visit_id);
     }
 }
 
@@ -139,7 +139,7 @@ function runJob_approveVisit($pdo, $payload)
     }
 
     // 4. Dahua
-    bgHelper_syncDahua($pdo, $visit_id, $visit['visitor_id'], $visit['visitor_name'], $visit['visit_photo'] ?? '', $visit['visit_code'] ?? '');
+    bgHelper_syncDahua($pdo, $visit_id);
 }
 
 function runJob_rejectVisit($pdo, $payload)
@@ -248,27 +248,22 @@ function bgHelper_generateQrCode($visit_code, $visit_id, $pdo)
     }
 }
 
-function bgHelper_syncDahua($pdo, $visit_id, $visitor_id, $name, $photo_path, $visit_code)
+function bgHelper_syncDahua($pdo, $visit_id)
 {
     try {
-        require_once dirname(__DIR__) . '/../includes/dahua_helper.php';
-        $s = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
-        if (empty($s['dahua_app_id']) || empty($s['dahua_app_secret']) || empty($photo_path))
-            return;
-        $face = realpath(dirname(__DIR__) . '/../' . $photo_path);
-        if (!$face)
-            return;
-        $dahua = new DahuaHelper($s['dahua_app_id'], $s['dahua_app_secret']);
-        $dahua->syncVisitor([
-            'visitor_id' => $visitor_id,
-            'name' => $name,
-            'face_path' => $face,
-            'qr_code' => $visit_code,
-            'start_time' => date('Y-m-d H:i:s'),
-            'end_time' => date('Y-m-d 23:59:59'),
-            'device_sns' => array_map('trim', array_filter(explode(',', $s['dahua_device_sns'] ?? '')))
-        ]);
+        _vms_log("Job syncDahua starting: visit_id $visit_id");
+        require_once __DIR__ . '/../../includes/dahua_helper.php';
+        
+        // Use our optimized static method
+        $result = DahuaHelper::syncVisitor($visit_id);
+        
+        if ($result) {
+            _vms_log("Dahua Sync Success for visit $visit_id. Person ID: $result");
+        } else {
+            _vms_log("Dahua Sync Failed or not configured for visit $visit_id");
+        }
     } catch (Throwable $e) {
         error_log("[BG] Dahua error: " . $e->getMessage());
+        _vms_log("Dahua Sync Error: " . $e->getMessage());
     }
 }
