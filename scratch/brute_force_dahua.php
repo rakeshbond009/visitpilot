@@ -25,10 +25,12 @@ $variants[] = $appId . $token . $time . $nonce . "POST" . hash('sha512', "{}");
 
 // Simple SHA512 (Concatenation style)
 $variants_sha = [
-    $appId . $token . $time . $nonce . "POST" . $path . hash('sha512', "{}"),
-    $appId . $token . $time . $nonce . "POST" . $path,
-    $appId . $time . $nonce . "POST" . $path,
+    "POST\n" . $path . "\n" . $nonce . "\n" . $time . $secret,
+    "POST" . $path . $nonce . $time . $secret,
 ];
+foreach($variants_sha as $v){
+    if(strtoupper(hash_hmac('sha512', $v, $secret)) == $target) die("!!! MATCH FOUND (HMAC SDK) !!!\nString: $v\n");
+}
 
 foreach ($variants as $v) {
     if (strtoupper(hash_hmac('sha512', $v, $secret)) == $target) {
