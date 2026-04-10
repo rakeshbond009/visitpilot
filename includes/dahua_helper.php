@@ -53,7 +53,7 @@ class DahuaHelper
 
         // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
         $cleanBody = self::deleteWhitespace($body);
-        $bodyHash = hash('sha512', $cleanBody);
+        $bodyHash = strtoupper(hash('sha512', $cleanBody));
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
 
         // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
