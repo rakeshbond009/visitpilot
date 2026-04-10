@@ -36,6 +36,8 @@ class DahuaHelper {
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
         
         $response = curl_exec($ch);
         $data = json_decode($response, true);
@@ -96,6 +98,8 @@ class DahuaHelper {
             'Content-Type: application/json',
             'Authorization: Bearer ' . $token
         ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
 
         $response = curl_exec($ch);
         $data = json_decode($response, true);
@@ -126,6 +130,8 @@ class DahuaHelper {
                     'Content-Type: application/json',
                     'Authorization: Bearer ' . $token
                 ]);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
                 curl_exec($ch);
                 curl_close($ch);
             }
