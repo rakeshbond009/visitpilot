@@ -629,6 +629,7 @@ $rejected_count = (int) $stmt->fetchColumn();
     setInterval(() => syncHostDashboard(false), 2000);
 
     // Initial State for dashboard refresh logic
+    let currentDashboardData = { pending_list: [], active_invites: [], today_visitors: [], rejected_list: [], visitors: [] };
     let lastPendingCount = <?php echo $pending_count; ?>;
     let hostFilterTerm = '';
 

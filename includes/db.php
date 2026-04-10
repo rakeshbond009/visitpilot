@@ -47,7 +47,7 @@ if (session_status() === PHP_SESSION_NONE) {
         || preg_match('/^(192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.|127\.)/', $_SERVER['REMOTE_ADDR'] ?? '')
         || preg_match('/^(192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.|localhost|127\.)/', $_SERVER['HTTP_HOST'] ?? '');
 
-    if ($is_local_env) {
+    if ($is_local_env && !isset($_SERVER['HTTP_X_REAL_IP'])) { // Additional check for proxy
         $session_path = __DIR__ . '/sessions';
         if (!is_dir($session_path)) {
             @mkdir($session_path, 0777, true);
@@ -97,6 +97,23 @@ function log_db_msg($msg)
     global $db_debug_log;
     $timestamp = date('[Y-m-d H:i:s] ');
     @file_put_contents($db_debug_log, $timestamp . $msg . "\n", FILE_APPEND);
+}
+
+/**
+ * Global Helper to fetch system settings
+ */
+function get_setting($key, $default = null) {
+    global $pdo;
+    static $settings_cache = null;
+    if ($settings_cache === null) {
+        try {
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings");
+            $settings_cache = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+        } catch (Exception $e) {
+            $settings_cache = [];
+        }
+    }
+    return $settings_cache[$key] ?? $default;
 }
 
 // 7. DATABASE CONFIGURATION

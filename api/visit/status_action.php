@@ -35,10 +35,16 @@ try {
     if ($action === 'approve') {
         $stmt = $pdo->prepare("UPDATE visits SET approval_status='approved', status='approved', approved_at=NOW(), approved_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
-        
+
         $newVisit = ['approval_status' => 'approved', 'status' => 'approved'];
         logAction($pdo, $user_id, "Approved visit$vRef", $oldVisit, array_merge($oldVisit, $newVisit));
 
+        // 📡 Sync Visitor to Dahua Hardware
+        try {
+            DahuaHelper::syncVisitor($id);
+        } catch (Exception $e) {
+            error_log("Dahua Sync Error (ID $id): " . $e->getMessage());
+        }
 
         $bgPayload = ['visit_id' => $id];
         // ⚡ STEP 1: Apache/LSAPI path
@@ -63,7 +69,7 @@ try {
         $reason = $data['reason'] ?? 'Invitation cancelled by host.';
         $stmt = $pdo->prepare("UPDATE visits SET status='rejected', approval_status='rejected', approved_at=NOW(), approved_by=?, rejection_reason=? WHERE id=? AND is_invited=1");
         $stmt->execute([$user_id, $reason, $id]);
-        
+
         $newVisit = ['status' => 'rejected', 'approval_status' => 'rejected', 'rejection_reason' => $reason];
         logAction($pdo, $user_id, "Cancelled invitation$vRef. Reason: $reason", $oldVisit, array_merge($oldVisit, $newVisit));
 
@@ -112,7 +118,7 @@ try {
 
         $stmt = $pdo->prepare("UPDATE visits SET status='checked_in', check_in_time=NOW(), checked_in_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
-        
+
         $newVisit = ['status' => 'checked_in'];
         logAction($pdo, $user_id, "Checked IN visit$vRef", $oldVisit, array_merge($oldVisit, $newVisit));
         sendResponse('success', 'Check-in successful');
@@ -120,7 +126,7 @@ try {
     } elseif ($action === 'checkout') {
         $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=NOW(), checked_out_by=? WHERE id=?");
         $stmt->execute([$user_id, $id]);
-        
+
         $newVisit = ['status' => 'checked_out'];
         logAction($pdo, $user_id, "Checked OUT visit$vRef", $oldVisit, array_merge($oldVisit, $newVisit));
         sendResponse('success', 'Check-out successful');

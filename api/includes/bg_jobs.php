@@ -251,19 +251,12 @@ function bgHelper_generateQrCode($visit_code, $visit_id, $pdo)
 function bgHelper_syncDahua($pdo, $visit_id)
 {
     try {
-        _vms_log("Job syncDahua starting: visit_id $visit_id");
-        require_once __DIR__ . '/../../includes/dahua_helper.php';
+        require_once dirname(__DIR__) . '/../includes/dahua_helper.php';
         
-        // Use our optimized static method
-        $result = DahuaHelper::syncVisitor($visit_id);
+        // Use our high-level static method that handles everything inside
+        DahuaHelper::syncVisitor($visit_id);
         
-        if ($result) {
-            _vms_log("Dahua Sync Success for visit $visit_id. Person ID: $result");
-        } else {
-            _vms_log("Dahua Sync Failed or not configured for visit $visit_id");
-        }
     } catch (Throwable $e) {
         error_log("[BG] Dahua error: " . $e->getMessage());
-        _vms_log("Dahua Sync Error: " . $e->getMessage());
     }
 }
