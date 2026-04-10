@@ -19,27 +19,26 @@ $methods = ["POST"];
 $bodies = ["", "{}", "73b18d96b080ce4d5653b64bc756c9a9", hash('sha512', "{}")]; // MD5 of {} and SHA512 of {}
 
 $variants = [];
-
-// Variant 1: Pure Concatenation (Portal style usually)
+// Standard HMAC-SHA512
 $variants[] = $appId . $token . $time . $nonce . "POST";
-$variants[] = $appId . $time . $nonce . "POST";
 $variants[] = $appId . $token . $time . $nonce . "POST" . hash('sha512', "{}");
 
-// Variant 2: Newlines
-$variants[] = "POST\n" . $path . "\n" . $appId . "\n" . $token . "\n" . $time . "\n" . $nonce;
-$variants[] = $appId . "\n" . $token . "\n" . $time . "\n" . $nonce . "\n" . "POST" . "\n" . $path;
-
-// Variant 3: Aliyun / CA Style
-$stringToSign = "POST\napplication/json\n" . hash('sha512', "{}") . "\napplication/json\n" . $time . "\n" . $path;
-$variants[] = $appId . $token . $time . $nonce . $stringToSign;
-$variants[] = $appId . $time . $nonce . $stringToSign;
-
-// Variant 5: Common Dahua V2
-$variants[] = $appId . $token . $time . $nonce . "POST" . "\n" . $path . "\n" . hash('sha512', "{}");
+// Simple SHA512 (Concatenation style)
+$variants_sha = [
+    $appId . $token . $time . $nonce . "POST" . $secret,
+    $appId . $time . $nonce . "POST" . $secret,
+    $appId . $productId . $time . $nonce . "v1" . $secret, // User's MD5 model from Request #2
+];
 
 foreach ($variants as $v) {
     if (strtoupper(hash_hmac('sha512', $v, $secret)) == $target) {
-        die("!!! MATCH FOUND !!!\nString: " . str_replace("\n", "\\n", $v) . "\n");
+        die("!!! MATCH FOUND (HMAC) !!!\nString: " . str_replace("\n", "\\n", $v) . "\n");
+    }
+}
+
+foreach ($variants_sha as $v) {
+    if (strtoupper(hash('sha512', $v)) == $target) {
+        die("!!! MATCH FOUND (SHA512) !!!\nString: " . str_replace("\n", "\\n", $v) . "\n");
     }
 }
 
