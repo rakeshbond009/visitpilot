@@ -254,7 +254,7 @@ function bgHelper_syncDahua($pdo, $visit_id)
         require_once dirname(__DIR__) . '/../includes/dahua_helper.php';
         
         // Use our high-level static method that handles everything inside
-        DahuaHelper::syncVisitor($visit_id);
+        DahuaHelper::syncVisitor($visit_id, $pdo);
         
     } catch (Throwable $e) {
         error_log("[BG] Dahua error: " . $e->getMessage());
