@@ -66,8 +66,9 @@ class DahuaHelper
             $stringToSign .= $bodyHash;
         }
 
-        // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
-        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+        // strAuthFactor = AccessKey + Timestamp + Nonce + stringToSign
+        // Note: AppAccessToken is passed in headers but NOT included in the signature factor.
+        $strAuthFactor = $appId . $timestamp . $nonce . $stringToSign;
         $sign = base64_encode(hash_hmac('sha512', $strAuthFactor, $secret, true));
         
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
