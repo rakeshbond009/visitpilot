@@ -60,16 +60,16 @@ class DahuaHelper
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
         
-        // Match the working token handshake: strictly concatenated strings
-        $stringToSign = $method;
-        if ($cleanBody !== "{}" && $cleanBody !== "") {
-            $stringToSign .= $bodyHash;
+        // For Business APIs, stringToSign is: Method + \n + Path + \n + BodyHash
+        if ($cleanBody === "{}" || $cleanBody === "") {
+            $stringToSign = $method . "\n" . $path;
+        } else {
+            $stringToSign = $method . "\n" . $path . "\n" . $bodyHash;
         }
 
         // strAuthFactor = AccessKey + Timestamp + Nonce + stringToSign
-        // Note: AppAccessToken is passed in headers but NOT included in the signature factor.
         $strAuthFactor = $appId . $timestamp . $nonce . $stringToSign;
-        $sign = base64_encode(hash_hmac('sha512', $strAuthFactor, $secret, true));
+        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
         self::log("=== GENERATED SIGN ===\n" . $sign);
