@@ -12,7 +12,6 @@ class DahuaHelper {
         if (!$pdo) return [];
 
         try {
-            // Log which database we are using to confirm tenant separation
             $dbName = $pdo->query("SELECT DATABASE()")->fetchColumn();
             self::log("Tenant Context: Database name is [$dbName]");
 
@@ -54,13 +53,15 @@ class DahuaHelper {
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Added for hosting stability
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
         curl_setopt($ch, CURLOPT_TIMEOUT, 15);
         $response = curl_exec($ch);
         $err = curl_error($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $data = json_decode($response, true);
@@ -72,7 +73,7 @@ class DahuaHelper {
             return $token;
         }
 
-        self::log("Auth FAIL. Response: " . ($response ?: $err));
+        self::log("Auth FAIL. Response: [$code] " . ($response ?: $err));
         return null;
     }
 
@@ -116,12 +117,14 @@ class DahuaHelper {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'Authorization: Bearer ' . $token]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
         $response = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $data = json_decode($response, true);
         curl_close($ch);
 
@@ -146,7 +149,30 @@ class DahuaHelper {
             return $personId;
         }
 
-        self::log("API FAIL: " . ($response ?: "No response from cloud."));
+        self::log("API FAIL. Response: [$code] " . ($response ?: "No response from cloud."));
         return false;
+    }
+
+    public static function processEvent($data, $pdo = null) {
+        if (!$pdo) { global $pdo; }
+        if (!$pdo) return false;
+        
+        $msgBody = $data['msgBody'] ?? [];
+        $events = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : []);
+
+        foreach ($events as $event) {
+            $personId = $event['personId'] ?? null;
+            if (!$personId) continue;
+
+            $stmt = $pdo->prepare("SELECT id FROM visits WHERE dahua_person_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1");
+            $stmt->execute([$personId]);
+            $visit = $stmt->fetch();
+
+            if ($visit) {
+                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")
+                    ->execute([$event['capturedImage'] ?? null, date('Y-m-d H:i:s', ($event['time'] ?? time()*1000) / 1000), $event['deviceId'] ?? 'Dahua', $visit['id']]);
+            }
+        }
+        return true;
     }
 }
