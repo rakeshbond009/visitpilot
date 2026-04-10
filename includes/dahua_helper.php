@@ -56,16 +56,14 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
         
-        // stringToSign = method + "\n" + path + "\n" + SHA512(bodyStr without whitespace)
+        // stringToSign = method + SHA512(bodyStr without whitespace)
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
         
-        // For Business APIs, stringToSign is: Method + \n + Path + \n + BodyHash
-        // For Auth APIs, stringToSign is: Method + \n + Path
-        if ($cleanBody === "{}" || $cleanBody === "") {
-            $stringToSign = $method . "\n" . $path;
-        } else {
-            $stringToSign = $method . "\n" . $path . "\n" . $bodyHash;
+        // Match the working token handshake: strictly concatenated strings
+        $stringToSign = $method;
+        if ($cleanBody !== "{}" && $cleanBody !== "") {
+            $stringToSign .= $bodyHash;
         }
 
         // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
