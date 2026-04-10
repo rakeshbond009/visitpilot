@@ -42,25 +42,30 @@ class DahuaHelper
         return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "")
+    private static function generateNonce()
     {
-        $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
-        $appId = $config['client_id'];
-        $secret = $config['client_secret'];
+        return bin2hex(random_bytes(16));
+    }
+
+    private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
+    {
+        $appId = $config['client_id'] ?? '';
+        $secret = $config['client_secret'] ?? '';
+        $timestamp = (string)round(microtime(true) * 1000);
+        $nonce = self::generateNonce();
         $productId = $config['product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
-
-        // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
+        
+        // stringToSign = method + "\n" + path + "\n" + SHA512(bodyStr without whitespace)
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
         
-        // For Business APIs (with body), stringToSign is: Method + \n + Content-Type + \n + BodyHash
-        // For Auth APIs (empty body), stringToSign is just: Method
+        // For Business APIs, stringToSign is: Method + \n + Path + \n + BodyHash
+        // For Auth APIs, stringToSign is: Method + \n + Path
         if ($cleanBody === "{}" || $cleanBody === "") {
-            $stringToSign = $method;
+            $stringToSign = $method . "\n" . $path;
         } else {
-            $stringToSign = $method . "\n" . "application/json" . "\n" . $bodyHash;
+            $stringToSign = $method . "\n" . $path . "\n" . $bodyHash;
         }
 
         // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
@@ -111,7 +116,7 @@ class DahuaHelper
 
         self::log("Auth: Requesting v2 token for path $path...");
 
-        $headers = self::generateSignV2($config, "POST", $body);
+        $headers = self::generateSignV2($config, "POST", $path, $body);
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -173,8 +178,8 @@ class DahuaHelper
 
         // --- STEP 1: Add User ---
         self::log("Sync Step 1: Adding user...");
-        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userUrl = $config['base_url'] . $userPath;
+        $path = '/open-api/api-iot/v2/device/accessControl/addUsers';
+        $userUrl = $config['base_url'] . $path;
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [
@@ -186,8 +191,7 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
-
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $token);
+        $userHeaders = self::generateSignV2($config, "POST", $path, $userBody, $token);
 
         $ch = curl_init($userUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

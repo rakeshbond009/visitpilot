@@ -74,7 +74,7 @@ try {
     // Using the V2 Signature method we built
     $reflection = new ReflectionMethod('DahuaHelper', 'generateSignV2');
     $reflection->setAccessible(true);
-    $headers = $reflection->invoke(null, $config, "POST", $body, $token);
+    $headers = $reflection->invoke(null, $config, "POST", $path, $body, $token);
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
