@@ -26,10 +26,8 @@ $variants[] = $appId . $token . $time . $nonce . "POST" . hash('sha512', "{}");
 // Simple SHA512 (Concatenation style)
 $variants_sha = [
     $appId . $token . $time . $nonce . "POST" . $secret,
-    $appId . $time . $nonce . "POST" . $secret,
-    $appId . "1539964762" . $time . $nonce . "v1" . $secret, // Legacy Concat
-    $appId . $time . $nonce . "v1" . $secret,
-    $appId . $token . $time . $nonce . "v1" . $secret,
+    "AccessKey=" . $appId . "&AppAccessToken=" . $token . "&Nonce=" . $nonce . "&ProductId=1539964762&Timestamp=" . $time . "&Version=v1" . $secret, // SHA Concat
+    "AccessKey=" . $appId . "&AppAccessToken=" . $token . "&Nonce=" . $nonce . "&ProductId=1539964762&Timestamp=" . $time . "&Version=v1", // HMAC string
 ];
 
 foreach ($variants as $v) {
