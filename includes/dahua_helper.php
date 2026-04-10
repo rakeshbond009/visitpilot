@@ -53,13 +53,20 @@ class DahuaHelper
 
         // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
         $cleanBody = self::deleteWhitespace($body);
-        $bodyHash = strtoupper(hash('sha512', $cleanBody));
-        $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+        $bodyHash = hash('sha512', $cleanBody);
+        
+        // For Business APIs (with body), stringToSign is: Method + \n + Content-Type + \n + BodyHash
+        // For Auth APIs (empty body), stringToSign is just: Method
+        if ($cleanBody === "{}" || $cleanBody === "") {
+            $stringToSign = $method;
+        } else {
+            $stringToSign = $method . "\n" . "application/json" . "\n" . $bodyHash;
+        }
 
         // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = base64_encode(hash_hmac('sha512', $strAuthFactor, $secret, true));
-
+        
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
         self::log("=== GENERATED SIGN ===\n" . $sign);
 
