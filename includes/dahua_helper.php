@@ -59,7 +59,7 @@ class DahuaHelper {
         $token = self::getAccessToken();
         if (!$token) return false;
 
-        $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path 
+        $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, v.visit_code 
                                FROM visits v 
                                JOIN visitors vis ON v.visitor_id = vis.id 
                                WHERE v.id = ?");
@@ -80,6 +80,9 @@ class DahuaHelper {
             'personName' => $visit['visitor_name'],
             'personType' => 'visitor',
             'faceImage' => $photoBase64,
+            'cards' => [
+                ['cardNumber' => $visit['visit_code'], 'cardType' => 'normal']
+            ],
             'certificates' => [
                 ['certificateType' => 'vms_sync', 'certificateNumber' => 'VP' . $visitId]
             ]
