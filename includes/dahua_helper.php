@@ -60,14 +60,15 @@ class DahuaHelper
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
         
-        // For Business APIs, stringToSign is: Method + \n + Path + \n + BodyHash
-        if ($cleanBody === "{}" || $cleanBody === "") {
-            $stringToSign = $method . "\n" . $path;
-        } else {
-            $stringToSign = $method . "\n" . $path . "\n" . $bodyHash;
+        // For Business APIs, stringToSign is: Method + BodyHash (Concatenated, no newlines)
+        // For Auth APIs, stringToSign is just: Method
+        $stringToSign = $method;
+        if ($cleanBody !== "{}" && $cleanBody !== "") {
+            $stringToSign .= $bodyHash;
         }
 
         // strAuthFactor = AccessKey + Timestamp + Nonce + stringToSign
+        // Following the exact 01:37:48 success pattern: appId.timestamp.nonce.stringToSign
         $strAuthFactor = $appId . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
