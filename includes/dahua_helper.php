@@ -100,8 +100,33 @@ class DahuaHelper {
 
         if (isset($data['data']['personId'])) {
             $personId = $data['data']['personId'];
+            
+            // 💾 Update DB with the ID
             $update = $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?");
             $update->execute([$personId, $visitId]);
+
+            // 🔓 STEP 2: Authorize to Devices
+            $deviceSNs = get_setting('dahua_device_sns');
+            if ($deviceSNs) {
+                $sns = array_map('trim', explode(',', $deviceSNs));
+                $authUrl = $config['base_url'] . '/person/v1.0/person/authorization/add';
+                $authPayload = [
+                    'personId' => $personId,
+                    'deviceIdList' => $sns
+                ];
+
+                $ch = curl_init($authUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($authPayload));
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'Content-Type: application/json',
+                    'Authorization: Bearer ' . $token
+                ]);
+                curl_exec($ch);
+                curl_close($ch);
+            }
+
             return $personId;
         }
 
