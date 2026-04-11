@@ -279,28 +279,20 @@ class DahuaHelper
         $stmt = $pdo->prepare("SELECT dahua_person_id, visit_code FROM visits WHERE id = ?");
         $stmt->execute([$visitId]);
         $visitData = $stmt->fetch();
-        if (!$visitData || empty($visitData['dahua_person_id'])) {
-            return false;
-        }
 
-        $dahuaUserId = $visitData['dahua_person_id'];
+        // Fallback to legacy string ID if the column wasn't populated yet
+        $dahuaUserId = (!empty($visitData['dahua_person_id'])) ? $visitData['dahua_person_id'] : (string)$visitId;
 
         self::log("Revoking access for visitor $visitId (Dahua ID: $dahuaUserId) via expiration update...");
 
         $tokenV2 = self::getAccessToken($pdo);
         if (!$tokenV2) return false;
 
-        // Use addUsers to OVERWRITE the visitor's validity period to the past
-        $path = '/open-api/api-iot/v2/device/accessControl/addUsers';
+        $path = '/open-api/api-iot/v2/device/accessControl/remove';
         $payload = [
             'deviceId' => $deviceId,
-            'users' => [[
-                'userId'         => $dahuaUserId,
-                'userName'       => 'Expired_Visitor_' . $visitId,
-                'userType'       => 0,
-                'validBeginTime' => gmdate("Y-m-d\TH:i:s\Z", time() - 86400 * 2), // 2 days ago
-                'validEndTime'   => gmdate("Y-m-d\TH:i:s\Z", time() - 86400)      // 1 day ago
-            ]]
+            'ids'      => [(string)$dahuaUserId],
+            'type'     => 'user'
         ];
 
         $body = json_encode($payload);
@@ -317,13 +309,10 @@ class DahuaHelper
 
         $data = json_decode($response, true);
         if (isset($data['code']) && $data['code'] === "200") {
-            self::log("Successfully revoked via expiry. Response: $response");
-            
-            // Note: Dahua usually rejects deleting the card immediately after user update, 
-            // but expiration is sufficient.
+            self::log("Successfully deleted visitor $visitId (Dahua ID: $dahuaUserId). Response: $response");
             return true;
         } else {
-            self::log("Failed to revoke. Response: $response");
+            self::log("Failed to delete $visitId (Dahua ID: $dahuaUserId). Response: $response");
             return false;
         }
     }
