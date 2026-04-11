@@ -91,52 +91,55 @@ class DahuaHelper
             }
         }
 
-        $url = $config['base_url'] . '/open-api/api-base/auth/userLogin';
-        $timestamp = (string)round(microtime(true) * 1000);
-        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        // STEP A: Get a standard -01 App Token
+        $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
+        $authBody = json_encode(['appId' => $appId, 'appSecret' => $secret]);
+        $tempHeaders = self::generateSignV2($config, "POST", '/open-api/api-base/auth/getAppAccessToken', $authBody);
         
-        $bodyData = [
-            'userName' => $userName,
-            'passWord' => $passWord,
-            'productId' => $productId
-        ];
-        $body = json_encode($bodyData);
-
-        // SHA256 Signature for User Login
-        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
-        $bodyHash = hash('sha256', $cleanBody);
-        $stringToSign = "POST\n" . $bodyHash;
-        $factor = $appId . $timestamp . $nonce . $stringToSign;
-        $sign = strtolower(hash_hmac('sha256', $factor, $secret));
-
-        $headers = [
-            'Content-Type: application/json',
-            'Version: v1',
-            'AccessKey: ' . $appId,
-            'Timestamp: ' . $timestamp,
-            'Nonce: ' . $nonce,
-            'Sign: ' . $sign,
-            'ProductId: ' . $productId
-        ];
-
-        $ch = curl_init($url);
+        $ch = curl_init($authUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        $resp = curl_exec($ch);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $authBody);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $tempHeaders);
+        $authResp = curl_exec($ch);
         curl_close($ch);
 
-        $res = json_decode($resp, true);
-        if ($res && isset($res['data']['appAccessToken'])) {
-            $accessToken = $res['data']['appAccessToken'];
-            $expireTime = time() + ($res['data']['expiresIn'] ?? 7000) - 60;
+        $authRes = json_decode($authResp, true);
+        $appToken = $authRes['data']['appAccessToken'] ?? null;
+        if (!$appToken) {
+            self::log("Step A (-01 Token) FAIL: " . $authResp);
+            return null;
+        }
+
+        // STEP B: Use -01 Token to get -02 Session Token
+        $loginUrl = $config['base_url'] . '/open-api/api-base/auth/userLogin';
+        $loginBody = json_encode([
+            'userName' => $userName,
+            'passWord' => $passWord,
+            'productId' => $productId
+        ]);
+
+        $loginHeaders = self::generateSignV2($config, "POST", '/open-api/api-base/auth/userLogin', $loginBody, $appToken);
+        
+        $ch = curl_init($loginUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $loginBody);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $loginHeaders);
+        $loginResp = curl_exec($ch);
+        curl_close($ch);
+
+        $loginRes = json_decode($loginResp, true);
+        if ($loginRes && isset($loginRes['data']['appAccessToken'])) {
+            $accessToken = $loginRes['data']['appAccessToken'];
+            $expireTime = time() + ($loginRes['data']['expiresIn'] ?? 7000) - 60;
             file_put_contents($cacheFile, json_encode(['access_token' => $accessToken, 'expire_time' => $expireTime]));
             return $accessToken;
         }
 
-        self::log("User Login FAIL: " . $resp);
+        self::log("Step B (-02 Token) FAIL: " . $loginResp);
         return null;
     }
 
