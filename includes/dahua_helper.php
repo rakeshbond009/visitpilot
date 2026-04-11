@@ -167,34 +167,63 @@ class DahuaHelper
         curl_exec($ch);
         curl_close($ch);
 
-        // Step 2: Face (V1)
+        // --- STEP 2: Authorize Face (V2 via Media Upload) ---
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
         $fixedPath = dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg';
         $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
 
         if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
-            self::log("Sync Step 2: Authorizing face (V2)...");
-            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $facePayload = [
-                'deviceId' => $deviceId,
-                'faces' => [
-                    [
-                        'userId' => (string)$visitId,
-                        'faceImage' => base64_encode(file_get_contents($finalPhoto))
-                    ]
-                ]
+            self::log("Sync Step 2a: Uploading media to Cloud storage...");
+            $uploadPath = '/open-api/api-base/v1/media/upload';
+            $uploadUrl = $config['base_url'] . $uploadPath;
+            
+            // Format for Dahua media upload is often multipart, but let's try their JSON-Base64 method if they have one
+            // Actually many Dahua V1 Media APIs use simple POST JSON with "file": "base64"
+            $uploadPayload = [
+                'file' => base64_encode(file_get_contents($finalPhoto)),
+                'fileType' => 'jpg'
             ];
-            $faceBody = json_encode($facePayload);
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
-            $ch = curl_init($config['base_url'] . $facePath);
+            $uploadBody = json_encode($uploadPayload);
+            $uploadHeaders = self::generateSignV2($config, "POST", $uploadBody, $tokenV2);
+            
+            $ch = curl_init($uploadUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $uploadBody);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $uploadHeaders);
             $resp = curl_exec($ch);
+            $uploadData = json_decode($resp, true);
             curl_close($ch);
-            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
+            
+            $cloudUrl = $uploadData['data']['url'] ?? null;
+            
+            if ($cloudUrl) {
+                self::log("Sync Step 2b: Authorizing face via Cloud URL...");
+                $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+                $facePayload = [
+                    'deviceId' => $deviceId,
+                    'faces' => [
+                        [
+                            'userId' => (string)$visitId,
+                            'photoURL' => $cloudUrl
+                        ]
+                    ]
+                ];
+                $faceBody = json_encode($facePayload);
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
+                $ch = curl_init($config['base_url'] . $facePath);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
+                $resp = curl_exec($ch);
+                curl_close($ch);
+                self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
+            } else {
+                self::log("FAIL: Cloud Upload rejected. Response: " . $resp);
+            }
         }
 
         // Step 3: Card (V2)
