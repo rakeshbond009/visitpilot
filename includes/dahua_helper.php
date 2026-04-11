@@ -265,16 +265,31 @@ class DahuaHelper
     {
         if (!$pdo) global $pdo;
         if (!$pdo) return false;
-        $msgBody = $data['msgBody'] ?? [];
-        $events = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : []);
+
+        // Support both Dahua V1 nested (msgBody) and V2 flattened structures
+        $events = [];
+        if (isset($data['userId']) || isset($data['personId'])) {
+            $events[] = $data; // Flat structure
+        } else {
+            $msgBody = $data['msgBody'] ?? [];
+            $events = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : []);
+        }
+
         foreach ($events as $event) {
-            $personId = $event['personId'] ?? null;
+            $personId = $event['userId'] ?? $event['personId'] ?? null;
             if (!$personId) continue;
-            $stmt = $pdo->prepare("SELECT id FROM visits WHERE dahua_person_id = ? AND status = 'approved' ORDER BY id DESC LIMIT 1");
+            
+            $stmt = $pdo->prepare("SELECT id FROM visits WHERE dahua_person_id = ? AND status IN ('pending', 'approved') ORDER BY id DESC LIMIT 1");
             $stmt->execute([$personId]);
             $visit = $stmt->fetch();
+            
             if ($visit) {
-                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")->execute([$event['capturedImage'] ?? null, date('Y-m-d H:i:s', ($event['time'] ?? time() * 1000) / 1000), $event['deviceId'] ?? 'Dahua', $visit['id']]);
+                $timeMs = $event['utcTime'] ?? $event['localTime'] ?? $event['time'] ?? (time() * 1000);
+                $scanTime = date('Y-m-d H:i:s', $timeMs / 1000);
+                $deviceId = $event['deviceId'] ?? 'Dahua';
+                $image = $event['capturedImage'] ?? null;
+
+                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")->execute([$image, $scanTime, $deviceId, $visit['id']]);
             }
         }
         return true;
