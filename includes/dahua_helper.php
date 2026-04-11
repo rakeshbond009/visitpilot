@@ -36,9 +36,8 @@ class DahuaHelper
 
     private static function deleteWhitespace($str)
     {
-        if (!$str)
-            return $str;
-        return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
+        if (!$str) return $str;
+        return preg_replace('/\s+/', '', $str);
     }
 
     private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false)
@@ -174,60 +173,28 @@ class DahuaHelper
         $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
 
         if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
-            self::log("Sync Step 2a: Uploading media via Multipart...");
-            $uploadPath = '/open-api/api-base/v1/media/upload';
-            $uploadUrl = $config['base_url'] . $uploadPath;
-            
-            $boundary = '----' . bin2hex(random_bytes(16));
-            $fileData = file_get_contents($finalPhoto);
-            $body = "--$boundary\r\n";
-            $body .= "Content-Disposition: form-data; name=\"file\"; filename=\"face.jpg\"\r\n";
-            $body .= "Content-Type: image/jpeg\r\n\r\n";
-            $body .= $fileData . "\r\n";
-            $body .= "--$boundary--\r\n";
-            
-            $uploadHeaders = self::generateSignV2($config, "POST", "", $tokenV2); // SIGN WITH ABSOLUTELY EMPTY BODY
-            // Remove Content-Type and replace it
-            foreach($uploadHeaders as $idx => $hdr) if(stripos($hdr, 'Content-Type')) unset($uploadHeaders[$idx]);
-            $uploadHeaders[] = "Content-Type: multipart/form-data; boundary=$boundary";
-
-            $ch = curl_init($uploadUrl);
+            self::log("Sync Step 2: Authorizing face (V2 Direct)...");
+            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            $facePayload = [
+                'deviceId' => $deviceId,
+                'faces' => [
+                    [
+                        'userId' => (string)$visitId,
+                        'faceImage' => base64_encode(file_get_contents($finalPhoto))
+                    ]
+                ]
+            ];
+            $faceBody = json_encode($facePayload);
+            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
+            $ch = curl_init($config['base_url'] . $facePath);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array_values($uploadHeaders));
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
             $resp = curl_exec($ch);
-            $uploadData = json_decode($resp, true);
             curl_close($ch);
-            
-            $cloudUrl = $uploadData['data']['url'] ?? null;
-            
-            if ($cloudUrl) {
-                self::log("Sync Step 2b: Authorizing face via Cloud URL...");
-                $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-                $facePayload = [
-                    'deviceId' => $deviceId,
-                    'faces' => [
-                        [
-                            'userId' => (string)$visitId,
-                            'photoURL' => $cloudUrl
-                        ]
-                    ]
-                ];
-                $faceBody = json_encode($facePayload);
-                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
-                $ch = curl_init($config['base_url'] . $facePath);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
-                $resp = curl_exec($ch);
-                curl_close($ch);
-                self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
-            } else {
-                self::log("FAIL: Cloud Upload rejected. Response: " . $resp);
-            }
+            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
         }
 
         // Step 3: Card (V2)
