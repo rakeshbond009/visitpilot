@@ -40,7 +40,7 @@ class DahuaHelper
         return preg_replace('/\s+/', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false)
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -59,7 +59,8 @@ class DahuaHelper
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
             $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+            // Include path if provided (Singapore requirement)
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $path . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
             $version = 'V1';
         }
@@ -156,7 +157,7 @@ class DahuaHelper
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = ['deviceId' => $deviceId, 'users' => [['userId' => (string)$visitId, 'userName' => $visit['visitor_name'], 'userType' => 0, 'authorityList' => ['1'], 'userPermission' => 1, 'role' => 'user', 'departmentId' => '1', 'startTime' => date('Y-m-d H:i:s'), 'endTime' => '2036-12-31 23:59:59']]];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, false, $userPath);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -173,28 +174,56 @@ class DahuaHelper
         $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
 
         if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
-            self::log("Sync Step 2: Authorizing face (V2 Direct)...");
-            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $facePayload = [
-                'deviceId' => $deviceId,
-                'faces' => [
-                    [
-                        'userId' => (string)$visitId,
-                        'faceImage' => base64_encode(file_get_contents($finalPhoto))
-                    ]
-                ]
-            ];
-            $faceBody = json_encode($facePayload);
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
-            $ch = curl_init($config['base_url'] . $facePath);
+            self::log("Sync Step 2a: Uploading media via Multipart...");
+            $uploadPath = '/open-api/api-base/v1/media/upload';
+            $uploadUrl = $config['base_url'] . $uploadPath;
+            
+            $boundary = '----' . bin2hex(random_bytes(16));
+            $fileData = file_get_contents($finalPhoto);
+            $body = "--$boundary\r\n";
+            $body .= "Content-Disposition: form-data; name=\"file\"; filename=\"face.jpg\"\r\n";
+            $body .= "Content-Type: image/jpeg\r\n\r\n";
+            $body .= $fileData . "\r\n";
+            $body .= "--$boundary--\r\n";
+            
+            // SIGN WITH EMPTY BODY but WITH PATH
+            $uploadHeaders = self::generateSignV2($config, "POST", "", $tokenV2, false, $uploadPath); 
+            // Remove Content-Type and replace it
+            foreach($uploadHeaders as $idx => $hdr) if(stripos($hdr, 'Content-Type')) unset($uploadHeaders[$idx]);
+            $uploadHeaders[] = "Content-Type: multipart/form-data; boundary=$boundary";
+
+            $ch = curl_init($uploadUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array_values($uploadHeaders));
             $resp = curl_exec($ch);
+            $uploadData = json_decode($resp, true);
             curl_close($ch);
-            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
+            
+            $cloudUrl = $uploadData['data']['url'] ?? null;
+            
+            if ($cloudUrl) {
+                self::log("Sync Step 2b: Authorizing face via Cloud URL...");
+                $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+                $facePayload = [
+                    'deviceId' => $deviceId,
+                    'faces' => [['userId' => (string)$visitId, 'photoURL' => $cloudUrl]]
+                ];
+                $faceBody = json_encode($facePayload);
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, false, $facePath);
+                $ch = curl_init($config['base_url'] . $facePath);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
+                $resp = curl_exec($ch);
+                curl_close($ch);
+                self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
+            } else {
+                self::log("FAIL: Cloud Upload rejected. Response: " . $resp);
+            }
         }
 
         // Step 3: Card (V2)
@@ -203,7 +232,7 @@ class DahuaHelper
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
             $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => (string)$visitId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
             $cardBody = json_encode($cardPayload);
-            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
+            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2, false, $cardPath);
             $ch = curl_init($config['base_url'] . $cardPath);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
