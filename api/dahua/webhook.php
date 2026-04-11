@@ -11,6 +11,7 @@ require_once '../../includes/dahua_helper.php';
 // Log incoming request for debugging
 $payload = file_get_contents('php://input');
 $headers = getallheaders();
+file_put_contents(dirname(__DIR__, 2) . '/dahua_webhook_log.txt', "[" . date('Y-m-d H:i:s') . "] Payload: " . $payload . "\n", FILE_APPEND);
 
 // Dahua sends JSON payloads
 $data = json_decode($payload, true);
