@@ -9,7 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    public static function get_config($pdo = null)
+    private static function get_config($pdo = null)
     {
         if (!$pdo) {
             global $pdo;
@@ -41,7 +41,7 @@ class DahuaHelper
         return preg_replace('/\s+/', '', $str);
     }
 
-    public static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -203,27 +203,18 @@ class DahuaHelper
             'users' => [
                 [
                     'userId' => $dahuaId,
-                    'UserID' => $dahuaId,
                     'userName' => $visit['visitor_name'],
-                    'UserName' => $visit['visitor_name'],
                     'userType' => 0,
-                    'UserType' => 0,
-                    'userStatus' => 0,
-                    'UserStatus' => 0,
-                    'Authority' => 1,
                     'authorityList' => ['1'],
                     'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
-                    'startTime' => $startTime = date('Y-m-d H:i:s'),
-                    'endTime' => $endTime = date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours'))),
-                    'ValidFrom' => $startTime,
-                    'ValidTo' => $endTime,
+                    'startTime' => date('Y-m-d H:i:s'),
+                    'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
             ]
         ];
         $userBody = json_encode($userPayload);
-        self::log("Step 1 Payload: " . $userBody);
         $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt_array($ch, [
