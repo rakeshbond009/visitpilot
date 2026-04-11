@@ -9,7 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
+    public static function get_config($pdo = null)
     {
         if (!$pdo) {
             global $pdo;
@@ -40,7 +40,7 @@ class DahuaHelper
         return preg_replace('/\s+/', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
+    public static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -151,6 +151,12 @@ class DahuaHelper
         $visit = $stmt->fetch();
         if (!$visit) return false;
 
+        $stmtPrev = $pdo->prepare("SELECT dahua_person_id FROM visits WHERE visitor_id = ? AND dahua_person_id IS NOT NULL AND dahua_person_id != '' ORDER BY id ASC LIMIT 1");
+        $stmtPrev->execute([$visit['visitor_id']]);
+        $existingDahuaId = $stmtPrev->fetchColumn();
+
+        $dahuaUserId = $existingDahuaId ? $existingDahuaId : 'V' . $visit['visitor_id'];
+
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
         // --- STEP 1: Compress photo to <95KB and save to public path ---
@@ -185,12 +191,12 @@ class DahuaHelper
         }
 
         // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
-        self::log("Sync Step 1: Adding user $visitId...");
+        self::log("Sync Step 1: Adding user $dahuaUserId for visit $visitId...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [[
-                'userId'         => (string)$visitId,
+                'userId'         => $dahuaUserId,
                 'userName'       => $visit['visitor_name'],
                 'userType'       => 0,
                 'authorityList'  => ['1'],
@@ -218,7 +224,7 @@ class DahuaHelper
             $facePayload = [
                 'deviceId' => $deviceId,
                 'faces'    => [[
-                    'userId'    => (string)$visitId,
+                    'userId'    => $dahuaUserId,
                     'photoData' => [$rawBase64],     // array per spec
                     'photoURL'  => $photoUrl         // real hosted URL — satisfies cloud validation
                 ]]
@@ -241,7 +247,7 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath    = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => (string)$visitId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaUserId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
             $cardBody    = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) { self::log("Card retry $attempt/3 (waiting 5s)..."); sleep(5); }
@@ -256,8 +262,8 @@ class DahuaHelper
             }
         }
 
-        self::log("SUCCESS: Synced Visit ID $visitId");
-        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([(string)$visitId, $visitId]);
+        self::log("SUCCESS: Synced Visit ID $visitId -> Dahua ID $dahuaUserId");
+        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$dahuaUserId, $visitId]);
         return true;
     }
 
@@ -270,32 +276,56 @@ class DahuaHelper
         $deviceId = explode(',', $config['device_sns'])[0] ?? '';
         if (!$deviceId) return false;
 
-        self::log("Deleting visitor $visitId from Dahua hardware...");
+        $stmt = $pdo->prepare("SELECT dahua_person_id, visit_code FROM visits WHERE id = ?");
+        $stmt->execute([$visitId]);
+        $visitData = $stmt->fetch();
+        if (!$visitData || empty($visitData['dahua_person_id'])) {
+            return false;
+        }
 
-        $tokenV2 = self::getTokenV2($config);
+        $dahuaUserId = $visitData['dahua_person_id'];
+
+        self::log("Revoking access for visitor $visitId (Dahua ID: $dahuaUserId) via expiration update...");
+
+        $tokenV2 = self::getAccessToken($pdo);
         if (!$tokenV2) return false;
 
-        $path = '/open-api/api-iot/v2/device/accessControl/deleteUsers';
+        // Use addUsers to OVERWRITE the visitor's validity period to the past
+        $path = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $payload = [
             'deviceId' => $deviceId,
-            'userIds'  => [(string)$visitId]
+            'users' => [[
+                'userId'         => $dahuaUserId,
+                'userName'       => 'Expired_Visitor_' . $visitId,
+                'userType'       => 0,
+                'validBeginTime' => gmdate("Y-m-d\TH:i:s\Z", time() - 86400 * 2), // 2 days ago
+                'validEndTime'   => gmdate("Y-m-d\TH:i:s\Z", time() - 86400)      // 1 day ago
+            ]]
         ];
+
         $body = json_encode($payload);
         $headers = self::generateSignV2($config, "POST", $body, $tokenV2);
 
         $ch = curl_init($config['base_url'] . $path);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true, 
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_POST => true, 
-            CURLOPT_POSTFIELDS => $body, 
-            CURLOPT_HTTPHEADER => $headers
-        ]);
-        $resp = curl_exec($ch); 
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $response = curl_exec($ch);
         curl_close($ch);
-        
-        self::log("Deleted $visitId. Response: " . substr($resp, 0, 100));
-        return true;
+
+        $data = json_decode($response, true);
+        if (isset($data['code']) && $data['code'] === "200") {
+            self::log("Successfully revoked via expiry. Response: $response");
+            
+            // Note: Dahua usually rejects deleting the card immediately after user update, 
+            // but expiration is sufficient.
+            return true;
+        } else {
+            self::log("Failed to revoke. Response: $response");
+            return false;
+        }
     }
 
     public static function processEvent($data, $pdo = null)
