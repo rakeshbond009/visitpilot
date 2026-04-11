@@ -45,35 +45,38 @@ class DahuaHelper
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
+        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // THE PROVEN SUCCESS FACTOR (from VP_TEST_HANDSHAKE log)
-        // Order: AppID + FullBody + Timestamp + Nonce + Method
-        // Note: AppAccessToken is NOT in this factor.
-        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
+        // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
+        $cleanBody = self::deleteWhitespace($body);
+        $bodyHash = hash('sha512', $cleanBody);
+        
+        $stringToSign = $method;
+        if ($cleanBody !== "{}" && $cleanBody !== "") {
+            $stringToSign .= "\n" . $bodyHash;
+        }
+
+        // strAuthFactor = AccessKey + AppAccessToken + Timestamp + Nonce + stringToSign
+        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
 
         $headers = [
             'Content-Type: application/json',
-            'Version: V1',
+            'Version: v1',
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductID: ' . $productId,
-            'X-TraceId-Header: ' . $traceId,
-            'Accept-Language: en-US'
+            'AppAccessToken: ' . $appAccessToken,
+            'ProductId: ' . $productId,
+            'X-TraceId-Header: ' . $traceId
         ];
-
-        if ($appAccessToken) {
-            $headers[] = 'AppAccessToken: ' . $appAccessToken;
-        }
 
         return $headers;
     }
