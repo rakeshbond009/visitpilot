@@ -51,11 +51,12 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // THE PROVEN SUCCESS FACTOR (from your machine's VP_TEST_HANDSHAKE entry)
-        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
-        $sign = strtolower(hash_hmac('sha512', $strAuthFactor, $secret));
+        // 3. HMAC-SHA512 Factor (Legacy Hero Mode + ProductID for Singapore)
+        // Note: We use the exact sequence that puts visitors on your screen
+        $factor = $appId . $productId . $appAccessToken . $body . $timestamp . $nonce . $method;
+        $sign = strtolower(hash_hmac('sha512', $factor, $secret));
         
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
+        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
 
         $headers = [
             'Content-Type: application/json',
