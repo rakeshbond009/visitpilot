@@ -162,23 +162,25 @@ class DahuaHelper
         $photoUrl = null;
 
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
-            // Resize to 300x400 portrait and compress until under 95KB (min quality 30 to preserve face)
+            // Dahua face recognition needs sufficient resolution and quality.
+            // Target: 640x480, under 95KB, minimum quality 55 to preserve facial features.
             $img  = null;
             $mime = mime_content_type($photoPath);
             if ($mime === 'image/png')  $img = imagecreatefrompng($photoPath);
             elseif ($mime === 'image/jpeg') $img = imagecreatefromjpeg($photoPath);
             if ($img) {
-                $resized = imagecreatetruecolor(300, 400);
-                imagecopyresampled($resized, $img, 0, 0, 0, 0, 300, 400, imagesx($img), imagesy($img));
+                $resized = imagecreatetruecolor(640, 480);
+                imagefill($resized, 0, 0, imagecolorallocate($resized, 255, 255, 255));
+                imagecopyresampled($resized, $img, 0, 0, 0, 0, 640, 480, imagesx($img), imagesy($img));
                 $quality = 85;
                 do {
                     imagejpeg($resized, $compressedPath, $quality);
                     $quality -= 5;
-                } while (filesize($compressedPath) > 95000 && $quality > 30);
+                } while (filesize($compressedPath) > 95000 && $quality > 55);
                 imagedestroy($img);
                 imagedestroy($resized);
                 $photoUrl = 'https://visitor.codepilotx.com/uploads/dahua_compressed/' . $visitId . '.jpg';
-                self::log("Photo compressed: " . round(filesize($compressedPath)/1024, 1) . "KB → $photoUrl");
+                self::log("Photo compressed: " . round(filesize($compressedPath)/1024, 1) . "KB q=$quality → $photoUrl");
             }
         }
 
