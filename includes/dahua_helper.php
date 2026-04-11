@@ -45,26 +45,15 @@ class DahuaHelper
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // stringToSign = method + "\n" + path + "\n" + SHA512(bodyStr without whitespace)
-        $cleanBody = self::deleteWhitespace($body);
-        $bodyHash = hash('sha512', $cleanBody);
-        
-        $stringToSign = $method;
-        if ($path) {
-            $stringToSign .= "\n" . $path;
-        }
-        if ($cleanBody !== "{}" && $cleanBody !== "") {
-            $stringToSign .= "\n" . $bodyHash;
-        }
-
-        // THE "ACCIDENTAL HERO" FORMULA (Proven by successful VP_TEST_HANDSHAKE entry)
+        // THE PROVEN SUCCESS FACTOR (from VP_TEST_HANDSHAKE log)
         // Order: AppID + FullBody + Timestamp + Nonce + Method
+        // Note: AppAccessToken is NOT in this factor.
         $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
