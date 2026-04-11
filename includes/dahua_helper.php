@@ -183,12 +183,14 @@ class DahuaHelper
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
-            curl_exec($ch);
+            $resp = curl_exec($ch);
             curl_close($ch);
+            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
         }
 
         // Step 3: Card (V2)
         if (!empty($visit['visit_code'])) {
+            self::log("Sync Step 3: Authorizing card...");
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
             $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => (string)$visitId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
             $cardBody = json_encode($cardPayload);
@@ -198,10 +200,12 @@ class DahuaHelper
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $cardBody);
             curl_setopt($ch, CURLOPT_HTTPHEADER, $cardHeaders);
-            curl_exec($ch);
+            $resp = curl_exec($ch);
             curl_close($ch);
+            self::log("Sync Step 3 Response: " . substr($resp, 0, 100));
         }
 
+        self::log("SUCCESS: Synced Visit ID $visitId");
         $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute(['VP' . $visitId, $visitId]);
         return true;
     }
