@@ -177,8 +177,9 @@ class DahuaHelper
                 [
                     'userId' => 'VP' . $visitId,
                     'userName' => $visit['visitor_name'],
-                    'userType' => 0, // General user
-                    'permission' => 1 // Grant access
+                    'userType' => 0,
+                    'authorityList' => ['1'], // Standard User Group
+                    'departmentId' => '1' // Default Department
                 ]
             ]
         ];
