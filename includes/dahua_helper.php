@@ -55,12 +55,12 @@ class DahuaHelper
         $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
         $bodyHash = hash('sha256', $cleanBody);
         
-        // 4. HMAC-SHA512 Factor (Replicating Portal Slide 79)
-        // Order: AppID + [ProductID] + [Token] + Timestamp + Nonce + Method + "\n" + BodyHash
+        // 4. HMAC-SHA512 Factor (TraceID Mode for Singapore IoT)
+        // Order: AppID + ProductID + Token + TraceID + Timestamp + Nonce + Method + "\n" + BodyHash
         if (strpos($path, '/auth/') !== false) {
             $factor = $appId . $timestamp . $nonce . $method . "\n" . $bodyHash;
         } else {
-            $factor = $appId . $productId . $appAccessToken . $timestamp . $nonce . $method . "\n" . $bodyHash;
+            $factor = $appId . $productId . $appAccessToken . $traceId . $timestamp . $nonce . $method . "\n" . $bodyHash;
         }
         
         $sign = strtolower(hash_hmac('sha512', $factor, $secret));
