@@ -51,11 +51,15 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // 3. HMAC-SHA512 Factor (Legacy Hero Mode + ProductID for Singapore)
-        // Note: We use the exact sequence that puts visitors on your screen
-        $factor = $appId . $productId . $appAccessToken . $body . $timestamp . $nonce . $method;
-        $sign = strtolower(hash_hmac('sha512', $factor, $secret));
+        // 3. HMAC-SHA512 Factor
+        // Note: For Authentication APIs, productId and token MUST NOT be in the factor
+        if (strpos($path, '/auth/') !== false) {
+            $factor = $appId . $body . $timestamp . $nonce . $method;
+        } else {
+            $factor = $appId . $productId . $appAccessToken . $body . $timestamp . $nonce . $method;
+        }
         
+        $sign = strtolower(hash_hmac('sha512', $factor, $secret));
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
 
         $headers = [
