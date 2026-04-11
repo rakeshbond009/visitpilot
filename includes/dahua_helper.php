@@ -63,10 +63,11 @@ class DahuaHelper
             $stringToSign .= "\n" . $bodyHash;
         }
 
-        // strAuthFactor = AccessKey + AppAccessToken + Timestamp + Nonce + stringToSign
-        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+        // THE "ACCIDENTAL HERO" FORMULA (Proven by successful VP_TEST_HANDSHAKE entry)
+        // Order: AppID + FullBody + Timestamp + Nonce + Method
+        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-
+        
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
 
         $headers = [
