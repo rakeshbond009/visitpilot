@@ -104,6 +104,151 @@ Templates with these names MUST be approved in your Meta Business Suite:
 
 This guide documents the full setup for connecting the VisitPilot VMS with Dahua DoLynk Cloud hardware (v2 API). Refer to this if you need to recreate the environment or troubleshoot authentication issues.
 
+> [!IMPORTANT]
+> **VERIFIED WORKING** as of April 2026 (Visit #433). The 3-step sequential pipeline with `photoData` array is the ONLY confirmed working approach. Do not revert to atomic payloads.
+
+---
+
+## 🚀 Phase 1: Dahua Developer Portal Setup
+**URL:** [https://open.dolynkcloud.com/](https://open.dolynkcloud.com/)
+
+### 1. Create a Product
+1. Log in and go to Console → Overview → Create Now → Select **Open IoT**.
+2. Enter any name for the product and click **ok**.
+3. Click verify and enter password to get:
+   - **AccessKey (Client ID)**: Used as `dahua_app_id` in our system.
+   - **SecretAccessKey**: Used as `dahua_app_secret`.
+   - **ProductID**: Obtained after product creation.
+
+### 2. Subscribe to Service Packages
+1. Go to **Select Service Packages**.
+2. Find **Access Control Service Package** and click **Subscribe**.
+3. This is mandatory for `addUsers` and `authorizeAccessFace` APIs to work.
+
+### 3. Add Hardware Devices
+1. Go to Develop Function → **Cloud Access**.
+2. Click **Add Device** and enter the Device ID, Device Password, Category Code (ASI), Device Account (admin).
+3. Ensure the device status shows **Online** before testing sync.
+
+### 4. Message Subscription (Webhooks)
+To receive real-time "Check-In" notifications when someone scans their face:
+1. Go to **Develop Functions** → **Cloud Message**.
+2. Select your Product (**VisitPilot**).
+3. Set **Message Type** as "Device Message", and **Device Type** as "ASI".
+4. Under **Types of Subscribable Messages**, check **AccessControl**.
+5. Set the **Callback URL** to:
+   `https://visitor.codepilotx.com/api/dahua/webhook.php`
+6. Click **Save**.
+
+---
+
+## 🛠 Phase 2: System Configuration (App Side)
+
+In the VisitPilot Admin Dashboard (**Settings → Dahua Integration**), set:
+
+| Setting Key | Value Source |
+| :--- | :--- |
+| **Dahua App ID** | `AccessKey` from Portal |
+| **App Secret Key** | `SecretAccessKey` from Portal |
+| **Product ID** | `ProductID` from Portal |
+| **API Base URL** | `https://open-api-sg.dolynkcloud.com` (Singapore gateway) |
+| **Device SNs** | Comma-separated Serial Numbers of your devices |
+
+---
+
+## 💻 Phase 3: The Sync Pipeline (CRITICAL — DO NOT CHANGE)
+
+All logic lives in `includes/dahua_helper.php → DahuaHelper::syncVisitor()`.
+
+### Step 1: Image Compression
+Dahua hardware rejects photos over **100KB**. Our pipeline:
+1. Reads visitor photo from `uploads/visitors/`.
+2. Resizes to **300×400px** using GD library.
+3. Iteratively compresses JPEG quality (`85 → 70 → 55 → 40...`) until file is under **95KB**.
+4. Saves to `uploads/dahua_compressed/{visit_id}.jpg` (publicly accessible via HTTPS).
+5. Public URL: `https://visitor.codepilotx.com/uploads/dahua_compressed/{id}.jpg`
+
+### Step 2: Authentication (V2 / HMAC-SHA512)
+The Singapore gateway requires **V2 authentication only** (V1/MD5 is deprecated).
+
+```
+Sign = HMAC-SHA512(
+  AccessKey + AppAccessToken + Timestamp + Nonce + Method + "\n" + SHA512(Body)
+)
+```
+
+**Critical header values** (case-sensitive):
+```http
+Version: v1          ← lowercase v1 (NOT V1)
+ProductId: [ID]      ← camelCase ProductId (NOT ProductID)
+```
+
+### Step 3: 3-Step Sequential Sync
+
+> [!WARNING]
+> The `addUsers` API **silently ignores** `faceList` and `cardList` nested inside the payload. You MUST call all three endpoints separately.
+
+**Step 3a — Add User** (`POST /addUsers`):
+```json
+{
+  "deviceId": "SN123",
+  "users": [{"userId": "433", "userName": "John", "userType": 0, ...}]
+}
+```
+
+**Step 3b — Authorize Face** (`POST /authorizeAccessFace`):
+```json
+{
+  "deviceId": "SN123",
+  "faces": [{
+    "userId": "433",
+    "photoData": ["<base64_NO_data_uri_prefix>"],
+    "photoURL": "https://visitor.codepilotx.com/uploads/dahua_compressed/433.jpg"
+  }]
+}
+```
+> Per **Dahua API Guide v2.4 §4.12.1.4.2**: `photoData` is a base64 **array** (must strip `data:image/jpeg;base64,` header). When both `photoData` and `photoURL` are present, `photoData` prevails. `photoURL` satisfies the cloud-layer validation check.
+
+**Step 3c — Authorize Card** (`POST /authorizeAccessCard`):
+```json
+{
+  "deviceId": "SN123",
+  "cards": [{"userId": "433", "cardNo": "3110C749", "cardStatus": 0}]
+}
+```
+
+**Retry logic**: Face and Card calls retry up to **3×** with 5s delay if `IDV0098` (user not yet propagated to device) is returned.
+
+### ID Format
+- UserIDs are **numeric-only** (the visit's database ID). e.g., `"433"`
+- Do NOT use `VP` prefixes — hardware firmware rejects non-numeric IDs.
+
+---
+
+## 🔥 Troubleshooting
+
+| Error Code | Meaning | Fix |
+| :--- | :--- | :--- |
+| `AUT001` | Invalid signature | Check `v1` lowercase, `ProductId` camelCase, correct HMAC key |
+| `PRM001` | Parameter error | `photoURL` blank or `photoData` not an array |
+| `IDV0098` | User not found on device | Normal — retry loop handles this (user propagation delay) |
+| `Duplicate` | userId already exists | **Delete user from device** Person Management, then re-sync |
+
+> [!CAUTION]
+> **Duplicate entries are NOT allowed on Dahua hardware.** If a sync fails mid-way and the user was partially created, you must manually delete them from the device's Person Management UI before re-syncing.
+
+### Debug Log
+All sync activity is logged to: `https://visitor.codepilotx.com/dahua_debug.txt`
+
+---
+
+## 📂 Phase 4: File Manifest
+- `includes/dahua_helper.php` — Main sync engine (3-step pipeline)
+- `api/dahua/webhook.php` — Receives check-in events from Dahua Cloud
+- `api/dahua/test_sync.php` — Manual sync trigger: `?id={visit_id}`
+- `uploads/dahua_compressed/` — Auto-compressed photos served publicly
+- `dahua_debug.txt` — Runtime sync log
+
 ---
 
 ## 🚀 Phase 1: Dahua Developer Portal Setup
@@ -472,41 +617,17 @@ To achieve the professional white border look from the digital pass:
 ---
 # VisitPilot Notification System
 
-## Dahua DoLynk Cloud Integration (V2) - VERIFIED SUCCESS
+## Dahua DoLynk Cloud Integration (V2) - ✅ FULLY VERIFIED
 
-The VisitPilot VMS is integrated with Dahua DoLynk Cloud using the **Open API v2 (Standard Signature Mode)**. This integration has been verified end-to-end for both token acquisition and hardware visitor syncing.
+See the comprehensive Dahua integration guide above (Phase 1–4) for the complete reference.
 
-### **Verified Authentication Model**
-*   **Algorithm**: `HMAC-SHA512`
-*   **Signature Format**: `Uppercase Hex` (128 characters)
-*   **String to Sign (Factor)**: `AccessKey + AppAccessToken + Timestamp + Nonce + [stringToSign]`
-    *   `stringToSign`: `Method + "\n" + (SHA512(Raw Body if not empty))`
-*   **Case Sensitivity (CRITICAL)**:
-    *   `Version`: Must be **`v1`** (Lowercase).
-    *   `ProductId`: Must be camelCase **`ProductId`** (NOT ProductID).
-
-### **Header Specification**
-```http
-Content-Type: application/json
-Version: v1
-AccessKey: [AppId]
-Timestamp: [Milliseconds]
-Nonce: web-[GUID]-[Timestamp]
-Sign: [HMAC-SHA512-HEX]
-AppAccessToken: [Token]
-ProductId: [ID]
-X-TraceId-Header: [GUID]
-```
-
-### **Known Integration Notes**
-*   **AUT001 Error**: This occurs if header names or the `Sign` factor have incorrect capitalization. Ensure `v1` and `ProductId` match exactly.
-*   **Sync Logic**: The `DahuaHelper::syncVisitor` method handles the 3-step synchronization:
-    1.  **Add User** (`/addUsers`)
-    2.  **Authorize Face** (`/authorizeAccessFace`)
-    3.  **Authorize Card** (`/authorizeAccessCard`)
-
-### **Diagnostic Tools**
-*   [test_dahua_v2.php](file:///c:/xampp/htdocs/visitpilot/test_dahua_v2.php): Standalone verification script for the full v2 pipeline.
+**Quick Summary — Verified Working Stack:**
+- **Gateway**: `https://open-api-sg.dolynkcloud.com` (Singapore)
+- **Auth**: HMAC-SHA512, headers `Version: v1`, `ProductId` (camelCase)
+- **Face Payload**: `photoData` as base64 array + `photoURL` as real HTTPS URL
+- **Pipeline**: 3 separate API calls (addUsers → authorizeAccessFace → authorizeAccessCard)
+- **Image limit**: < 100KB (auto-compressed to `uploads/dahua_compressed/`)
+- **Log**: `dahua_debug.txt` on hosted server
 
 This document outlines the implementation details of the real-time notification system in VisitPilot, covering both the web dashboard polling architecture and the React Native mobile app Push/Overlay system.
 
