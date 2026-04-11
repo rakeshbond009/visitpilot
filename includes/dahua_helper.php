@@ -184,7 +184,7 @@ class DahuaHelper
         $deviceId = $sns = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
         // Step 1: Add User
-        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
+        $userPath = '/open-api/api-iot/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [
@@ -198,7 +198,7 @@ class DahuaHelper
         $userBody = json_encode($userPayload);
         $userHeaders = self::generateSignV2($config, "POST", $userPath, $userBody, $token);
 
-        self::log("Sync Step 1: Adding user (Thin Mode)...");
+        self::log("Sync Step 1: Adding user (V1 Path)...");
         $userResp = self::post($config['base_url'] . $userPath, $userBody, $userHeaders);
         $userData = json_decode($userResp, true);
 
@@ -213,7 +213,7 @@ class DahuaHelper
 
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             self::log("Sync Step 2: Authorizing face...");
-            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            $facePath = '/open-api/api-iot/device/accessControl/authorizeAccessFace';
             $facePayload = [
                 'deviceId' => $deviceId,
                 'faces' => [
@@ -232,7 +232,7 @@ class DahuaHelper
         // --- STEP 3: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             self::log("Sync Step 3: Authorizing card...");
-            $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
+            $cardPath = '/open-api/api-iot/device/accessControl/authorizeAccessCard';
             $cardPayload = [
                 'deviceId' => $deviceId,
                 'cards' => [

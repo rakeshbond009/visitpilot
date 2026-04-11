@@ -47,7 +47,7 @@ try {
         'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
     ];
 
-    $path = '/open-api/api-iot/v2/device/accessControl/addUsers';
+    $path = '/open-api/api-iot/device/accessControl/addUsers';
     $url = $config['base_url'] . $path;
     
     $payload = [
