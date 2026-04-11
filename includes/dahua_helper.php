@@ -51,8 +51,7 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // THE "ACCIDENTAL HERO" LOGIC (This specifically put a user on your machine!)
-        // AppId + FullBody + Time + Nonce + Method
+        // LEGACY FACTOR (Singapore-Compatible)
         $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
