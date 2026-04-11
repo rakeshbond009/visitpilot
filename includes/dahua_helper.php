@@ -45,27 +45,17 @@ class DahuaHelper
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // 1. Calculate Body Hash (SHA256 matching the new signature mode)
-        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
-        $bodyHash = hash('sha256', $cleanBody);
-
-        // 2. stringToSign = Method + \n + BodyHash
-        $stringToSign = $method;
-        if ($cleanBody !== "{}" && $cleanBody !== "") {
-            $stringToSign .= "\n" . $bodyHash;
-        }
-
-        // 3. HMAC-SHA256 Factor
-        $factor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
-        $sign = strtolower(hash_hmac('sha256', $factor, $secret));
+        // THE PROVEN SUCCESS FACTOR (from your machine's VP_TEST_HANDSHAKE entry)
+        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
+        $sign = strtolower(hash_hmac('sha512', $strAuthFactor, $secret));
         
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
+        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
 
         $headers = [
             'Content-Type: application/json',
