@@ -18,11 +18,10 @@ $variants = [
     'B' => $appId . $prodId . $timestamp . $nonce . $secret,
     'C' => $appId . $timestamp . $nonce . $prodId . $secret,
     'D' => $appId . $timestamp . $nonce . $secret,
-    'E' => $appId . $prodId . "v1" . $timestamp . $nonce . $secret,
-    'F' => $prodId . $appId . $timestamp . $nonce . $secret,
-    'G' => $appId . $prodId . $timestamp . $nonce . "v2" . $secret,
-    'H' => $appId . $timestamp . $nonce . "v1" . $secret,
-    'I' => $appId . $timestamp . $nonce . "POST\n" . hash('sha256', json_encode(['appId' => $appId, 'appSecret' => $secret]))
+    'E' => strtolower($appId) . $prodId . $timestamp . $nonce . "v1" . $secret,
+    'F' => $appId . strtolower($prodId) . $timestamp . $nonce . "v1" . $secret,
+    'G' => $appId . $prodId . $timestamp . $nonce . "v1" . strtoupper($secret),
+    'H' => $appId . $prodId . $timestamp . $nonce . "v1" . strtolower($secret),
 ];
 
 foreach ($variants as $key => $factor) {
