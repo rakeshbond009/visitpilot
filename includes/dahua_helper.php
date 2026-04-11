@@ -212,10 +212,21 @@ class DahuaHelper
         self::log("Step 1 Response: " . substr($userResp, 0, 120));
 
         // --- STEP 3: Authorize Face (retry up to 3x with 5s delay for device propagation) ---
-        if ($photoUrl) {
+        // Per Dahua API Guide v2.4 s4.12.1.4.2: photoData is array, header must be stripped.
+        // When both photoData + photoURL sent, photoData prevails; photoURL satisfies cloud validation.
+        if ($photoUrl && file_exists($compressedPath)) {
             $facePath    = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $facePayload = ['deviceId' => $deviceId, 'faces' => [['userId' => (string)$visitId, 'photoURL' => $photoUrl]]];
-            $faceBody    = json_encode($facePayload);
+            $rawBase64   = base64_encode(file_get_contents($compressedPath)); // No data:image prefix
+            $facePayload = [
+                'deviceId' => $deviceId,
+                'faces'    => [[
+                    'userId'    => (string)$visitId,
+                    'photoData' => [$rawBase64],     // array per spec
+                    'photoURL'  => $photoUrl         // real hosted URL — satisfies cloud validation
+                ]]
+            ];
+            $faceBody = json_encode($facePayload);
+            sleep(2); // brief propagation window before first attempt
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) { self::log("Face retry $attempt/3 (waiting 5s)..."); sleep(5); }
                 $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
@@ -223,9 +234,8 @@ class DahuaHelper
                 curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
                     CURLOPT_POST => true, CURLOPT_POSTFIELDS => $faceBody, CURLOPT_HTTPHEADER => $faceHeaders]);
                 $faceResp = curl_exec($ch); curl_close($ch);
-                self::log("Step 2 Face (attempt $attempt): " . substr($faceResp, 0, 120));
+                self::log("Step 2 Face (attempt $attempt): " . substr($faceResp, 0, 150));
                 $faceData = json_decode($faceResp, true);
-                // Break on success or non-propagation error
                 if (($faceData['code'] ?? '') !== 'IDV0098') break;
             }
         }
