@@ -45,14 +45,27 @@ class DahuaHelper
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
+        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
+        $traceId = bin2hex(random_bytes(16));
 
-        // V1 Signature Factor: AccessKey + ProductID + Timestamp + Nonce + Version + AppSecret
-        $factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
-        $sign = strtoupper(md5($factor));
+        // 1. Calculate Body Hash (SHA256 matching the new signature mode)
+        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
+        $bodyHash = hash('sha256', $cleanBody);
+
+        // 2. stringToSign = Method + \n + BodyHash
+        $stringToSign = $method;
+        if ($cleanBody !== "{}" && $cleanBody !== "") {
+            $stringToSign .= "\n" . $bodyHash;
+        }
+
+        // 3. HMAC-SHA256 Factor
+        $factor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+        $sign = strtoupper(hash_hmac('sha256', $factor, $secret));
+        
+        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
 
         $headers = [
             'content-type: application/json',
@@ -62,7 +75,8 @@ class DahuaHelper
             'nonce: ' . $nonce,
             'sign: ' . $sign,
             'appaccesstoken: ' . $appAccessToken,
-            'productid: ' . $productId
+            'productid: ' . $productId,
+            'x-traceid-header: ' . $traceId
         ];
 
         return $headers;
