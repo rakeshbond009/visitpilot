@@ -102,17 +102,17 @@ class DahuaHelper
         // STEP A: Get a standard -01 App Token (USING V1 MD5 HANDSHAKE)
         $timestamp = (string)round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $appId . $timestamp . $nonce . "v1" . $secret;
+        $v1Factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
         $v1Sign = strtoupper(md5($v1Factor));
 
         $v1Headers = [
-            'Content-Type: application/json',
-            'Version: v1',
-            'AccessKey: ' . $appId,
-            'Timestamp: ' . $timestamp,
-            'Nonce: ' . $nonce,
-            'Sign: ' . $v1Sign,
-            'ProductId: ' . $productId
+            'content-type: application/json',
+            'version: v1',
+            'accesskey: ' . $appId,
+            'timestamp: ' . $timestamp,
+            'nonce: ' . $nonce,
+            'sign: ' . $v1Sign,
+            'productid: ' . $productId
         ];
 
         $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
