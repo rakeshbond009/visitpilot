@@ -174,10 +174,19 @@ class DahuaHelper
         $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
 
         if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
-            $facePath = '/open-api/api-iot/v1/device/accessControl/authorizeAccessFace';
-            $facePayload = ['deviceId' => $deviceId, 'faces' => [['userId' => (string)$visitId, 'faceImage' => base64_encode(file_get_contents($finalPhoto))]]];
+            self::log("Sync Step 2: Authorizing face (V2)...");
+            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            $facePayload = [
+                'deviceId' => $deviceId,
+                'faces' => [
+                    [
+                        'userId' => (string)$visitId,
+                        'faceImage' => base64_encode(file_get_contents($finalPhoto))
+                    ]
+                ]
+            ];
             $faceBody = json_encode($facePayload);
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV1, true);
+            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
             $ch = curl_init($config['base_url'] . $facePath);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
