@@ -45,18 +45,28 @@ class DahuaHelper
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
+        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // THE PROVEN SUCCESS FACTOR (from your machine's VP_TEST_HANDSHAKE entry)
-        // Order: AppID + FullBody + Timestamp + Nonce + Method
-        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+        // 1. Calculate Body Hash (SHA512 of stripped body)
+        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
+        $bodyHash = hash('sha512', $cleanBody);
+
+        // 2. Build stringToSign = Method [+ \n + BodyHash]
+        $stringToSign = $method;
+        if ($cleanBody !== "{}" && $cleanBody !== "") {
+            $stringToSign .= "\n" . $bodyHash;
+        }
+
+        // 3. Build Auth Factor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
+        // Note: AppAccessToken is empty for login
+        $factor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+        $sign = strtoupper(hash_hmac('sha512', $factor, $secret));
         
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
+        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
 
         $headers = [
             'content-type: application/json',
