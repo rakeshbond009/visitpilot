@@ -114,7 +114,8 @@ class DahuaHelper
             'accesskey: ' . $appId,
             'timestamp: ' . $timestamp,
             'nonce: ' . $nonce,
-            'sign: ' . $v1Sign
+            'sign: ' . $v1Sign,
+            'productid: ' . $productId
         ];
 
         $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
