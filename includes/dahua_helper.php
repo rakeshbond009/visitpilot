@@ -186,7 +186,7 @@ class DahuaHelper
             $body .= $fileData . "\r\n";
             $body .= "--$boundary--\r\n";
             
-            $uploadHeaders = self::generateSignV2($config, "POST", "{}", $tokenV2); // Media upload often uses bodyless sign
+            $uploadHeaders = self::generateSignV2($config, "POST", "", $tokenV2); // SIGN WITH ABSOLUTELY EMPTY BODY
             // Remove Content-Type and replace it
             foreach($uploadHeaders as $idx => $hdr) if(stripos($hdr, 'Content-Type')) unset($uploadHeaders[$idx]);
             $uploadHeaders[] = "Content-Type: multipart/form-data; boundary=$boundary";
