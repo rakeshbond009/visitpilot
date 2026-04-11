@@ -63,20 +63,20 @@ class DahuaHelper
 
         // 3. HMAC-SHA256 Factor
         $factor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha256', $factor, $secret));
+        $sign = strtolower(hash_hmac('sha256', $factor, $secret));
         
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
 
         $headers = [
-            'content-type: application/json',
-            'version: v1',
-            'accesskey: ' . $appId,
-            'timestamp: ' . $timestamp,
-            'nonce: ' . $nonce,
-            'sign: ' . $sign,
-            'appaccesstoken: ' . $appAccessToken,
-            'productid: ' . $productId,
-            'x-traceid-header: ' . $traceId
+            'Content-Type: application/json',
+            'Version: v1',
+            'AppAccessToken: ' . $appAccessToken,
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign,
+            'X-TraceId-Header: ' . $traceId,
+            'ProductId: ' . $productId
         ];
 
         return $headers;
