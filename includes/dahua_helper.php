@@ -155,7 +155,7 @@ class DahuaHelper
 
         // Step 1: Add User
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userPayload = ['deviceId' => $deviceId, 'users' => [['userId' => 'VP' . $visitId, 'userName' => $visit['visitor_name'], 'userType' => 0, 'authorityList' => ['1'], 'departmentId' => '1', 'startTime' => date('Y-m-d H:i:s'), 'endTime' => '2036-12-31 23:59:59']]];
+        $userPayload = ['deviceId' => $deviceId, 'users' => [['userId' => 'VP' . $visitId, 'userName' => $visit['visitor_name'], 'userType' => 0, 'authorityList' => ['1'], 'userPermission' => 1, 'role' => 'user', 'departmentId' => '1', 'startTime' => date('Y-m-d H:i:s'), 'endTime' => '2036-12-31 23:59:59']]];
         $userBody = json_encode($userPayload);
         $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
         $ch = curl_init($config['base_url'] . $userPath);
@@ -170,9 +170,12 @@ class DahuaHelper
         // Step 2: Face (V1)
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
-        if (file_exists($photoPath) && !empty($visit['photo_path'])) {
+        $fixedPath = dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg';
+        $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
+
+        if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
             $facePath = '/open-api/api-iot/v1/device/accessControl/authorizeAccessFace';
-            $facePayload = ['deviceId' => $deviceId, 'faces' => [['userId' => 'VP' . $visitId, 'faceImage' => base64_encode(file_get_contents($photoPath))]]];
+            $facePayload = ['deviceId' => $deviceId, 'faces' => [['userId' => 'VP' . $visitId, 'faceImage' => base64_encode(file_get_contents($finalPhoto))]]];
             $faceBody = json_encode($facePayload);
             $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV1, true);
             $ch = curl_init($config['base_url'] . $facePath);
