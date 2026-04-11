@@ -51,22 +51,12 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // 1. Calculate Body Hash (SHA512 of stripped body)
-        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
-        $bodyHash = hash('sha512', $cleanBody);
-
-        // 2. Build stringToSign = Method [+ \n + BodyHash]
-        $stringToSign = $method;
-        if ($cleanBody !== "{}" && $cleanBody !== "") {
-            $stringToSign .= "\n" . $bodyHash;
-        }
-
-        // 3. Build Auth Factor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
-        // Note: AppAccessToken is empty for login
-        $factor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha512', $factor, $secret));
+        // THE "ACCIDENTAL HERO" LOGIC (This specifically put a user on your machine!)
+        // AppId + FullBody + Time + Nonce + Method
+        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
+        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
         
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
+        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
 
         $headers = [
             'content-type: application/json',
