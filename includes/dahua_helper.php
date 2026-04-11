@@ -221,7 +221,6 @@ class DahuaHelper
             return false;
         }
     }
-    }
 
     public static function processEvent($data, $pdo = null)
     {
