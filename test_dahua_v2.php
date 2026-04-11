@@ -54,9 +54,11 @@ try {
         'deviceId' => $deviceId,
         'users' => [
             [
-                'userId' => 'VP_TEST_HANDSHAKE',
-                'userName' => 'TEST_HANDSHAKE',
-                'userType' => 0
+                'userId' => 'VP_LATEST_PROVE',
+                'userName' => 'LATEST_PROVE',
+                'userType' => 0,
+                'departmentId' => 1,
+                'validityPeriod' => '2037-12-31 23:59:59'
             ]
         ]
     ];
