@@ -42,43 +42,41 @@ class DahuaHelper
         return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
-        $traceId = bin2hex(random_bytes(16));
+        $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
-        // 3. SHA256 Body Hash
-        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
-        $bodyHash = hash('sha256', $cleanBody);
-        
-        // 4. stringToSign MUST include path for Singapore V2
-        $stringToSign = $method . "\n" . $path . "\n" . $bodyHash;
-        
-        // 5. HMAC-SHA512 Factor
-        if (strpos($path, '/auth/') !== false) {
-            $factor = $appId . $timestamp . $nonce . $stringToSign;
-        } else {
-            $factor = $appId . $productId . $appAccessToken . $timestamp . $nonce . $stringToSign;
-        }
-        
-        $sign = strtolower(hash_hmac('sha512', $factor, $secret));
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $factor);
+        // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
+        $cleanBody = self::deleteWhitespace($body);
+        $bodyHash = hash('sha512', $cleanBody);
+        $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+
+        // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
+        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+
+        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
 
         $headers = [
             'Content-Type: application/json',
-            'Version: v1',
-            'AppAccessToken: ' . $appAccessToken,
+            'Version: V1',
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
+            'ProductID: ' . $productId,
             'X-TraceId-Header: ' . $traceId,
-            'ProductId: ' . $productId
+            'Accept-Language: en-US'
         ];
+
+        if ($appAccessToken) {
+            $headers[] = 'AppAccessToken: ' . $appAccessToken;
+        }
 
         return $headers;
     }
@@ -86,14 +84,12 @@ class DahuaHelper
     public static function getAccessToken($pdo = null)
     {
         $config = self::get_config($pdo);
-        $appId = $config['client_id'];
-        $secret = $config['client_secret'];
-        $productId = $config['product_id'] ?? '';
-        
-        $userName = 'info@siddhitechsolution.com';
-        $passWord = md5('Siddhi@!23'); 
+        if (empty($config['client_id']) || empty($config['client_secret'])) {
+            self::log("FAIL: Credentials missing.");
+            return null;
+        }
 
-        $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($appId . $userName) . '.json';
+        $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) {
@@ -101,70 +97,39 @@ class DahuaHelper
             }
         }
 
-        // STEP A: Get a standard -01 App Token (V1 MD5 - SINGAPORE VARIANT)
-        $timestamp = (string)round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $appId . $timestamp . $nonce . $productId . $secret;
-        $v1Sign = strtoupper(md5($v1Factor));
-        self::log("V1 FACTOR (SG): " . $v1Factor);
+        $path = '/open-api/api-base/auth/getAppAccessToken';
+        $body = "{}";
+        $url = $config['base_url'] . $path;
 
-        $v1Headers = [
-            'content-type: application/json',
-            'version: v1',
-            'accesskey: ' . $appId,
-            'timestamp: ' . $timestamp,
-            'nonce: ' . $nonce,
-            'sign: ' . $v1Sign,
-            'productid: ' . $productId
-        ];
+        self::log("Auth: Requesting v2 token for path $path...");
 
-        $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
-        $authBody = json_encode(['appId' => $appId, 'appSecret' => $secret]);
-        
-        $ch = curl_init($authUrl);
+        $headers = self::generateSignV2($config, "POST", $body);
+
+        $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $authBody);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $v1Headers);
-        $authResp = curl_exec($ch);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        $response = curl_exec($ch);
+        $err = curl_error($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $authRes = json_decode($authResp, true);
-        $appToken = $authRes['data']['appAccessToken'] ?? null;
-        if (!$appToken) {
-            self::log("Step A FAIL: " . $authResp);
-            return null;
+        $data = json_decode($response, true);
+        if (isset($data['data']['appAccessToken'])) {
+            self::log("Auth Success.");
+            $token = $data['data']['appAccessToken'];
+            $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
+            if (!is_dir(dirname($cacheFile)))
+                @mkdir(dirname($cacheFile), 0777, true);
+            file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
+            return $token;
         }
 
-        // STEP B: Use -01 Token to get -02 Session Token (V2 Signature)
-        $loginUrl = $config['base_url'] . '/open-api/api-base/auth/userLogin';
-        $loginBody = json_encode([
-            'userName' => $userName,
-            'passWord' => $passWord,
-            'productId' => $productId
-        ]);
-
-        $loginHeaders = self::generateSignV2($config, "POST", '/open-api/api-base/auth/userLogin', $loginBody, $appToken);
-        
-        $ch = curl_init($loginUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $loginBody);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $loginHeaders);
-        $loginResp = curl_exec($ch);
-        curl_close($ch);
-
-        $loginRes = json_decode($loginResp, true);
-        if ($loginRes && isset($loginRes['data']['appAccessToken'])) {
-            $accessToken = $loginRes['data']['appAccessToken'];
-            $expireTime = time() + ($loginRes['data']['expiresIn'] ?? 7000) - 60;
-            file_put_contents($cacheFile, json_encode(['access_token' => $accessToken, 'expire_time' => $expireTime]));
-            return $accessToken;
-        }
-
-        self::log("Step B (-02 Token) FAIL: " . $loginResp);
+        self::log("Auth FAIL. Response: [$code] " . ($response ?: $err));
         return null;
     }
 
@@ -198,27 +163,36 @@ class DahuaHelper
         $config = self::get_config($pdo);
         $deviceId = $sns = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
-        // Step 1: Add User
-        $userPath = '/open-api/api-iot/device/accessControl/addUsers';
+        // --- STEP 1: Add User ---
+        self::log("Sync Step 1: Adding user...");
+        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
+        $userUrl = $config['base_url'] . $userPath;
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [
                 [
                     'userId' => 'VP' . $visitId,
                     'userName' => $visit['visitor_name'],
-                    'userType' => 0
+                    'userType' => 0 // General user
                 ]
             ]
         ];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userPath, $userBody, $token);
 
-        self::log("Sync Step 1: Adding user (V1 Path)...");
-        $userResp = self::post($config['base_url'] . $userPath, $userBody, $userHeaders);
-        $userData = json_decode($userResp, true);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $token);
+
+        $ch = curl_init($userUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $userBody);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $userHeaders);
+        $resp = curl_exec($ch);
+        $userData = json_decode($resp, true);
+        curl_close($ch);
 
         if (!isset($userData['success']) || !$userData['success']) {
-            self::log("Sync STEP 1 FAIL: " . $userResp);
+            self::log("Sync STEP 1 FAIL: " . $resp);
             return false;
         }
 
@@ -228,7 +202,8 @@ class DahuaHelper
 
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             self::log("Sync Step 2: Authorizing face...");
-            $facePath = '/open-api/api-iot/device/accessControl/authorizeAccessFace';
+            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            $faceUrl = $config['base_url'] . $facePath;
             $facePayload = [
                 'deviceId' => $deviceId,
                 'faces' => [
@@ -239,31 +214,50 @@ class DahuaHelper
                 ]
             ];
             $faceBody = json_encode($facePayload);
-            $faceHeaders = self::generateSignV2($config, "POST", $facePath, $faceBody, $token);
-            $faceResp = self::post($config['base_url'] . $facePath, $faceBody, $faceHeaders);
-            self::log("Sync Step 2 Response: " . substr($faceResp, 0, 100));
+
+            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $token);
+
+            $ch = curl_init($faceUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
+            $resp = curl_exec($ch);
+            curl_close($ch);
+            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
         }
 
-        // --- STEP 3: Authorize Card ---
+        // --- STEP 3: Authorize Card (Optional but linked) ---
         if (!empty($visit['visit_code'])) {
             self::log("Sync Step 3: Authorizing card...");
-            $cardPath = '/open-api/api-iot/device/accessControl/authorizeAccessCard';
+            $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
+            $cardUrl = $config['base_url'] . $cardPath;
             $cardPayload = [
                 'deviceId' => $deviceId,
                 'cards' => [
                     [
                         'userId' => 'VP' . $visitId,
-                        'cardNo' => $visit['visit_code']
+                        'cardNo' => $visit['visit_code'],
+                        'cardStatus' => 0
                     ]
                 ]
             ];
             $cardBody = json_encode($cardPayload);
-            $cardHeaders = self::generateSignV2($config, "POST", $cardPath, $cardBody, $token);
-            $cardResp = self::post($config['base_url'] . $cardPath, $cardBody, $cardHeaders);
-            self::log("Sync Step 3 Response: " . substr($cardResp, 0, 100));
+            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $token);
+
+            $ch = curl_init($cardUrl);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $cardBody);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $cardHeaders);
+            curl_exec($ch);
+            curl_close($ch);
         }
 
-        self::log("Sync COMPLETE for Visit ID $visitId");
+        self::log("SUCCESS: Synced Visit ID $visitId");
+        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute(['VP' . $visitId, $visitId]);
         return true;
     }
 
