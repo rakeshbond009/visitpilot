@@ -50,6 +50,10 @@ if ($action == 'checkin') {
     $stmt = $pdo->prepare("UPDATE visits SET status='checked_out', check_out_time=? WHERE id=?");
     $stmt->execute([$current_time, $id]);
     logAction($pdo, $_SESSION['user_id'], "Checked out visitor ID: $id (Process Visit)");
+
+    // DAHUA AUTO-DELETE HOOK
+    require_once dirname(__DIR__) . '/includes/dahua_helper.php';
+    DahuaHelper::deleteVisitor($id, $pdo);
     echo "Swal.fire('Success', 'Visitor checked out successfully', 'success').then(() => { window.location.href='$home_url'; });";
 } elseif ($action == 'checkin_by_code') {
     $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id WHERE v.visit_code = ?");
