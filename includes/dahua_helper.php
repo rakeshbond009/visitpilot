@@ -105,33 +105,61 @@ class DahuaHelper
 
         self::log("Auth: Requesting v2 token for path $path...");
 
-        $headers = self::generateSignV2($config, "POST", $body);
-
+        // Try V2 Signature
+        $headers = self::generateSignV2($config, "POST", $path, $body);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-
-        $response = curl_exec($ch);
-        $err = curl_error($ch);
-        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $resp = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        $data = json_decode($response, true);
-        if (isset($data['data']['appAccessToken'])) {
-            self::log("Auth Success.");
-            $token = $data['data']['appAccessToken'];
-            $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
-            if (!is_dir(dirname($cacheFile)))
-                @mkdir(dirname($cacheFile), 0777, true);
-            file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
-            return $token;
+        $res = json_decode($resp, true);
+        if ($res && isset($res['data']['appAccessToken'])) {
+            $accessToken = $res['data']['appAccessToken'];
+            $expireTime = time() + ($res['data']['expiresIn'] ?? 7000) - 60;
+            file_put_contents($cacheFile, json_encode(['access_token' => $accessToken, 'expire_time' => $expireTime]));
+            return $accessToken;
         }
 
-        self::log("Auth FAIL. Response: [$code] " . ($response ?: $err));
+        // FALLBACK: Try V1 (MD5) Authentication if V2 fails
+        self::log("V2 Auth failed ($resp). Trying V1 Fallback...");
+        $timestamp = (string)round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        $v1Factor = $config['client_id'] . ($config['product_id'] ?? '') . $timestamp . $nonce . "v1" . $config['client_secret'];
+        $v1Sign = strtoupper(md5($v1Factor));
+
+        $v1Headers = [
+            'content-type: application/json',
+            'version: v1',
+            'accesskey: ' . $config['client_id'],
+            'timestamp: ' . $timestamp,
+            'nonce: ' . $nonce,
+            'sign: ' . $v1Sign,
+            'productid: ' . ($config['product_id'] ?? '')
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $v1Headers);
+        $resp = curl_exec($ch);
+        curl_close($ch);
+
+        $res = json_decode($resp, true);
+        if ($res && isset($res['data']['appAccessToken'])) {
+            $accessToken = $res['data']['appAccessToken'];
+            $expireTime = time() + ($res['data']['expiresIn'] ?? 7000) - 60;
+            file_put_contents($cacheFile, json_encode(['access_token' => $accessToken, 'expire_time' => $expireTime]));
+            return $accessToken;
+        }
+
+        self::log("Auth FAIL. Response: [$httpCode] $resp");
         return null;
     }
 
