@@ -174,25 +174,29 @@ class DahuaHelper
         $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
 
         if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
-            self::log("Sync Step 2a: Uploading media to Cloud storage...");
+            self::log("Sync Step 2a: Uploading media via Multipart...");
             $uploadPath = '/open-api/api-base/v1/media/upload';
             $uploadUrl = $config['base_url'] . $uploadPath;
             
-            // Format for Dahua media upload is often multipart, but let's try their JSON-Base64 method if they have one
-            // Actually many Dahua V1 Media APIs use simple POST JSON with "file": "base64"
-            $uploadPayload = [
-                'file' => base64_encode(file_get_contents($finalPhoto)),
-                'fileType' => 'jpg'
-            ];
-            $uploadBody = json_encode($uploadPayload);
-            $uploadHeaders = self::generateSignV2($config, "POST", $uploadBody, $tokenV2);
+            $boundary = '----' . bin2hex(random_bytes(16));
+            $fileData = file_get_contents($finalPhoto);
+            $body = "--$boundary\r\n";
+            $body .= "Content-Disposition: form-data; name=\"file\"; filename=\"face.jpg\"\r\n";
+            $body .= "Content-Type: image/jpeg\r\n\r\n";
+            $body .= $fileData . "\r\n";
+            $body .= "--$boundary--\r\n";
             
+            $uploadHeaders = self::generateSignV2($config, "POST", "{}", $tokenV2); // Media upload often uses bodyless sign
+            // Remove Content-Type and replace it
+            foreach($uploadHeaders as $idx => $hdr) if(stripos($hdr, 'Content-Type')) unset($uploadHeaders[$idx]);
+            $uploadHeaders[] = "Content-Type: multipart/form-data; boundary=$boundary";
+
             $ch = curl_init($uploadUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $uploadBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $uploadHeaders);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, array_values($uploadHeaders));
             $resp = curl_exec($ch);
             $uploadData = json_decode($resp, true);
             curl_close($ch);
