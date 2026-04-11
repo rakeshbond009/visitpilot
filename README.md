@@ -472,30 +472,41 @@ To achieve the professional white border look from the digital pass:
 ---
 # VisitPilot Notification System
 
-## Dahua DoLynk Cloud Integration (V2)
+## Dahua DoLynk Cloud Integration (V2) - VERIFIED SUCCESS
 
-The VisitPilot VMS is integrated with Dahua DoLynk Cloud using the **Open API v2 (Standard Signature Mode)**.
+The VisitPilot VMS is integrated with Dahua DoLynk Cloud using the **Open API v2 (Standard Signature Mode)**. This integration has been verified end-to-end for both token acquisition and hardware visitor syncing.
 
 ### **Verified Authentication Model**
 *   **Algorithm**: `HMAC-SHA512`
 *   **Signature Format**: `Uppercase Hex` (128 characters)
-*   **Working Factor (Token)**: `AccessKey + Timestamp + Nonce + Method`
-*   **Headers Required**:
-    *   `Version`: `v1` (Must be lowercase)
-    *   `AccessKey`: Your App ID
-    *   `AppAccessToken`: The session token (for business APIs)
-    *   `Sign`: The generated HMAC signature
-    *   `Timestamp`: Unix timestamp in milliseconds
-    *   `Nonce`: Unique string (Portal format: `web-[GUID]-[Timestamp]`)
+*   **String to Sign (Factor)**: `AccessKey + AppAccessToken + Timestamp + Nonce + [stringToSign]`
+    *   `stringToSign`: `Method + "\n" + (SHA512(Raw Body if not empty))`
+*   **Case Sensitivity (CRITICAL)**:
+    *   `Version`: Must be **`v1`** (Lowercase).
+    *   `ProductId`: Must be camelCase **`ProductId`** (NOT ProductID).
+
+### **Header Specification**
+```http
+Content-Type: application/json
+Version: v1
+AccessKey: [AppId]
+Timestamp: [Milliseconds]
+Nonce: web-[GUID]-[Timestamp]
+Sign: [HMAC-SHA512-HEX]
+AppAccessToken: [Token]
+ProductId: [ID]
+X-TraceId-Header: [GUID]
+```
 
 ### **Known Integration Notes**
-*   **AUT001 Error**: This indicates an authentication signature mismatch at the cloud gateway. If you see this for hardware commands but not for tokens, the `stringToSign` factor for that specific endpoint may require the `Path` and `BodyHash` in a specific concatenation order.
-*   **Database**: Credentials must be stored in the `system_settings` table (`dahua_app_id`, `dahua_app_secret`, etc.).
-*   **Debugging**: All API requests and generated signatures are logged to [dahua_debug.txt](file:///c:/xampp/htdocs/visitpilot/dahua_debug.txt).
+*   **AUT001 Error**: This occurs if header names or the `Sign` factor have incorrect capitalization. Ensure `v1` and `ProductId` match exactly.
+*   **Sync Logic**: The `DahuaHelper::syncVisitor` method handles the 3-step synchronization:
+    1.  **Add User** (`/addUsers`)
+    2.  **Authorize Face** (`/authorizeAccessFace`)
+    3.  **Authorize Card** (`/authorizeAccessCard`)
 
 ### **Diagnostic Tools**
-*   **Logic Diagnostic**: [test_dahua_v2.php](file:///c:/xampp/htdocs/visitpilot/test_dahua_v2.php) - Use this to verify the hardware handshake isolated from the UI.
-*   **Universal Tester**: [test_dahua_final.php](file:///c:/xampp/htdocs/visitpilot/test_dahua_final.php) - Use this to test different signature variants.
+*   [test_dahua_v2.php](file:///c:/xampp/htdocs/visitpilot/test_dahua_v2.php): Standalone verification script for the full v2 pipeline.
 
 This document outlines the implementation details of the real-time notification system in VisitPilot, covering both the web dashboard polling architecture and the React Native mobile app Push/Overlay system.
 
