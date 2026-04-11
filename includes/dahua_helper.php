@@ -55,7 +55,7 @@ class DahuaHelper
             // Singapore Legacy Factor: appId + timestamp + nonce + secret
             $factor = $appId . $timestamp . $nonce . $secret;
             $sign = strtoupper(md5($factor));
-            $version = 'v1';
+            $version = 'V1';
         } else {
             // V2 SHA512 Factor
             $cleanBody = self::deleteWhitespace($body);
