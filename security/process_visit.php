@@ -51,14 +51,11 @@ if ($action == 'checkin') {
     $stmt->execute([$current_time, $id]);
     logAction($pdo, $_SESSION['user_id'], "Checked out visitor ID: $id (Process Visit)");
 
-    // DAHUA AUTO-DELETE HOOK
     try {
         require_once dirname(__DIR__) . '/includes/dahua_helper.php';
         DahuaHelper::deleteVisitor($id, $pdo);
-    } catch (Throwable $e) {
-        error_log("Dahua Checkout Wipe Error (Security): " . $e->getMessage());
-        @file_put_contents(dirname(__DIR__) . '/dahua_debug.txt', "[" . date('Y-m-d H:i:s') . "] DAHUA SEC-CHECKOUT CRASH: " . $e->getMessage() . "\n", FILE_APPEND);
-    }
+    } catch (Throwable $e) {}
+
     echo "Swal.fire('Success', 'Visitor checked out successfully', 'success').then(() => { window.location.href='$home_url'; });";
 } elseif ($action == 'checkin_by_code') {
     $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name FROM visits v JOIN visitors vis ON v.visitor_id = vis.id WHERE v.visit_code = ?");

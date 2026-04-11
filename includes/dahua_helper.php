@@ -9,7 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    public static function get_config($pdo = null)
+    private static function get_config($pdo = null)
     {
         if (!$pdo) {
             global $pdo;
@@ -36,11 +36,12 @@ class DahuaHelper
 
     private static function deleteWhitespace($str)
     {
-        if (!$str) return $str;
+        if (!$str)
+            return $str;
         return preg_replace('/\s+/', '', $str);
     }
 
-    public static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -110,11 +111,13 @@ class DahuaHelper
     public static function getAccessToken($pdo = null)
     {
         $config = self::get_config($pdo);
-        if (empty($config['client_id']) || empty($config['client_secret'])) return null;
+        if (empty($config['client_id']) || empty($config['client_secret']))
+            return null;
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
-            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) return $tokenData['access_token'];
+            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time())
+                return $tokenData['access_token'];
         }
         $path = '/open-api/api-base/auth/getAppAccessToken';
         $url = $config['base_url'] . $path;
@@ -139,23 +142,21 @@ class DahuaHelper
 
     public static function syncVisitor($visitId, $pdo = null)
     {
-        if (!$pdo) global $pdo;
-        if (!$pdo) return false;
+        if (!$pdo)
+            global $pdo;
+        if (!$pdo)
+            return false;
         $config = self::get_config($pdo);
         $tokenV2 = self::getAccessToken($pdo);
-        if (!$tokenV2) return false;
+        if (!$tokenV2)
+            return false;
         $tokenV1 = self::getAccessTokenV1($config) ?: $tokenV2;
 
         $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, v.visit_code FROM visits v JOIN visitors vis ON v.visitor_id = vis.id WHERE v.id = ?");
         $stmt->execute([$visitId]);
         $visit = $stmt->fetch();
-        if (!$visit) return false;
-
-        $stmtPrev = $pdo->prepare("SELECT dahua_person_id FROM visits WHERE visitor_id = ? AND dahua_person_id IS NOT NULL AND dahua_person_id != '' ORDER BY id ASC LIMIT 1");
-        $stmtPrev->execute([$visit['visitor_id']]);
-        $existingDahuaId = $stmtPrev->fetchColumn();
-
-        $dahuaUserId = $existingDahuaId ? $existingDahuaId : 'V' . $visit['visitor_id'];
+        if (!$visit)
+            return false;
 
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
@@ -163,17 +164,20 @@ class DahuaHelper
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
         $compressDir = dirname(__DIR__) . '/uploads/dahua_compressed/';
-        if (!is_dir($compressDir)) mkdir($compressDir, 0755, true);
+        if (!is_dir($compressDir))
+            mkdir($compressDir, 0755, true);
         $compressedPath = $compressDir . $visitId . '.jpg';
         $photoUrl = null;
 
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             // Dahua face recognition needs sufficient resolution and quality.
             // Target: 640x480, under 95KB, minimum quality 55 to preserve facial features.
-            $img  = null;
+            $img = null;
             $mime = mime_content_type($photoPath);
-            if ($mime === 'image/png')  $img = imagecreatefrompng($photoPath);
-            elseif ($mime === 'image/jpeg') $img = imagecreatefromjpeg($photoPath);
+            if ($mime === 'image/png')
+                $img = imagecreatefrompng($photoPath);
+            elseif ($mime === 'image/jpeg')
+                $img = imagecreatefromjpeg($photoPath);
             if ($img) {
                 $resized = imagecreatetruecolor(640, 480);
                 imagefill($resized, 0, 0, imagecolorallocate($resized, 255, 255, 255));
@@ -186,84 +190,115 @@ class DahuaHelper
                 imagedestroy($img);
                 imagedestroy($resized);
                 $photoUrl = 'https://visitor.codepilotx.com/uploads/dahua_compressed/' . $visitId . '.jpg';
-                self::log("Photo compressed: " . round(filesize($compressedPath)/1024, 1) . "KB q=$quality → $photoUrl");
+                self::log("Photo compressed: " . round(filesize($compressedPath) / 1024, 1) . "KB q=$quality → $photoUrl");
             }
         }
 
         // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
-        self::log("Sync Step 1: Adding user $dahuaUserId for visit $visitId...");
+        $dahuaId = (string)$visitId . (string)$visit['visitor_id'];
+        self::log("Sync Step 1: Adding user $dahuaId...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
-            'users' => [[
-                'userId'         => $dahuaUserId,
-                'userName'       => $visit['visitor_name'],
-                'userType'       => 0,
-                'authorityList'  => ['1'],
-                'userPermission' => 1,
-                'role'           => 'user',
-                'departmentId'   => '1',
-                'startTime'      => date('Y-m-d H:i:s'),
-                'endTime'        => '2036-12-31 23:59:59'
-            ]]
+            'users' => [
+                [
+                    'userId' => $dahuaId,
+                    'userName' => $visit['visitor_name'],
+                    'userType' => 0,
+                    'authorityList' => ['1'],
+                    'userPermission' => 1,
+                    'role' => 'user',
+                    'departmentId' => '1',
+                    'startTime' => date('Y-m-d H:i:s'),
+                    'endTime' => '2036-12-31 23:59:59'
+                ]
+            ]
         ];
-        $userBody    = json_encode($userPayload);
+        $userBody = json_encode($userPayload);
         $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
         $ch = curl_init($config['base_url'] . $userPath);
-        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $userBody, CURLOPT_HTTPHEADER => $userHeaders]);
-        $userResp = curl_exec($ch); curl_close($ch);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $userBody,
+            CURLOPT_HTTPHEADER => $userHeaders
+        ]);
+        $userResp = curl_exec($ch);
+        curl_close($ch);
         self::log("Step 1 Response: " . substr($userResp, 0, 120));
 
         // --- STEP 3: Authorize Face (retry up to 3x with 5s delay for device propagation) ---
         // Per Dahua API Guide v2.4 s4.12.1.4.2: photoData is array, header must be stripped.
         // When both photoData + photoURL sent, photoData prevails; photoURL satisfies cloud validation.
         if ($photoUrl && file_exists($compressedPath)) {
-            $facePath    = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $rawBase64   = base64_encode(file_get_contents($compressedPath)); // No data:image prefix
+            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            $rawBase64 = base64_encode(file_get_contents($compressedPath)); // No data:image prefix
             $facePayload = [
                 'deviceId' => $deviceId,
-                'faces'    => [[
-                    'userId'    => $dahuaUserId,
-                    'photoData' => [$rawBase64],     // array per spec
-                    'photoURL'  => $photoUrl         // real hosted URL — satisfies cloud validation
-                ]]
+                'faces' => [
+                    [
+                        'userId' => $dahuaId,
+                        'photoData' => [$rawBase64],     // array per spec
+                        'photoURL' => $photoUrl         // real hosted URL — satisfies cloud validation
+                    ]
+                ]
             ];
             $faceBody = json_encode($facePayload);
             sleep(2); // brief propagation window before first attempt
             for ($attempt = 1; $attempt <= 3; $attempt++) {
-                if ($attempt > 1) { self::log("Face retry $attempt/3 (waiting 5s)..."); sleep(5); }
+                if ($attempt > 1) {
+                    self::log("Face retry $attempt/3 (waiting 5s)...");
+                    sleep(5);
+                }
                 $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
                 $ch = curl_init($config['base_url'] . $facePath);
-                curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_POST => true, CURLOPT_POSTFIELDS => $faceBody, CURLOPT_HTTPHEADER => $faceHeaders]);
-                $faceResp = curl_exec($ch); curl_close($ch);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $faceBody,
+                    CURLOPT_HTTPHEADER => $faceHeaders
+                ]);
+                $faceResp = curl_exec($ch);
+                curl_close($ch);
                 self::log("Step 2 Face (attempt $attempt): " . substr($faceResp, 0, 150));
                 $faceData = json_decode($faceResp, true);
-                if (($faceData['code'] ?? '') !== 'IDV0098') break;
+                if (($faceData['code'] ?? '') !== 'IDV0098')
+                    break;
             }
         }
 
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
-            $cardPath    = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaUserId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
-            $cardBody    = json_encode($cardPayload);
+            $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
+            $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
-                if ($attempt > 1) { self::log("Card retry $attempt/3 (waiting 5s)..."); sleep(5); }
+                if ($attempt > 1) {
+                    self::log("Card retry $attempt/3 (waiting 5s)...");
+                    sleep(5);
+                }
                 $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
                 $ch = curl_init($config['base_url'] . $cardPath);
-                curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_POST => true, CURLOPT_POSTFIELDS => $cardBody, CURLOPT_HTTPHEADER => $cardHeaders]);
-                $cardResp = curl_exec($ch); curl_close($ch);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $cardBody,
+                    CURLOPT_HTTPHEADER => $cardHeaders
+                ]);
+                $cardResp = curl_exec($ch);
+                curl_close($ch);
                 self::log("Step 3 Card (attempt $attempt): " . substr($cardResp, 0, 120));
                 $cardData = json_decode($cardResp, true);
-                if (($cardData['code'] ?? '') !== 'IDV0098') break;
+                if (($cardData['code'] ?? '') !== 'IDV0098')
+                    break;
             }
         }
 
-        self::log("SUCCESS: Synced Visit ID $visitId -> Dahua ID $dahuaUserId");
-        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$dahuaUserId, $visitId]);
+        self::log("SUCCESS: Synced Visit ID $visitId");
+        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$dahuaId, $visitId]);
         return true;
     }
 
@@ -276,14 +311,12 @@ class DahuaHelper
         $deviceId = explode(',', $config['device_sns'])[0] ?? '';
         if (!$deviceId) return false;
 
-        $stmt = $pdo->prepare("SELECT dahua_person_id, visit_code FROM visits WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT dahua_person_id, visitor_id FROM visits WHERE id = ?");
         $stmt->execute([$visitId]);
         $visitData = $stmt->fetch();
+        $dahuaUserId = $visitData['dahua_person_id'] ?: ((string)$visitId . (string)$visitData['visitor_id']);
 
-        // Fallback to legacy string ID if the column wasn't populated yet
-        $dahuaUserId = (!empty($visitData['dahua_person_id'])) ? $visitData['dahua_person_id'] : (string)$visitId;
-
-        self::log("Revoking access for visitor $visitId (Dahua ID: $dahuaUserId) via expiration update...");
+        self::log("Deleting visitor $visitId (Dahua ID: $dahuaUserId) from hardware...");
 
         $tokenV2 = self::getAccessToken($pdo);
         if (!$tokenV2) return false;
@@ -309,18 +342,20 @@ class DahuaHelper
 
         $data = json_decode($response, true);
         if (isset($data['code']) && $data['code'] === "200") {
-            self::log("Successfully deleted visitor $visitId (Dahua ID: $dahuaUserId). Response: $response");
+            self::log("Successfully deleted visitor $visitId. Response: $response");
             return true;
         } else {
-            self::log("Failed to delete $visitId (Dahua ID: $dahuaUserId). Response: $response");
+            self::log("Failed to delete $visitId. Response: $response");
             return false;
         }
     }
 
     public static function processEvent($data, $pdo = null)
     {
-        if (!$pdo) global $pdo;
-        if (!$pdo) return false;
+        if (!$pdo)
+            global $pdo;
+        if (!$pdo)
+            return false;
 
         // Support both Dahua V1 nested (msgBody) and V2 flattened structures
         $events = [];
@@ -333,27 +368,20 @@ class DahuaHelper
 
         foreach ($events as $event) {
             $personId = $event['userId'] ?? $event['personId'] ?? null;
-            if (!$personId) continue;
-            
+            if (!$personId)
+                continue;
+
             $stmt = $pdo->prepare("SELECT id FROM visits WHERE dahua_person_id = ? AND status IN ('pending', 'approved') ORDER BY id DESC LIMIT 1");
             $stmt->execute([$personId]);
             $visit = $stmt->fetch();
-            
+
             if ($visit) {
                 $timeMs = $event['utcTime'] ?? $event['localTime'] ?? $event['time'] ?? (time() * 1000);
                 $scanTime = date('Y-m-d H:i:s', $timeMs / 1000);
                 $deviceId = $event['deviceId'] ?? 'Dahua';
                 $image = $event['capturedImage'] ?? null;
 
-                $pdo->prepare("
-                    UPDATE visits 
-                    SET status = 'checked_in', 
-                        machine_captured_photo = IF(machine_captured_photo IS NULL, ?, machine_captured_photo), 
-                        machine_scan_time = IF(machine_scan_time IS NULL, ?, machine_scan_time), 
-                        machine_id = IF(machine_id IS NULL, ?, machine_id), 
-                        check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) 
-                    WHERE id = ?
-                ")->execute([$image, $scanTime, $deviceId, $visit['id']]);
+                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")->execute([$image, $scanTime, $deviceId, $visit['id']]);
             }
         }
         return true;

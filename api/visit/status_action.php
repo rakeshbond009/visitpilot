@@ -126,15 +126,9 @@ try {
         $newVisit = ['status' => 'checked_out'];
         logAction($pdo, $user_id, "Checked OUT visit$vRef", $oldVisit, array_merge($oldVisit, $newVisit));
 
-        // DELETE from Dahua hardware to free up facial geometry
         try {
-            require_once dirname(__DIR__, 2) . '/includes/dahua_helper.php';
             DahuaHelper::deleteVisitor($id, $pdo);
-        } catch (Throwable $e) {
-            error_log("Dahua Checkout Wipe Error: " . $e->getMessage());
-            // Optionally log to the dahua_debug.txt for visibility
-            @file_put_contents(dirname(__DIR__, 2) . '/dahua_debug.txt', "[" . date('Y-m-d H:i:s') . "] DAHUA CHECKOUT CRASH: " . $e->getMessage() . "\n", FILE_APPEND);
-        }
+        } catch (Throwable $e) {}
 
         sendResponse('success', 'Check-out successful');
 
@@ -194,6 +188,12 @@ try {
         } else {
             sendResponse('error', 'Invalid QR Code');
         }
+    } else {
+        sendResponse('error', 'Invalid action');
+    }
+} catch (Exception $e) {
+    sendResponse('error', 'Database error: ' . $e->getMessage());
+}
     } else {
         sendResponse('error', 'Invalid action');
     }
