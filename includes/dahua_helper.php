@@ -9,7 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
+    public static function get_config($pdo = null)
     {
         if (!$pdo) {
             global $pdo;
@@ -41,7 +41,7 @@ class DahuaHelper
         return preg_replace('/\s+/', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
+    public static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -219,6 +219,7 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
+        self::log("Step 1 Payload: " . $userBody);
         $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt_array($ch, [
