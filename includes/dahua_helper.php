@@ -51,12 +51,16 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = bin2hex(random_bytes(16));
 
-        // 3. HMAC-SHA512 Factor
-        // Note: For Authentication APIs, productId and token MUST NOT be in the factor
+        // 3. SHA256 Body Hash
+        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
+        $bodyHash = hash('sha256', $cleanBody);
+        
+        // 4. HMAC-SHA512 Factor (Replicating Portal Slide 79)
+        // Order: AppID + [ProductID] + [Token] + Timestamp + Nonce + Method + "\n" + BodyHash
         if (strpos($path, '/auth/') !== false) {
-            $factor = $appId . $body . $timestamp . $nonce . $method;
+            $factor = $appId . $timestamp . $nonce . $method . "\n" . $bodyHash;
         } else {
-            $factor = $appId . $productId . $appAccessToken . $body . $timestamp . $nonce . $method;
+            $factor = $appId . $productId . $appAccessToken . $timestamp . $nonce . $method . "\n" . $bodyHash;
         }
         
         $sign = strtolower(hash_hmac('sha512', $factor, $secret));
