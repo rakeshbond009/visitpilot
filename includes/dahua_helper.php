@@ -42,44 +42,36 @@ class DahuaHelper
         return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
     }
 
-    private static function generateNonce()
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "")
     {
-        return bin2hex(random_bytes(16));
-    }
-
-    private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
-    {
-        $appId = $config['client_id'] ?? '';
-        $secret = $config['client_secret'] ?? '';
+        $timestamp = (string) round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        $appId = $config['client_id'];
+        $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
-        $timestamp = (string)round(microtime(true) * 1000);
-        
-        // Match Portal Nonce: web-{random}-{timestamp}
-        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
-        $traceId = bin2hex(random_bytes(16));
-        
-        $cleanBody = self::deleteWhitespace($body);
-        // For V2, stringToSign is simply the Method (e.g., POST).
-        // Some endpoints may require the body hash, but the Token success showed pure Method signing.
-        $stringToSign = $method;
+        $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
-        // strAuthFactor = AccessKey + AppAccessToken + Timestamp + Nonce + stringToSign
-        // Matching the successful 01:37:48 handshake pattern.
+        // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
+        $cleanBody = self::deleteWhitespace($body);
+        $bodyHash = hash('sha512', $cleanBody);
+        $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+
+        // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-        
+
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
-        self::log("=== GENERATED SIGN ===\n" . $sign);
 
         $headers = [
             'Content-Type: application/json',
-            'Version: v1', // MUST BE LOWERCASE
+            'Version: V1',
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
+            'ProductID: ' . $productId,
             'X-TraceId-Header: ' . $traceId,
-            'ProductId: ' . $productId
+            'Accept-Language: en-US'
         ];
 
         if ($appAccessToken) {
@@ -111,7 +103,7 @@ class DahuaHelper
 
         self::log("Auth: Requesting v2 token for path $path...");
 
-        $headers = self::generateSignV2($config, "POST", $path, $body);
+        $headers = self::generateSignV2($config, "POST", $body);
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -173,8 +165,8 @@ class DahuaHelper
 
         // --- STEP 1: Add User ---
         self::log("Sync Step 1: Adding user...");
-        $path = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userUrl = $config['base_url'] . $path;
+        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
+        $userUrl = $config['base_url'] . $userPath;
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [
@@ -186,7 +178,8 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $path, $userBody, $token);
+
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $token);
 
         $ch = curl_init($userUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
