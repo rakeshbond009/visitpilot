@@ -11,7 +11,7 @@ try {
     $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'dahua_app_secret'");
     $stmt->execute([$app_secret]);
     
-    echo "SUCCESS: Database settings updated to VisitPilot REAL credentials.\n";
+    echo "SUCCESS: Database settings updated to VisitPilot SPECIFIC credentials.\n";
 } catch (Exception $e) {
     echo "ERROR: " . $e->getMessage() . "\n";
 }
