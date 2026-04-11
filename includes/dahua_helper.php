@@ -42,7 +42,7 @@ class DahuaHelper
         return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "")
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false)
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -51,18 +51,24 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
-        // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
-        $cleanBody = self::deleteWhitespace($body);
-        $bodyHash = hash('sha512', $cleanBody);
-        $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-
-        // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
-        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+        if ($isV1) {
+            // V1 MD5 Factor: AccessKey + ProductID + Timestamp + Nonce + Version + AppSecret
+            $factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
+            $sign = strtoupper(md5($factor));
+            $version = 'v1';
+        } else {
+            // V2 SHA512 Factor
+            $cleanBody = self::deleteWhitespace($body);
+            $bodyHash = hash('sha512', $cleanBody);
+            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+            $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+            $version = 'V1';
+        }
 
         $headers = [
             'Content-Type: application/json',
-            'Version: V1',
+            'Version: ' . $version,
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
@@ -213,7 +219,7 @@ class DahuaHelper
             ];
             $faceBody = json_encode($facePayload);
 
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $token);
+            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $token, true);
 
             $ch = curl_init($faceUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -242,7 +248,7 @@ class DahuaHelper
                 ]
             ];
             $cardBody = json_encode($cardPayload);
-            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $token);
+            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $token, true);
 
             $ch = curl_init($cardUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
