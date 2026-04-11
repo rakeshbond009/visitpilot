@@ -221,8 +221,14 @@ ProductId: [ID]      ← camelCase ProductId (NOT ProductID)
 **Retry logic**: Face and Card calls retry up to **3×** with 5s delay if `IDV0098` (user not yet propagated to device) is returned.
 
 ### ID Format
-- UserIDs are **numeric-only** (the visit's database ID). e.g., `"433"`
-- Do NOT use `VP` prefixes — hardware firmware rejects non-numeric IDs.
+- **Composite IDs (NEW/STABLE):** UserIDs are now a concatenation of the database `Visit ID` and the `Visitor ID`. e.g. Visit 404 with Visitor 15 becomes `"40415"`.
+- This ensures that specific visit transactions are uniquely identified while maintaining a link to the persistent visitor record.
+- Do NOT use `VP` prefixes in the latest version — hardware firmware handles numeric-only composite strings more reliably.
+
+### Hardware Cleanup (Deletion)
+- **Endpoint:** `/open-api/api-iot/v2/device/accessControl/remove`
+- When a visitor checks out, the system sends an official `remove` command with `type: "user"`.
+- This performs a full hardware purge of the person's biometrics, name, and card record from the device, ensuring privacy and device storage optimization.
 
 ---
 
@@ -629,6 +635,8 @@ See the comprehensive Dahua integration guide above (Phase 1–4) for the comple
 - **Auth**: HMAC-SHA512, headers `Version: v1`, `ProductId` (camelCase)
 - **Face Payload**: `photoData` as base64 array + `photoURL` as real HTTPS URL
 - **Pipeline**: 3 separate API calls (addUsers → authorizeAccessFace → authorizeAccessCard)
+- **Revocation**: Official `/device/accessControl/remove` interface for full hardware record deletion.
+- **ID Format**: Composite Numeric (VisitID + VisitorID) e.g., `40415`.
 - **Image limit**: < 100KB (auto-compressed to `uploads/dahua_compressed/`)
 - **Log**: `dahua_debug.txt` on hosted server
 

@@ -298,7 +298,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['save_registration_fields'])) {
         $fields = $_POST['reg_fields'] ?? [];
         $settings = [
-            'mandatory_registration_fields' => json_encode($fields)
+            'mandatory_registration_fields' => json_encode($fields),
+            'default_validity_number' => $_POST['default_validity_number'] ?? '8',
+            'default_validity_unit' => $_POST['default_validity_unit'] ?? 'hours'
         ];
         $stmt = $pdo->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
         foreach ($settings as $key => $val) {
@@ -426,6 +428,8 @@ $email_defaults = [
     'max_capacity' => '50',
     'tenant_industry' => '',
     'tenant_timezone' => 'Asia/Kolkata',
+    'default_validity_number' => '8',
+    'default_validity_unit' => 'hours',
     'tenant_company_name' => '',
     'tenant_address' => '',
     'tenant_contact_person' => '',
@@ -1705,6 +1709,31 @@ $active_tab_id = false;
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
+                                </div>
+
+                                <div class="row g-4 mb-5 border-top pt-4">
+                                    <div class="col-12">
+                                        <h6 class="fw-bold text-uppercase text-muted small mb-3">Default Visitor Validity</h6>
+                                        <p class="text-muted small mb-3">Define the default stay duration for new visitors. This value is pushed to Dahua hardware during registration.</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-muted">Validity Duration</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-0"><i class="bi bi-clock-history"></i></span>
+                                            <input type="number" name="default_validity_number" class="form-control border-0 bg-light" 
+                                                   value="<?php echo htmlspecialchars($config['default_validity_number'] ?? '8'); ?>" required min="1">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold small text-muted">Unit</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light border-0"><i class="bi bi-calendar-event"></i></span>
+                                            <select name="default_validity_unit" class="form-select border-0 bg-light" required>
+                                                <option value="hours" <?php echo ($config['default_validity_unit'] ?? 'hours') == 'hours' ? 'selected' : ''; ?>>Hours</option>
+                                                <option value="days" <?php echo ($config['default_validity_unit'] ?? '') == 'days' ? 'selected' : ''; ?>>Days</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="alert alert-info border-0 rounded-4 shadow-sm py-3 px-4">

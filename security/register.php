@@ -45,6 +45,10 @@ function isFieldMandatory($field) {
     return in_array($field, $mandatory_fields);
 }
 
+// Fetch Default Validity Settings
+$def_val_num = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'default_validity_number'")->fetchColumn() ?: '8';
+$def_val_unit = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'default_validity_unit'")->fetchColumn() ?: 'hours';
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = sanitize($_POST['name']);
     $mobile = sanitize($_POST['mobile']);
@@ -59,6 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $access_area = sanitize($_POST['access_area'] ?? '');
     if (empty($access_area))
         $access_area = 'Not Assigned';
+
+    $validity_number = intval($_POST['validity_number'] ?? 8);
+    $validity_unit = sanitize($_POST['validity_unit'] ?? 'hours');
 
     try {
         $pdo->beginTransaction();
@@ -109,8 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // so host can "Acknowledge" it. PDF pass will be sent upon acknowledgement.
             $visit_id = $invited_visit_id;
             $current_time = current_datetime();
-            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, created_at=?, created_by=? WHERE id=?");
-            $stmt->execute([$assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $_SESSION['user_id'], $visit_id]);
+            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, created_at=?, created_by=?, validity_number=?, validity_unit=? WHERE id=?");
+            $stmt->execute([$assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $_SESSION['user_id'], $validity_number, $validity_unit, $visit_id]);
             logAction($pdo, $_SESSION['user_id'], "Invited visitor arrived, awaiting host acknowledgement. (Visit ID: $visit_id)");
         } else {
             // Create New Visit with pending status (requires host approval)
@@ -127,8 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $current_time = current_datetime();
             // Explicitly set created_at from PHP to ensure correct timezone (overriding DB default)
-            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id']]);
+            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id'], $validity_number, $validity_unit]);
             $visit_id = $pdo->lastInsertId();
             logAction($pdo, $_SESSION['user_id'], "Registered new visitor visit (Pending Approval) ID: $visitor_id (Visit ID: $visit_id)");
         }
@@ -727,19 +734,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </button>
                             </div>
 
-                            <!-- OTP Toggle at the end of right column -->
-                            <div class="section-card border-primary">
-                                <div class="form-check form-switch">
+                            <div class="section-card border-primary mb-3">
+                                <div class="form-check form-switch px-1">
                                     <input class="form-check-input ms-0 me-2" type="checkbox" name="require_otp" id="requireOtpToggle"
                                         <?php echo isFieldMandatory('otp_check') ? 'checked disabled' : ''; ?>>
-                                    <label class="form-check-label fw-bold small text-uppercase mt-1"
-                                        for="requireOtpToggle">
+                                    <label class="form-check-label fw-bold small text-uppercase mt-1" for="requireOtpToggle">
                                         Enable OTP Check
                                         <?php if (!$is_otp_enabled): ?>
-                                            <span class="text-danger ms-2" style="font-size: 0.7rem;">(WhatsApp
-                                                Disabled)</span>
-                                            <?php
-                                        endif; ?>
+                                            <span class="text-danger ms-2" style="font-size: 0.7rem;">(WhatsApp Disabled)</span>
+                                        <?php endif; ?>
                                     </label>
                                 </div>
                                 
@@ -753,6 +756,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <!-- Verification Success Badge -->
                                 <div id="verifiedBadge" class="alert alert-success py-2 mt-2 mb-0 d-none" style="font-size: 0.8rem;">
                                     <i class="bi bi-check-circle-fill me-2"></i> HOST VERIFIED
+                                </div>
+                            </div>
+
+                            <div class="section-card border-primary">
+                                <label class="form-label fw-bold small text-uppercase text-muted mb-3 d-block">Stay Validity (Mandatory)</label>
+                                <div class="row g-2">
+                                    <div class="col-7">
+                                        <div class="form-floating">
+                                            <input type="number" name="validity_number" class="form-control" id="valNumInput" 
+                                                   value="<?php echo htmlspecialchars($def_val_num); ?>" required min="1">
+                                            <label for="valNumInput">Duration</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-5">
+                                        <div class="form-floating">
+                                            <select name="validity_unit" class="form-select" id="valUnitSelect" required>
+                                                <option value="hours" <?php echo ($def_val_unit == 'hours') ? 'selected' : ''; ?>>Hours</option>
+                                                <option value="days" <?php echo ($def_val_unit == 'days') ? 'selected' : ''; ?>>Days</option>
+                                            </select>
+                                            <label for="valUnitSelect">Unit</label>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

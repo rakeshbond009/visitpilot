@@ -195,7 +195,7 @@ class DahuaHelper
         }
 
         // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
-        $dahuaId = (string)$visitId . (string)$visit['visitor_id'];
+        $dahuaId = (string) $visitId . (string) $visit['visitor_id'];
         self::log("Sync Step 1: Adding user $dahuaId...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
@@ -210,7 +210,7 @@ class DahuaHelper
                     'role' => 'user',
                     'departmentId' => '1',
                     'startTime' => date('Y-m-d H:i:s'),
-                    'endTime' => '2036-12-31 23:59:59'
+                    'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
             ]
         ];
@@ -304,28 +304,32 @@ class DahuaHelper
 
     public static function deleteVisitor($visitId, $pdo = null)
     {
-        if (!$pdo) global $pdo;
+        if (!$pdo)
+            global $pdo;
         $config = self::get_config($pdo);
-        if (empty($config['client_id'])) return false;
+        if (empty($config['client_id']))
+            return false;
 
         $deviceId = explode(',', $config['device_sns'])[0] ?? '';
-        if (!$deviceId) return false;
+        if (!$deviceId)
+            return false;
 
         $stmt = $pdo->prepare("SELECT dahua_person_id, visitor_id FROM visits WHERE id = ?");
         $stmt->execute([$visitId]);
         $visitData = $stmt->fetch();
-        $dahuaUserId = $visitData['dahua_person_id'] ?: ((string)$visitId . (string)$visitData['visitor_id']);
+        $dahuaUserId = $visitData['dahua_person_id'] ?: ((string) $visitId . (string) $visitData['visitor_id']);
 
         self::log("Deleting visitor $visitId (Dahua ID: $dahuaUserId) from hardware...");
 
         $tokenV2 = self::getAccessToken($pdo);
-        if (!$tokenV2) return false;
+        if (!$tokenV2)
+            return false;
 
         $path = '/open-api/api-iot/v2/device/accessControl/remove';
         $payload = [
             'deviceId' => $deviceId,
-            'ids'      => [(string)$dahuaUserId],
-            'type'     => 'user'
+            'ids' => [(string) $dahuaUserId],
+            'type' => 'user'
         ];
 
         $body = json_encode($payload);

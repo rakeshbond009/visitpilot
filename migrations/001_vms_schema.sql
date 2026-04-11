@@ -97,6 +97,8 @@ CREATE TABLE IF NOT EXISTS `visits` (
   `machine_captured_photo` longtext DEFAULT NULL,
   `machine_scan_time` datetime DEFAULT NULL,
   `machine_id` varchar(100) DEFAULT NULL,
+  `validity_number` int(11) DEFAULT NULL,
+  `validity_unit` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `visit_code` (`visit_code`),
   KEY `visitor_id` (`visitor_id`),
@@ -253,3 +255,8 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   KEY `idx_audit_tenant` (`tenant_key`),
   KEY `idx_audit_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Seed Default Validity
+INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`) VALUES 
+('default_validity_number', '8'),
+('default_validity_unit', 'hours');
