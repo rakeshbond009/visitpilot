@@ -55,12 +55,14 @@ class DahuaHelper
         $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
         $bodyHash = hash('sha256', $cleanBody);
         
-        // 4. HMAC-SHA512 Factor (TraceID Mode for Singapore IoT)
-        // Order: AppID + ProductID + Token + TraceID + Timestamp + Nonce + Method + "\n" + BodyHash
+        // 4. stringToSign MUST include path for Singapore V2
+        $stringToSign = $method . "\n" . $path . "\n" . $bodyHash;
+        
+        // 5. HMAC-SHA512 Factor
         if (strpos($path, '/auth/') !== false) {
-            $factor = $appId . $timestamp . $nonce . $method . "\n" . $bodyHash;
+            $factor = $appId . $timestamp . $nonce . $stringToSign;
         } else {
-            $factor = $appId . $productId . $appAccessToken . $traceId . $timestamp . $nonce . $method . "\n" . $bodyHash;
+            $factor = $appId . $productId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         }
         
         $sign = strtolower(hash_hmac('sha512', $factor, $secret));
@@ -109,7 +111,8 @@ class DahuaHelper
         
         $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $authBody);
         $bodyHash = hash('sha256', $cleanBody);
-        $factor = $appId . $ts . $nonce . "POST\n" . $bodyHash;
+        $stringToSign = "POST\n" . $authPath . "\n" . $bodyHash;
+        $factor = $appId . $ts . $nonce . $stringToSign;
         $sign = strtolower(hash_hmac('sha512', $factor, $secret));
 
         $authHeaders = [
