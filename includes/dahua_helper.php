@@ -153,46 +153,68 @@ class DahuaHelper
 
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
-        // --- ATOMIC V2 SYNC (All-in-One: User + Face + Card) ---
+        // --- STEP 1: Prepare & Compress Photo to <95KB ---
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
-        $fixedPath = dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg';
-        $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
+        $compressDir = dirname(__DIR__) . '/uploads/dahua_compressed/';
+        if (!is_dir($compressDir)) mkdir($compressDir, 0755, true);
+        $compressedPath = $compressDir . $visitId . '.jpg';
+        $photoUrl = null;
 
+        $srcPhoto = file_exists(dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg')
+            ? dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg'
+            : $photoPath;
+
+        if (file_exists($srcPhoto) && !empty($visit['photo_path'])) {
+            // Resize to 300x400 portrait and compress until under 95KB
+            $img = null;
+            $mime = mime_content_type($srcPhoto);
+            if ($mime === 'image/png')  $img = imagecreatefrompng($srcPhoto);
+            elseif ($mime === 'image/jpeg') $img = imagecreatefromjpeg($srcPhoto);
+            if ($img) {
+                $resized = imagecreatetruecolor(300, 400);
+                imagecopyresampled($resized, $img, 0, 0, 0, 0, 300, 400, imagesx($img), imagesy($img));
+                $quality = 85;
+                do {
+                    imagejpeg($resized, $compressedPath, $quality);
+                    $quality -= 5;
+                } while (filesize($compressedPath) > 95000 && $quality > 10);
+                imagedestroy($img);
+                imagedestroy($resized);
+                $photoUrl = 'https://visitor.codepilotx.com/uploads/dahua_compressed/' . $visitId . '.jpg';
+                self::log("Photo compressed: " . round(filesize($compressedPath)/1024, 1) . "KB → $photoUrl");
+            }
+        }
+
+        // --- STEP 2: Build User Payload ---
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [
                 [
-                    'userId' => (string)$visitId,
-                    'userName' => $visit['visitor_name'],
-                    'userType' => 0,
+                    'userId'        => (string)$visitId,
+                    'userName'      => $visit['visitor_name'],
+                    'userType'      => 0,
                     'authorityList' => ['1'],
-                    'userPermission' => 1,
-                    'role' => 'user',
-                    'departmentId' => '1',
-                    'startTime' => date('Y-m-d H:i:s'),
-                    'endTime' => '2036-12-31 23:59:59'
+                    'userPermission'=> 1,
+                    'role'          => 'user',
+                    'departmentId'  => '1',
+                    'startTime'     => date('Y-m-d H:i:s'),
+                    'endTime'       => '2036-12-31 23:59:59'
                 ]
             ]
         ];
 
-        // Add Face to User if exists
-        if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
+        // Attach the real hosted photo URL
+        if ($photoUrl) {
             $userPayload['users'][0]['faceList'] = [
-                [
-                    'faceImage' => base64_encode(file_get_contents($finalPhoto)),
-                    'photoURL' => 'https://visitor.codepilotx.com/placeholder.jpg' // Ghost URL workaround
-                ]
+                ['photoURL' => $photoUrl]
             ];
         }
 
-        // Add Card to User if exists
+        // Attach Card
         if (!empty($visit['visit_code'])) {
             $userPayload['users'][0]['cardList'] = [
-                [
-                    'cardNo' => $visit['visit_code'],
-                    'cardStatus' => 0
-                ]
+                ['cardNo' => $visit['visit_code'], 'cardStatus' => 0]
             ];
         }
 
