@@ -52,8 +52,8 @@ class DahuaHelper
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
         if ($isV1) {
-            // V1 MD5 Factor: AccessKey + ProductID + Timestamp + Nonce + Version + AppSecret
-            $factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
+            // Singapore Legacy Factor: appId + timestamp + nonce + secret
+            $factor = $appId . $timestamp . $nonce . $secret;
             $sign = strtoupper(md5($factor));
             $version = 'v1';
         } else {
