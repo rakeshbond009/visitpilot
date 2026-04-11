@@ -186,7 +186,7 @@ class DahuaHelper
         ];
         $userBody = json_encode($userPayload);
 
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $token);
+        $userHeaders = self::generateSignV2($config, "POST", $userPath, $userBody, $token);
 
         $ch = curl_init($userUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -222,7 +222,7 @@ class DahuaHelper
             ];
             $faceBody = json_encode($facePayload);
 
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $token);
+            $faceHeaders = self::generateSignV2($config, "POST", $facePath, $faceBody, $token);
 
             $ch = curl_init($faceUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -251,7 +251,7 @@ class DahuaHelper
                 ]
             ];
             $cardBody = json_encode($cardPayload);
-            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $token);
+            $cardHeaders = self::generateSignV2($config, "POST", $cardPath, $cardBody, $token);
 
             $ch = curl_init($cardUrl);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
