@@ -42,7 +42,7 @@ class DahuaHelper
         return preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "")
+    private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -51,12 +51,19 @@ class DahuaHelper
         $productId = $config['product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
-        // stringToSign = method + "\n" + SHA512(bodyStr without whitespace)
+        // stringToSign = method + "\n" + path + "\n" + SHA512(bodyStr without whitespace)
         $cleanBody = self::deleteWhitespace($body);
         $bodyHash = hash('sha512', $cleanBody);
-        $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+        
+        $stringToSign = $method;
+        if ($path) {
+            $stringToSign .= "\n" . $path;
+        }
+        if ($cleanBody !== "{}" && $cleanBody !== "") {
+            $stringToSign .= "\n" . $bodyHash;
+        }
 
-        // strAuthFactor = AccessKey + (AppAccessToken) + Timestamp + Nonce + stringToSign
+        // strAuthFactor = AccessKey + AppAccessToken + Timestamp + Nonce + stringToSign
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
 
