@@ -470,7 +470,32 @@ To achieve the professional white border look from the digital pass:
 - **Version Tracking**: The current production version is **v1.0.6**, visible in the footer of every generated pass.
 
 ---
-# VisitPilot Notification System Documentation
+# VisitPilot Notification System
+
+## Dahua DoLynk Cloud Integration (V2)
+
+The VisitPilot VMS is integrated with Dahua DoLynk Cloud using the **Open API v2 (Standard Signature Mode)**.
+
+### **Verified Authentication Model**
+*   **Algorithm**: `HMAC-SHA512`
+*   **Signature Format**: `Uppercase Hex` (128 characters)
+*   **Working Factor (Token)**: `AccessKey + Timestamp + Nonce + Method`
+*   **Headers Required**:
+    *   `Version`: `v1` (Must be lowercase)
+    *   `AccessKey`: Your App ID
+    *   `AppAccessToken`: The session token (for business APIs)
+    *   `Sign`: The generated HMAC signature
+    *   `Timestamp`: Unix timestamp in milliseconds
+    *   `Nonce`: Unique string (Portal format: `web-[GUID]-[Timestamp]`)
+
+### **Known Integration Notes**
+*   **AUT001 Error**: This indicates an authentication signature mismatch at the cloud gateway. If you see this for hardware commands but not for tokens, the `stringToSign` factor for that specific endpoint may require the `Path` and `BodyHash` in a specific concatenation order.
+*   **Database**: Credentials must be stored in the `system_settings` table (`dahua_app_id`, `dahua_app_secret`, etc.).
+*   **Debugging**: All API requests and generated signatures are logged to [dahua_debug.txt](file:///c:/xampp/htdocs/visitpilot/dahua_debug.txt).
+
+### **Diagnostic Tools**
+*   **Logic Diagnostic**: [test_dahua_v2.php](file:///c:/xampp/htdocs/visitpilot/test_dahua_v2.php) - Use this to verify the hardware handshake isolated from the UI.
+*   **Universal Tester**: [test_dahua_final.php](file:///c:/xampp/htdocs/visitpilot/test_dahua_final.php) - Use this to test different signature variants.
 
 This document outlines the implementation details of the real-time notification system in VisitPilot, covering both the web dashboard polling architecture and the React Native mobile app Push/Overlay system.
 
