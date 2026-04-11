@@ -44,7 +44,8 @@ class DahuaHelper
 
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
-        $timestamp = (string) round(microtime(true) * 1000);
+        // Offset by 10 seconds to handle regional clock drift
+        $timestamp = (string) (round(microtime(true) * 1000) - 10000);
         $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
