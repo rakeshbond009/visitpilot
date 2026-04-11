@@ -125,6 +125,11 @@ try {
 
         $newVisit = ['status' => 'checked_out'];
         logAction($pdo, $user_id, "Checked OUT visit$vRef", $oldVisit, array_merge($oldVisit, $newVisit));
+
+        // DELETE from Dahua hardware to free up facial geometry
+        require_once dirname(__DIR__, 2) . '/includes/dahua_helper.php';
+        DahuaHelper::deleteVisitor($id, $pdo);
+
         sendResponse('success', 'Check-out successful');
 
     } elseif ($action === 'qr_process') {

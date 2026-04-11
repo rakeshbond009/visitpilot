@@ -261,6 +261,43 @@ class DahuaHelper
         return true;
     }
 
+    public static function deleteVisitor($visitId, $pdo = null)
+    {
+        if (!$pdo) global $pdo;
+        $config = self::getConfig($pdo);
+        if (!$config['access_key']) return false;
+
+        $deviceId = explode(',', $config['device_sns'])[0] ?? '';
+        if (!$deviceId) return false;
+
+        self::log("Deleting visitor $visitId from Dahua hardware...");
+
+        $tokenV2 = self::getTokenV2($config);
+        if (!$tokenV2) return false;
+
+        $path = '/open-api/api-iot/v2/device/accessControl/deleteUsers';
+        $payload = [
+            'deviceId' => $deviceId,
+            'userIds'  => [(string)$visitId]
+        ];
+        $body = json_encode($payload);
+        $headers = self::generateSignV2($config, "POST", $body, $tokenV2);
+
+        $ch = curl_init($config['base_url'] . $path);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, 
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true, 
+            CURLOPT_POSTFIELDS => $body, 
+            CURLOPT_HTTPHEADER => $headers
+        ]);
+        $resp = curl_exec($ch); 
+        curl_close($ch);
+        
+        self::log("Deleted $visitId. Response: " . substr($resp, 0, 100));
+        return true;
+    }
+
     public static function processEvent($data, $pdo = null)
     {
         if (!$pdo) global $pdo;
