@@ -289,7 +289,15 @@ class DahuaHelper
                 $deviceId = $event['deviceId'] ?? 'Dahua';
                 $image = $event['capturedImage'] ?? null;
 
-                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")->execute([$image, $scanTime, $deviceId, $visit['id']]);
+                $pdo->prepare("
+                    UPDATE visits 
+                    SET status = 'checked_in', 
+                        machine_captured_photo = IF(machine_captured_photo IS NULL, ?, machine_captured_photo), 
+                        machine_scan_time = IF(machine_scan_time IS NULL, ?, machine_scan_time), 
+                        machine_id = IF(machine_id IS NULL, ?, machine_id), 
+                        check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) 
+                    WHERE id = ?
+                ")->execute([$image, $scanTime, $deviceId, $visit['id']]);
             }
         }
         return true;
