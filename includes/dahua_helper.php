@@ -76,12 +76,14 @@ class DahuaHelper
     public static function getAccessToken($pdo = null)
     {
         $config = self::get_config($pdo);
-        if (empty($config['client_id']) || empty($config['client_secret'])) {
-            self::log("FAIL: Credentials missing.");
-            return null;
-        }
+        $appId = $config['client_id'];
+        $secret = $config['client_secret'];
+        $productId = $config['product_id'] ?? '';
+        
+        $userName = 'info@siddhitechsolution.com';
+        $passWord = md5('Siddhi@!23'); 
 
-        $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
+        $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($appId . $userName) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) {
@@ -89,47 +91,32 @@ class DahuaHelper
             }
         }
 
-        $path = '/open-api/api-base/auth/getAppAccessToken';
-        $body = "{}";
-        $url = $config['base_url'] . $path;
-
-        self::log("Auth: Requesting v2 token for path $path...");
-
-        // Try V2 Signature
-        $headers = self::generateSignV2($config, "POST", $path, $body);
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        $resp = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        $res = json_decode($resp, true);
-        if ($res && isset($res['data']['appAccessToken'])) {
-            $accessToken = $res['data']['appAccessToken'];
-            $expireTime = time() + ($res['data']['expiresIn'] ?? 7000) - 60;
-            file_put_contents($cacheFile, json_encode(['access_token' => $accessToken, 'expire_time' => $expireTime]));
-            return $accessToken;
-        }
-
-        // FALLBACK: Try V1 (MD5) Authentication if V2 fails
-        self::log("V2 Auth failed ($resp). Trying V1 Fallback...");
+        $url = $config['base_url'] . '/open-api/api-base/auth/userLogin';
         $timestamp = (string)round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $config['client_id'] . ($config['product_id'] ?? '') . $timestamp . $nonce . "v1" . $config['client_secret'];
-        $v1Sign = strtoupper(md5($v1Factor));
+        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        
+        $bodyData = [
+            'userName' => $userName,
+            'passWord' => $passWord,
+            'productId' => $productId
+        ];
+        $body = json_encode($bodyData);
 
-        $v1Headers = [
-            'content-type: application/json',
-            'version: v1',
-            'accesskey: ' . $config['client_id'],
-            'timestamp: ' . $timestamp,
-            'nonce: ' . $nonce,
-            'sign: ' . $v1Sign,
-            'productid: ' . ($config['product_id'] ?? '')
+        // SHA256 Signature for User Login
+        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $body);
+        $bodyHash = hash('sha256', $cleanBody);
+        $stringToSign = "POST\n" . $bodyHash;
+        $factor = $appId . $timestamp . $nonce . $stringToSign;
+        $sign = strtolower(hash_hmac('sha256', $factor, $secret));
+
+        $headers = [
+            'Content-Type: application/json',
+            'Version: v1',
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign,
+            'ProductId: ' . $productId
         ];
 
         $ch = curl_init($url);
@@ -137,7 +124,7 @@ class DahuaHelper
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $v1Headers);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         $resp = curl_exec($ch);
         curl_close($ch);
 
@@ -149,7 +136,7 @@ class DahuaHelper
             return $accessToken;
         }
 
-        self::log("Auth FAIL. Response: [$httpCode] $resp");
+        self::log("User Login FAIL: " . $resp);
         return null;
     }
 
