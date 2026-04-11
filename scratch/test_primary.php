@@ -3,7 +3,8 @@ $appid = '2042536120520671232'; // PRIMARY ACCESS KEY
 $secret = 'iO3SGz6jVLcIlUkcEtO0N6MFnALAfyGE'; // PRIMARY SECRET
 $ts = (string)round(microtime(true) * 1000);
 $nonce = bin2hex(random_bytes(16));
-$factor = $appid . $ts . $nonce . "v1" . $secret;
+$prodId = '1539964762';
+$factor = $appid . $prodId . $ts . $nonce . "v1" . $secret;
 $sign = strtoupper(md5($factor));
 
 $headers = [
@@ -12,7 +13,8 @@ $headers = [
     'accesskey: ' . $appid,
     'timestamp: ' . $ts,
     'nonce: ' . $nonce,
-    'sign: ' . $sign
+    'sign: ' . $sign,
+    'productid: ' . $prodId
 ];
 
 $url = 'https://open-api-sg.dolynkcloud.com/open-api/api-base/auth/getAppAccessToken';
