@@ -205,13 +205,16 @@ class DahuaHelper
                     'userId' => $dahuaId,
                     'userName' => $visit['visitor_name'],
                     'userType' => 0,
-                    'authorityList' => ['2'],
-                    'userPermission' => 2,
-                    'userLevel' => 2,
+                    'userStatus' => 0,
+                    'Authority' => 1,
+                    'authorityList' => ['1'],
+                    'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
-                    'startTime' => date('Y-m-d H:i:s'),
-                    'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
+                    'startTime' => $startTime = date('Y-m-d H:i:s'),
+                    'endTime' => $endTime = date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours'))),
+                    'ValidFrom' => $startTime,
+                    'ValidTo' => $endTime,
                 ]
             ]
         ];
