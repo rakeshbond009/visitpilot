@@ -199,8 +199,8 @@ class DahuaHelper
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
 
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
-            self::log("Sync Step 2: Authorizing face...");
-            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            self::log("Sync Step 2: Authorizing face (V1)...");
+            $facePath = '/open-api/api-iot/v1/device/accessControl/authorizeAccessFace';
             $faceUrl = $config['base_url'] . $facePath;
             $facePayload = [
                 'deviceId' => $deviceId,
