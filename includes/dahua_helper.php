@@ -101,12 +101,12 @@ class DahuaHelper
             }
         }
 
-        // STEP A: Get a standard -01 App Token (V1 MD5 - NO PRODUCT ID)
+        // STEP A: Get a standard -01 App Token (V1 MD5 - SINGAPORE VARIANT)
         $timestamp = (string)round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $appId . $timestamp . $nonce . $secret;
+        $v1Factor = $appId . $timestamp . $nonce . $productId . $secret;
         $v1Sign = strtoupper(md5($v1Factor));
-        self::log("V1 FACTOR (STRIPPED): " . $v1Factor);
+        self::log("V1 FACTOR (SG): " . $v1Factor);
 
         $v1Headers = [
             'content-type: application/json',
