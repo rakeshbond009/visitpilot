@@ -186,7 +186,6 @@ class DahuaHelper
         // --- STEP 1: Add User ---
         self::log("Sync Step 1: Adding user...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userUrl = $config['base_url'] . $userPath;
         $userPayload = [
             'deviceId' => $deviceId,
             'users' => [
@@ -200,10 +199,25 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
+        
+        // V1 SIGNATURE for Hardware Command
+        $ts = (string)round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        $v1Factor = $config['client_id'] . ($config['product_id'] ?? '') . $ts . $nonce . "v1" . $config['client_secret'];
+        $v1Sign = strtoupper(md5($v1Factor));
 
-        $userHeaders = self::generateSignV2($config, "POST", $userPath, $userBody, $token);
+        $userHeaders = [
+            'content-type: application/json',
+            'version: v1',
+            'accesskey: ' . $config['client_id'],
+            'timestamp: ' . $ts,
+            'nonce: ' . $nonce,
+            'sign: ' . $v1Sign,
+            'appaccesstoken: ' . $token,
+            'productid: ' . ($config['product_id'] ?? '')
+        ];
 
-        $ch = curl_init($userUrl);
+        $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
