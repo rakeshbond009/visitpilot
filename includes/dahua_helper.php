@@ -161,16 +161,12 @@ class DahuaHelper
         $compressedPath = $compressDir . $visitId . '.jpg';
         $photoUrl = null;
 
-        $srcPhoto = file_exists(dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg')
-            ? dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg'
-            : $photoPath;
-
-        if (file_exists($srcPhoto) && !empty($visit['photo_path'])) {
-            // Resize to 300x400 portrait and compress until under 95KB
-            $img = null;
-            $mime = mime_content_type($srcPhoto);
-            if ($mime === 'image/png')  $img = imagecreatefrompng($srcPhoto);
-            elseif ($mime === 'image/jpeg') $img = imagecreatefromjpeg($srcPhoto);
+        if (file_exists($photoPath) && !empty($visit['photo_path'])) {
+            // Resize to 300x400 portrait and compress until under 95KB (min quality 30 to preserve face)
+            $img  = null;
+            $mime = mime_content_type($photoPath);
+            if ($mime === 'image/png')  $img = imagecreatefrompng($photoPath);
+            elseif ($mime === 'image/jpeg') $img = imagecreatefromjpeg($photoPath);
             if ($img) {
                 $resized = imagecreatetruecolor(300, 400);
                 imagecopyresampled($resized, $img, 0, 0, 0, 0, 300, 400, imagesx($img), imagesy($img));
@@ -178,7 +174,7 @@ class DahuaHelper
                 do {
                     imagejpeg($resized, $compressedPath, $quality);
                     $quality -= 5;
-                } while (filesize($compressedPath) > 95000 && $quality > 10);
+                } while (filesize($compressedPath) > 95000 && $quality > 30);
                 imagedestroy($img);
                 imagedestroy($resized);
                 $photoUrl = 'https://visitor.codepilotx.com/uploads/dahua_compressed/' . $visitId . '.jpg';
