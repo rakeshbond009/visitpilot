@@ -99,28 +99,42 @@ class DahuaHelper
             }
         }
 
-        // STEP A: Get a standard -01 App Token
+        // STEP A: Get a standard -01 App Token (USING V1 MD5 HANDSHAKE)
+        $timestamp = (string)round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        $v1Factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
+        $v1Sign = strtoupper(md5($v1Factor));
+
+        $v1Headers = [
+            'Content-Type: application/json',
+            'Version: v1',
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $v1Sign,
+            'ProductId: ' . $productId
+        ];
+
         $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
         $authBody = json_encode(['appId' => $appId, 'appSecret' => $secret]);
-        $tempHeaders = self::generateSignV2($config, "POST", '/open-api/api-base/auth/getAppAccessToken', $authBody);
         
         $ch = curl_init($authUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $authBody);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $tempHeaders);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $v1Headers);
         $authResp = curl_exec($ch);
         curl_close($ch);
 
         $authRes = json_decode($authResp, true);
         $appToken = $authRes['data']['appAccessToken'] ?? null;
         if (!$appToken) {
-            self::log("Step A (-01 Token) FAIL: " . $authResp);
+            self::log("Step A (-01 Token via V1) FAIL: " . $authResp);
             return null;
         }
 
-        // STEP B: Use -01 Token to get -02 Session Token
+        // STEP B: Use -01 Token to get -02 Session Token (V2 Signature)
         $loginUrl = $config['base_url'] . '/open-api/api-base/auth/userLogin';
         $loginBody = json_encode([
             'userName' => $userName,
