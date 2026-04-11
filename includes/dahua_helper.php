@@ -60,8 +60,6 @@ class DahuaHelper
         $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
 
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
-
         $headers = [
             'Content-Type: application/json',
             'Version: V1',

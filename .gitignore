@@ -9,8 +9,12 @@ uploads/
 temp/
 includes/sessions/
 
-# System & Tooling
-.DS_Store
+# System & Tooling# Dahua Integration
+dahua_debug.txt
+scratch/
+test_dahua_*.php
+scratch/*.php
+*.json
 .vscode/
 includes/*.json
 tmp/
