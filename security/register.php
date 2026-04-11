@@ -688,11 +688,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                             <select name="access_area" class="form-select" id="areaSelect" <?php echo isFieldMandatory('access_area') ? 'required' : ''; ?>>
                                                 <option value="">None / Not Specified</option>
                                                 <?php foreach ($access_areas as $aa): ?>
-                                                    <option value="<?php echo htmlspecialchars($aa['area_name']); ?>">
-                                                        <?php echo htmlspecialchars($aa['area_name']); ?>
+                                                    <?php $areaVal = $aa['area_name'] . (!empty($aa['machine_id']) ? '-' . $aa['machine_id'] : ''); ?>
+                                                    <option value="<?php echo htmlspecialchars($areaVal); ?>">
+                                                        <?php echo htmlspecialchars($areaVal); ?>
                                                     </option>
-                                                    <?php
-                                                endforeach; ?>
+                                                <?php endforeach; ?>
                                             </select>
                                             <label for="areaSelect">Designated Access Area <?php echo isFieldMandatory('access_area') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
                                         </div>

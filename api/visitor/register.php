@@ -99,6 +99,9 @@ try {
         $members = [];
     $total_visitors = 1 + count($members);
 
+    $validity_number = intval($data['validity_number'] ?? 8);
+    $validity_unit = $data['validity_unit'] ?? 'hours';
+
     if ($invitation_id) {
         $visit_id = $invitation_id;
 
@@ -106,7 +109,7 @@ try {
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        $stmt = $pdo->prepare("UPDATE visits SET visitor_id=?, employee_id=?, purpose=?, status='approved', approval_status='approved', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=? WHERE id=?");
+        $stmt = $pdo->prepare("UPDATE visits SET visitor_id=?, employee_id=?, purpose=?, status='approved', approval_status='approved', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=?, validity_number=?, validity_unit=? WHERE id=?");
         $stmt->execute([
             $visitor_id,
             $data['employee_id'],
@@ -119,11 +122,13 @@ try {
             $total_visitors,
             $current_time,
             $user_id,
+            $validity_number,
+            $validity_unit,
             $visit_id
         ]);
     } else {
         $visit_code = generateVisitCode();
-        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visitor_id,
             $photo_path,
@@ -136,7 +141,9 @@ try {
             $id_proof_number,
             $total_visitors,
             $current_time,
-            $user_id
+            $user_id,
+            $validity_number,
+            $validity_unit
         ]);
         $visit_id = $pdo->lastInsertId();
     }

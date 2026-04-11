@@ -159,6 +159,16 @@ class DahuaHelper
             return false;
 
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
+        
+        // Try to extract specific device ID from access_area (formatted as "Area Name-MachineID")
+        if (!empty($visit['access_area']) && strpos($visit['access_area'], '-') !== false) {
+            $parts = explode('-', $visit['access_area']);
+            // The machine ID is the last part if we use "-" as separator
+            $extractedId = trim(end($parts));
+            if (!empty($extractedId)) {
+                $deviceId = $extractedId;
+            }
+        }
 
         // --- STEP 1: Compress photo to <95KB and save to public path ---
         $photoRelative = ltrim($visit['photo_path'], './');
@@ -385,7 +395,7 @@ class DahuaHelper
                 $deviceId = $event['deviceId'] ?? 'Dahua';
                 $image = $event['capturedImage'] ?? null;
 
-                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")->execute([$image, $scanTime, $deviceId, $visit['id']]);
+                $pdo->prepare("UPDATE visits SET status = 'checked_in', machine_captured_photo = ?, machine_scan_time = ?, machine_id = ?, checked_in_by = 1, check_in_time = IF(check_in_time IS NULL, NOW(), check_in_time) WHERE id = ?")->execute([$image, $scanTime, $deviceId, $visit['id']]);
             }
         }
         return true;

@@ -10,6 +10,14 @@ try {
     // Fetch Access Areas
     $areas_stmt = $pdo->query("SELECT id, area_name, machine_id FROM access_areas ORDER BY area_name ASC");
     $areas = $areas_stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Append machine_id to area_name for mobile display consistency
+    foreach ($areas as &$area) {
+        if (!empty($area['machine_id'])) {
+            $area['area_name'] = $area['area_name'] . '-' . $area['machine_id'];
+        }
+    }
+    unset($area); // Good practice with references
 
     // Default fallbacks if tables are empty
     if (empty($purposes)) {
