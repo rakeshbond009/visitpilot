@@ -27,11 +27,8 @@ foreach ($variants as $name => $factorBase) {
     $time = (string)round(microtime(true) * 1000);
     $nonce = 'web-' . bin2hex(random_bytes(8)) . '-' . $time;
     
-    // Inject time and nonce into the factor
-    $factor = $appId . $token . $time . $nonce . $factorBase; 
-    // Wait, the order might be appId + token + time + nonce + method...
-    
-    $sign = strtoupper(hash_hmac('sha512', $appId . $token . $time . $nonce . $factorBase, $secret));
+    // Try WITHOUT appId in the factor
+    $sign = strtoupper(hash_hmac('sha512', $token . $time . $nonce . $factorBase, $secret));
     
     $headers = [
         'Content-Type: application/json',
