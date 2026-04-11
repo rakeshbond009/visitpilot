@@ -167,6 +167,9 @@ class DahuaHelper
         curl_exec($ch);
         curl_close($ch);
 
+        self::log("Waiting for Cloud-to-Device propagation (3s)...");
+        sleep(3);
+
         // --- STEP 2: Authorize Face (V2 via Media Upload) ---
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
