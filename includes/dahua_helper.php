@@ -102,7 +102,7 @@ class DahuaHelper
         // STEP A: Get a standard -01 App Token (USING V1 MD5 HANDSHAKE)
         $timestamp = (string)round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
+        $v1Factor = $appId . $timestamp . $nonce . "v1" . $secret;
         $v1Sign = strtoupper(md5($v1Factor));
 
         $v1Headers = [
