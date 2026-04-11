@@ -1,8 +1,8 @@
 <?php
 require 'includes/db.php';
 
-$app_id = '2042536120520671232'; // PRIMARY ACCESS KEY
-$app_secret = 'iO3SGz6jVLcIlUkcEtO0N6MFnALAfyGE'; // PRIMARY SECRET
+$app_id = '2042539358257250304';
+$app_secret = 'AhesscxM05NVtR3lYY8auSDKHaWb7AIF';
 
 try {
     $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'dahua_app_id'");
@@ -11,7 +11,7 @@ try {
     $stmt = $pdo->prepare("UPDATE system_settings SET setting_value = ? WHERE setting_key = 'dahua_app_secret'");
     $stmt->execute([$app_secret]);
     
-    echo "SUCCESS: Database settings updated to Master Account credentials.\n";
+    echo "SUCCESS: Database settings updated to VisitPilot REAL credentials.\n";
 } catch (Exception $e) {
     echo "ERROR: " . $e->getMessage() . "\n";
 }
