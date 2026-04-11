@@ -59,15 +59,15 @@ class DahuaHelper
         self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
 
         $headers = [
-            'Content-Type: application/json',
-            'Version: v1',
-            'AccessKey: ' . $appId,
-            'Timestamp: ' . $timestamp,
-            'Nonce: ' . $nonce,
-            'Sign: ' . $sign,
-            'AppAccessToken: ' . $appAccessToken,
-            'ProductId: ' . $productId,
-            'X-TraceId-Header: ' . $traceId
+            'content-type: application/json',
+            'version: v1',
+            'accesskey: ' . $appId,
+            'timestamp: ' . $timestamp,
+            'nonce: ' . $nonce,
+            'sign: ' . $sign,
+            'appaccesstoken: ' . $appAccessToken,
+            'productid: ' . $productId,
+            'x-traceid-header: ' . $traceId
         ];
 
         return $headers;
