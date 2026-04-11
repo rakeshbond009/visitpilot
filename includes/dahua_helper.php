@@ -187,7 +187,7 @@ class DahuaHelper
                 ]
             ];
             $faceBody = json_encode($facePayload);
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, false, $facePath);
+            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
             $ch = curl_init($config['base_url'] . $facePath);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
