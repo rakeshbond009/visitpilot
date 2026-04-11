@@ -45,7 +45,7 @@ class DahuaHelper
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $timestamp;
+        $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
@@ -175,7 +175,9 @@ class DahuaHelper
                 [
                     'userId' => 'VP' . $visitId,
                     'userName' => $visit['visitor_name'],
-                    'userType' => 0 // General user
+                    'userType' => 0,
+                    'departmentId' => 1,
+                    'validityPeriod' => '2037-12-31 23:59:59'
                 ]
             ]
         ];
