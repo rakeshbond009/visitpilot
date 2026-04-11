@@ -179,7 +179,9 @@ class DahuaHelper
                     'userName' => $visit['visitor_name'],
                     'userType' => 0,
                     'authorityList' => ['1'], // Standard User Group
-                    'departmentId' => '1' // Default Department
+                    'departmentId' => '1', // Default Department
+                    'startTime' => date('Y-m-d H:i:s'),
+                    'endTime' => '2036-12-31 23:59:59'
                 ]
             ]
         ];
