@@ -153,7 +153,7 @@ class DahuaHelper
 
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
-        // --- STEP 1: Prepare & Compress Photo to <95KB ---
+        // --- STEP 1: Compress photo to <95KB and save to public path ---
         $photoRelative = ltrim($visit['photo_path'], './');
         $photoPath = dirname(__DIR__) . '/' . $photoRelative;
         $compressDir = dirname(__DIR__) . '/uploads/dahua_compressed/';
@@ -186,62 +186,71 @@ class DahuaHelper
             }
         }
 
-        // --- STEP 2: Build User Payload ---
+        // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
+        self::log("Sync Step 1: Adding user $visitId...");
+        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
-            'users' => [
-                [
-                    'userId'        => (string)$visitId,
-                    'userName'      => $visit['visitor_name'],
-                    'userType'      => 0,
-                    'authorityList' => ['1'],
-                    'userPermission'=> 1,
-                    'role'          => 'user',
-                    'departmentId'  => '1',
-                    'startTime'     => date('Y-m-d H:i:s'),
-                    'endTime'       => '2036-12-31 23:59:59'
-                ]
-            ]
+            'users' => [[
+                'userId'         => (string)$visitId,
+                'userName'       => $visit['visitor_name'],
+                'userType'       => 0,
+                'authorityList'  => ['1'],
+                'userPermission' => 1,
+                'role'           => 'user',
+                'departmentId'   => '1',
+                'startTime'      => date('Y-m-d H:i:s'),
+                'endTime'        => '2036-12-31 23:59:59'
+            ]]
         ];
-
-        // Attach the real hosted photo URL
-        if ($photoUrl) {
-            $userPayload['users'][0]['faceList'] = [
-                ['photoURL' => $photoUrl]
-            ];
-        }
-
-        // Attach Card
-        if (!empty($visit['visit_code'])) {
-            $userPayload['users'][0]['cardList'] = [
-                ['cardNo' => $visit['visit_code'], 'cardStatus' => 0]
-            ];
-        }
-
-        self::log("Sync: Sending Atomic V2 Payload (User+Face+Card)...");
-        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userBody = json_encode($userPayload);
+        $userBody    = json_encode($userPayload);
         $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
-        
         $ch = curl_init($config['base_url'] . $userPath);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $userBody);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $userHeaders);
-        $resp = curl_exec($ch);
-        curl_close($ch);
-        
-        self::log("Sync Atomic Response: " . substr($resp, 0, 100));
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $userBody, CURLOPT_HTTPHEADER => $userHeaders]);
+        $userResp = curl_exec($ch); curl_close($ch);
+        self::log("Step 1 Response: " . substr($userResp, 0, 120));
 
-        if (stripos($resp, '"success":true') !== false) {
-            self::log("SUCCESS: Atomic Synced Visit ID $visitId");
-            $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute(['VP' . $visitId, $visitId]);
-            return true;
-        } else {
-            self::log("FAIL: Atomic Sync rejected. Response: " . $resp);
-            return false;
+        // --- STEP 3: Authorize Face (retry up to 3x with 5s delay for device propagation) ---
+        if ($photoUrl) {
+            $facePath    = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+            $facePayload = ['deviceId' => $deviceId, 'faces' => [['userId' => (string)$visitId, 'photoURL' => $photoUrl]]];
+            $faceBody    = json_encode($facePayload);
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                if ($attempt > 1) { self::log("Face retry $attempt/3 (waiting 5s)..."); sleep(5); }
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
+                $ch = curl_init($config['base_url'] . $facePath);
+                curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST => true, CURLOPT_POSTFIELDS => $faceBody, CURLOPT_HTTPHEADER => $faceHeaders]);
+                $faceResp = curl_exec($ch); curl_close($ch);
+                self::log("Step 2 Face (attempt $attempt): " . substr($faceResp, 0, 120));
+                $faceData = json_decode($faceResp, true);
+                // Break on success or non-propagation error
+                if (($faceData['code'] ?? '') !== 'IDV0098') break;
+            }
         }
+
+        // --- STEP 4: Authorize Card ---
+        if (!empty($visit['visit_code'])) {
+            $cardPath    = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => (string)$visitId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
+            $cardBody    = json_encode($cardPayload);
+            for ($attempt = 1; $attempt <= 3; $attempt++) {
+                if ($attempt > 1) { self::log("Card retry $attempt/3 (waiting 5s)..."); sleep(5); }
+                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
+                $ch = curl_init($config['base_url'] . $cardPath);
+                curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST => true, CURLOPT_POSTFIELDS => $cardBody, CURLOPT_HTTPHEADER => $cardHeaders]);
+                $cardResp = curl_exec($ch); curl_close($ch);
+                self::log("Step 3 Card (attempt $attempt): " . substr($cardResp, 0, 120));
+                $cardData = json_decode($cardResp, true);
+                if (($cardData['code'] ?? '') !== 'IDV0098') break;
+            }
+        }
+
+        self::log("SUCCESS: Synced Visit ID $visitId");
+        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([(string)$visitId, $visitId]);
+        return true;
     }
 
     public static function processEvent($data, $pdo = null)
