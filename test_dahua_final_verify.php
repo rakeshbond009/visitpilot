@@ -34,8 +34,7 @@ $headers = [
     'Timestamp: ' . $timestamp,
     'Nonce: ' . $nonce,
     'Sign: ' . $sign,
-    'AppAccessToken: ' . $token,
-    'ProductID: ' . ($settings['dahua_product_id'] ?? '')
+    'AppAccessToken: ' . $token
 ];
 
 echo "Factor: $factor\n";
