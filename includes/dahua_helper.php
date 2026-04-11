@@ -101,12 +101,12 @@ class DahuaHelper
             }
         }
 
-        // STEP A: Get a standard -01 App Token (V1 MD5)
+        // STEP A: Get a standard -01 App Token (V1 MD5 - NO PRODUCT ID)
         $timestamp = (string)round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $appId . $productId . $timestamp . $nonce . $secret;
+        $v1Factor = $appId . $timestamp . $nonce . $secret;
         $v1Sign = strtoupper(md5($v1Factor));
-        self::log("V1 FACTOR (FINAL): " . $v1Factor);
+        self::log("V1 FACTOR (STRIPPED): " . $v1Factor);
 
         $v1Headers = [
             'content-type: application/json',
@@ -114,8 +114,7 @@ class DahuaHelper
             'accesskey: ' . $appId,
             'timestamp: ' . $timestamp,
             'nonce: ' . $nonce,
-            'sign: ' . $v1Sign,
-            'productid: ' . $productId
+            'sign: ' . $v1Sign
         ];
 
         $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
@@ -133,7 +132,7 @@ class DahuaHelper
         $authRes = json_decode($authResp, true);
         $appToken = $authRes['data']['appAccessToken'] ?? null;
         if (!$appToken) {
-            self::log("Step A (-01 Token via V1) FAIL: " . $authResp);
+            self::log("Step A FAIL: " . $authResp);
             return null;
         }
 
