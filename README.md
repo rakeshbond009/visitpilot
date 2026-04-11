@@ -163,8 +163,9 @@ All logic lives in `includes/dahua_helper.php → DahuaHelper::syncVisitor()`.
 ### Step 1: Image Compression
 Dahua hardware rejects photos over **100KB**. Our pipeline:
 1. Reads visitor photo from `uploads/visitors/`.
-2. Resizes to **300×400px** using GD library.
-3. Iteratively compresses JPEG quality (`85 → 70 → 55 → 40...`) until file is under **95KB**.
+2. Resizes to **640×480px** using GD library (Dahua hardware requires sufficient resolution to detect facial features).
+3. Iteratively compresses JPEG quality (`85 → 80 → 75...`) until file is under **95KB**, BUT stops compressing at quality **55**. 
+   - *CRITICAL FIX:* If a photo is compressed too much (e.g., 9.8KB), the API returns `200 Success` but the hardware silenty rejects it as "blurry" and shows "Not Added" on the screen.
 4. Saves to `uploads/dahua_compressed/{visit_id}.jpg` (publicly accessible via HTTPS).
 5. Public URL: `https://visitor.codepilotx.com/uploads/dahua_compressed/{id}.jpg`
 
@@ -232,10 +233,12 @@ ProductId: [ID]      ← camelCase ProductId (NOT ProductID)
 | `AUT001` | Invalid signature | Check `v1` lowercase, `ProductId` camelCase, correct HMAC key |
 | `PRM001` | Parameter error | `photoURL` blank or `photoData` not an array |
 | `IDV0098` | User not found on device | Normal — retry loop handles this (user propagation delay) |
-| `Duplicate` | userId already exists | **Delete user from device** Person Management, then re-sync |
+| `IDV0061` | Duplicate Records | User data got overwritten mid-sync (usually caused by rapidly double-clicking sync) |
 
 > [!CAUTION]
-> **Duplicate entries are NOT allowed on Dahua hardware.** If a sync fails mid-way and the user was partially created, you must manually delete them from the device's Person Management UI before re-syncing.
+> **Duplicate entries and Rapid Syncing:** 
+> 1. Duplicate entries are NOT allowed. If a sync fails mid-way, you MUST manually delete the user from the device's Person Management UI before re-syncing.
+> 2. **Never overlap syncs** for the same user. Syncing 4 times in 90 seconds will cause the device to delete the face/card to prepare for a new insert, resulting in an `IDV0061` crash on the card step. Wait for the pipeline to finish completely.
 
 ### Debug Log
 All sync activity is logged to: `https://visitor.codepilotx.com/dahua_debug.txt`
