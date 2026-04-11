@@ -3,7 +3,8 @@ $appid = '2042539358257250304';
 $secret = 'AhesscxM05NVtR3lYY8auSDKHaWb7AIF';
 $ts = (string)round(microtime(true) * 1000);
 $nonce = bin2hex(random_bytes(16));
-$factor = $appid . $ts . $nonce . "v1" . $secret;
+$prodId = '1539964762';
+$factor = $appid . $prodId . $ts . $nonce . "v1" . $secret;
 $sign = strtoupper(md5($factor));
 
 $headers = [
