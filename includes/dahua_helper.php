@@ -99,38 +99,41 @@ class DahuaHelper
             }
         }
 
-        // STEP A: Get a standard -01 App Token (USING V1 MD5 HANDSHAKE)
-        $timestamp = (string)round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
-        $v1Sign = strtoupper(md5($v1Factor));
-
-        $v1Headers = [
-            'content-type: application/json',
-            'version: v1',
-            'accesskey: ' . $appId,
-            'timestamp: ' . $timestamp,
-            'nonce: ' . $nonce,
-            'sign: ' . $v1Sign,
-            'productid: ' . $productId
-        ];
-
-        $authUrl = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
+        // STEP A: Get a standard -01 App Token (MANUAL V2)
+        $authPath = '/open-api/api-base/auth/getAppAccessToken';
+        $authUrl = $config['base_url'] . $authPath;
         $authBody = json_encode(['appId' => $appId, 'appSecret' => $secret]);
+        
+        $ts = (string)round(microtime(true) * 1000);
+        $nonce = 'web-' . bin2hex(random_bytes(16)) . '-' . $ts;
+        
+        $cleanBody = preg_replace('/[ \t\n\r\f\v\x0B]/u', '', $authBody);
+        $bodyHash = hash('sha256', $cleanBody);
+        $factor = $appId . $ts . $nonce . "POST\n" . $bodyHash;
+        $sign = strtolower(hash_hmac('sha512', $factor, $secret));
+
+        $authHeaders = [
+            'Content-Type: application/json',
+            'Version: v1',
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $ts,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign
+        ];
         
         $ch = curl_init($authUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $authBody);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $v1Headers);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $authHeaders);
         $authResp = curl_exec($ch);
         curl_close($ch);
 
         $authRes = json_decode($authResp, true);
         $appToken = $authRes['data']['appAccessToken'] ?? null;
         if (!$appToken) {
-            self::log("Step A (-01 Token via V1) FAIL: " . $authResp);
+            self::log("Step A (-01 Token Manual V2) FAIL: " . $authResp);
             return null;
         }
 
