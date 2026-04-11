@@ -2,6 +2,7 @@
 // api/visit/status_action.php - Dahua Enabled
 require_once '../includes/api_header.php';
 require_once '../includes/async_dispatch.php';
+require_once '../../includes/dahua_helper.php';
 
 
 $data = getPostData();
@@ -192,11 +193,5 @@ try {
         sendResponse('error', 'Invalid action');
     }
 } catch (Exception $e) {
-    sendResponse('error', 'Database error: ' . $e->getMessage());
-}
-    } else {
-        sendResponse('error', 'Invalid action');
-    }
-} catch (Exception $e) {
-    sendResponse('error', 'Database error: ' . $e->getMessage());
+    sendResponse('error', 'Processing failed: ' . $e->getMessage());
 }
