@@ -264,8 +264,8 @@ class DahuaHelper
     public static function deleteVisitor($visitId, $pdo = null)
     {
         if (!$pdo) global $pdo;
-        $config = self::getConfig($pdo);
-        if (!$config['access_key']) return false;
+        $config = self::get_config($pdo);
+        if (empty($config['client_id'])) return false;
 
         $deviceId = explode(',', $config['device_sns'])[0] ?? '';
         if (!$deviceId) return false;
