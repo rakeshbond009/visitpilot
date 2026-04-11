@@ -182,8 +182,7 @@ class DahuaHelper
         $config = self::get_config($pdo);
         $deviceId = $sns = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
-        // --- STEP 1: Add User ---
-        self::log("Sync Step 1: Adding user...");
+        // Step 1: Add User
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
@@ -191,43 +190,19 @@ class DahuaHelper
                 [
                     'userId' => 'VP' . $visitId,
                     'userName' => $visit['visitor_name'],
-                    'userType' => 0,
-                    'departmentId' => 1,
-                    'validityPeriod' => '2037-12-31 23:59:59'
+                    'userType' => 0
                 ]
             ]
         ];
         $userBody = json_encode($userPayload);
-        
-        // V1 SIGNATURE for Hardware Command
-        $ts = (string)round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
-        $v1Factor = $config['client_id'] . ($config['product_id'] ?? '') . $ts . $nonce . "v1" . $config['client_secret'];
-        $v1Sign = strtoupper(md5($v1Factor));
+        $userHeaders = self::generateSignV2($config, "POST", $userPath, $userBody, $token);
 
-        $userHeaders = [
-            'content-type: application/json',
-            'version: v1',
-            'accesskey: ' . $config['client_id'],
-            'timestamp: ' . $ts,
-            'nonce: ' . $nonce,
-            'sign: ' . $v1Sign,
-            'appaccesstoken: ' . $token,
-            'productid: ' . ($config['product_id'] ?? '')
-        ];
-
-        $ch = curl_init($config['base_url'] . $userPath);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $userBody);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $userHeaders);
-        $resp = curl_exec($ch);
-        $userData = json_decode($resp, true);
-        curl_close($ch);
+        self::log("Sync Step 1: Adding user (Thin Mode)...");
+        $userResp = self::post($config['base_url'] . $userPath, $userBody, $userHeaders);
+        $userData = json_decode($userResp, true);
 
         if (!isset($userData['success']) || !$userData['success']) {
-            self::log("Sync STEP 1 FAIL: " . $resp);
+            self::log("Sync STEP 1 FAIL: " . $userResp);
             return false;
         }
 
@@ -238,7 +213,6 @@ class DahuaHelper
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             self::log("Sync Step 2: Authorizing face...");
             $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $faceUrl = $config['base_url'] . $facePath;
             $facePayload = [
                 'deviceId' => $deviceId,
                 'faces' => [
@@ -249,50 +223,31 @@ class DahuaHelper
                 ]
             ];
             $faceBody = json_encode($facePayload);
-
             $faceHeaders = self::generateSignV2($config, "POST", $facePath, $faceBody, $token);
-
-            $ch = curl_init($faceUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
-            $resp = curl_exec($ch);
-            curl_close($ch);
-            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
+            $faceResp = self::post($config['base_url'] . $facePath, $faceBody, $faceHeaders);
+            self::log("Sync Step 2 Response: " . substr($faceResp, 0, 100));
         }
 
-        // --- STEP 3: Authorize Card (Optional but linked) ---
+        // --- STEP 3: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             self::log("Sync Step 3: Authorizing card...");
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardUrl = $config['base_url'] . $cardPath;
             $cardPayload = [
                 'deviceId' => $deviceId,
                 'cards' => [
                     [
                         'userId' => 'VP' . $visitId,
-                        'cardNo' => $visit['visit_code'],
-                        'cardStatus' => 0
+                        'cardNo' => $visit['visit_code']
                     ]
                 ]
             ];
             $cardBody = json_encode($cardPayload);
             $cardHeaders = self::generateSignV2($config, "POST", $cardPath, $cardBody, $token);
-
-            $ch = curl_init($cardUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $cardBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $cardHeaders);
-            curl_exec($ch);
-            curl_close($ch);
+            $cardResp = self::post($config['base_url'] . $cardPath, $cardBody, $cardHeaders);
+            self::log("Sync Step 3 Response: " . substr($cardResp, 0, 100));
         }
 
-        self::log("SUCCESS: Synced Visit ID $visitId");
-        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute(['VP' . $visitId, $visitId]);
+        self::log("Sync COMPLETE for Visit ID $visitId");
         return true;
     }
 
