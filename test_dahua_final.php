@@ -40,7 +40,8 @@ foreach ($variants as $name => $factorBase) {
         'Timestamp: ' . $time,
         'Nonce: ' . $nonce,
         'Sign: ' . $sign,
-        'AppAccessToken: ' . $token
+        'AppAccessToken: ' . $token,
+        'ProductId: ' . ($settings['dahua_product_id'] ?? '')
     ];
 
     echo "Testing $name...\n";
