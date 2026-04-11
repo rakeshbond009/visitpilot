@@ -153,75 +153,74 @@ class DahuaHelper
 
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
 
-        // Step 1: Add User
+        // --- ATOMIC V2 SYNC (All-in-One: User + Face + Card) ---
+        $photoRelative = ltrim($visit['photo_path'], './');
+        $photoPath = dirname(__DIR__) . '/' . $photoRelative;
+        $fixedPath = dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg';
+        $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
+
+        $userPayload = [
+            'deviceId' => $deviceId,
+            'users' => [
+                [
+                    'userId' => (string)$visitId,
+                    'userName' => $visit['visitor_name'],
+                    'userType' => 0,
+                    'authorityList' => ['1'],
+                    'userPermission' => 1,
+                    'role' => 'user',
+                    'departmentId' => '1',
+                    'startTime' => date('Y-m-d H:i:s'),
+                    'endTime' => '2036-12-31 23:59:59'
+                ]
+            ]
+        ];
+
+        // Add Face to User if exists
+        if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
+            $userPayload['users'][0]['faceList'] = [
+                [
+                    'faceImage' => base64_encode(file_get_contents($finalPhoto)),
+                    'photoURL' => 'https://visitor.codepilotx.com/placeholder.jpg' // Ghost URL workaround
+                ]
+            ];
+        }
+
+        // Add Card to User if exists
+        if (!empty($visit['visit_code'])) {
+            $userPayload['users'][0]['cardList'] = [
+                [
+                    'cardNo' => $visit['visit_code'],
+                    'cardStatus' => 0
+                ]
+            ];
+        }
+
+        self::log("Sync: Sending Atomic V2 Payload (User+Face+Card)...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userPayload = ['deviceId' => $deviceId, 'users' => [['userId' => (string)$visitId, 'userName' => $visit['visitor_name'], 'userType' => 0, 'authorityList' => ['1'], 'userPermission' => 1, 'role' => 'user', 'departmentId' => '1', 'startTime' => date('Y-m-d H:i:s'), 'endTime' => '2036-12-31 23:59:59']]];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, false, $userPath);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
+        
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $userBody);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $userHeaders);
-        curl_exec($ch);
+        $resp = curl_exec($ch);
         curl_close($ch);
+        
+        self::log("Sync Atomic Response: " . substr($resp, 0, 100));
 
-        self::log("Waiting for Cloud-to-Device propagation (3s)...");
-        sleep(3);
-
-        // --- STEP 2: Authorize Face (V2 via Media Upload) ---
-        $photoRelative = ltrim($visit['photo_path'], './');
-        $photoPath = dirname(__DIR__) . '/' . $photoRelative;
-        $fixedPath = dirname(__DIR__) . '/uploads/photos/fix_biometric.jpg';
-        $finalPhoto = file_exists($fixedPath) ? $fixedPath : $photoPath;
-
-        if (file_exists($finalPhoto) && !empty($visit['photo_path'])) {
-            self::log("Sync Step 2: Authorizing face (V2 Direct + Dummy URL)...");
-            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $facePayload = [
-                'deviceId' => $deviceId,
-                'faces' => [
-                    [
-                        'userId' => (string)$visitId,
-                        'faceImage' => base64_encode(file_get_contents($finalPhoto)),
-                        'photoURL' => 'https://visitor.codepilotx.com/placeholder.jpg'
-                    ]
-                ]
-            ];
-            $faceBody = json_encode($facePayload);
-            $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
-            $ch = curl_init($config['base_url'] . $facePath);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $faceBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $faceHeaders);
-            $resp = curl_exec($ch);
-            curl_close($ch);
-            self::log("Sync Step 2 Response: " . substr($resp, 0, 100));
+        if (stripos($resp, '"success":true') !== false) {
+            self::log("SUCCESS: Atomic Synced Visit ID $visitId");
+            $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute(['VP' . $visitId, $visitId]);
+            return true;
+        } else {
+            self::log("FAIL: Atomic Sync rejected. Response: " . $resp);
+            return false;
         }
-
-        // Step 3: Card (V2)
-        if (!empty($visit['visit_code'])) {
-            self::log("Sync Step 3: Authorizing card...");
-            $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => (string)$visitId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
-            $cardBody = json_encode($cardPayload);
-            $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
-            $ch = curl_init($config['base_url'] . $cardPath);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $cardBody);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $cardHeaders);
-            $resp = curl_exec($ch);
-            curl_close($ch);
-            self::log("Sync Step 3 Response: " . substr($resp, 0, 100));
-        }
-
-        self::log("SUCCESS: Synced Visit ID $visitId");
-        $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute(['VP' . $visitId, $visitId]);
-        return true;
+    }
     }
 
     public static function processEvent($data, $pdo = null)
