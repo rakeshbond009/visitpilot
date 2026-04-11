@@ -44,19 +44,15 @@ class DahuaHelper
 
     private static function generateSignV2($config, $method = "POST", $path = "", $body = "{}", $appAccessToken = "")
     {
-        // Offset by 10 seconds to handle regional clock drift
-        $timestamp = (string) (round(microtime(true) * 1000) - 10000);
+        $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
         $productId = $config['product_id'] ?? '';
-        $traceId = bin2hex(random_bytes(16));
 
-        // LEGACY FACTOR (Singapore-Compatible)
-        $strAuthFactor = $appId . $body . $timestamp . $nonce . $method;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-        
-        self::log("=== DAHUA V2 STRING TO SIGN ===\n" . $strAuthFactor);
+        // V1 Signature Factor: AccessKey + ProductID + Timestamp + Nonce + Version + AppSecret
+        $factor = $appId . $productId . $timestamp . $nonce . "v1" . $secret;
+        $sign = strtoupper(md5($factor));
 
         $headers = [
             'content-type: application/json',
@@ -66,8 +62,7 @@ class DahuaHelper
             'nonce: ' . $nonce,
             'sign: ' . $sign,
             'appaccesstoken: ' . $appAccessToken,
-            'productid: ' . $productId,
-            'x-traceid-header: ' . $traceId
+            'productid: ' . $productId
         ];
 
         return $headers;
