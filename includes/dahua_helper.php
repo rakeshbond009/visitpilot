@@ -220,7 +220,7 @@ class DahuaHelper
                     'departmentId' => 1,
                     'verifyType' => 1,
                     'personalMethod' => 25,
-                    'startTime' => date('Y-m-d H:i:s'),
+                    'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
                     'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
             ]
