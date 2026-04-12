@@ -29,6 +29,8 @@ $dahuaQr = DahuaHelper::getQRCode($visit['visit_code'], $pdo);
 // Testing multiple formats if official QR fails
 $qrDirect = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
 $qrJson = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["cardNo" => $visit['visit_code']]));
+$qrJson2 = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["CardNo" => $visit['visit_code']]));
+$qrJson3 = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["Card" => $visit['visit_code']]));
 $qrPass = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code'] . "#");
 $qrOfficial = $dahuaQr ? "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($dahuaQr) : null;
 
@@ -265,7 +267,15 @@ $qrOfficial = $dahuaQr ? "https://api.qrserver.com/v1/create-qr-code/?size=150x1
                 </div>
                 <div style="text-align: center;">
                     <img src="<?php echo $qrJson; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON</div>
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON 1</div>
+                </div>
+                <div style="text-align: center;">
+                    <img src="<?php echo $qrJson2; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON 2</div>
+                </div>
+                <div style="text-align: center;">
+                    <img src="<?php echo $qrJson3; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON 3</div>
                 </div>
                 <div style="text-align: center;">
                     <img src="<?php echo $qrPass; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
