@@ -63,7 +63,7 @@ class DahuaHelper
             // Include path if provided (Singapore requirement for SOME endpoints)
             $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-            $version = 'V1';
+            $version = 'v1';
         }
 
         $headers = [
@@ -73,7 +73,7 @@ class DahuaHelper
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductID: ' . $productId,
+            'ProductId: ' . $productId,
             'X-TraceId-Header: ' . $traceId,
             'Accept-Language: en-US'
         ];
@@ -178,6 +178,10 @@ class DahuaHelper
             mkdir($compressDir, 0755, true);
         $compressedPath = $compressDir . $visitId . '.jpg';
         $photoUrl = null;
+
+        // Force Singapore timezone for access validity rules to avoid "Failed to Verify" due to time-sync mismatches
+        $oldTz = date_default_timezone_get();
+        date_default_timezone_set('Asia/Singapore');
 
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             // Dahua face recognition needs sufficient resolution and quality.
@@ -310,6 +314,10 @@ class DahuaHelper
 
         self::log("SUCCESS: Synced Visit ID $visitId");
         $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$dahuaId, $visitId]);
+
+        // Restore timezone
+        date_default_timezone_set($oldTz);
+
         return true;
     }
 
