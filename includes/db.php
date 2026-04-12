@@ -238,7 +238,7 @@ function redirect($url)
 
 function generateVisitCode()
 {
-    return (string)mt_rand(100000, 999999);
+    return strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
 }
 
 /**

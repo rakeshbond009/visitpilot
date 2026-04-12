@@ -41,7 +41,7 @@ class DahuaHelper
         return preg_replace('/\s+/', '', $str);
     }
 
-    public static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
+    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -68,14 +68,14 @@ class DahuaHelper
 
         $headers = [
             'Content-Type: application/json',
-            'version: ' . $version,
-            'accesskey: ' . $appId,
-            'timestamp: ' . $timestamp,
-            'nonce: ' . $nonce,
-            'sign: ' . $sign,
-            'productid: ' . $productId,
-            'x-traceid-header: ' . $traceId,
-            'accept-language: en-US'
+            'Version: ' . $version,
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign,
+            'ProductID: ' . $productId,
+            'X-TraceId-Header: ' . $traceId,
+            'Accept-Language: en-US'
         ];
 
         if ($appAccessToken) {
@@ -138,39 +138,6 @@ class DahuaHelper
             return $token;
         }
         return null;
-    }
-
-    public static function getQRCode($cardNo, $pdo = null)
-    {
-        $config = self::get_config($pdo);
-        $token = self::getAccessToken($pdo);
-        if (!$token) return null;
-
-        $key = "0123456789ABCDEF0123456789ABCDEF"; // Use this on hardware
-        $path = '/open-api/api-iot/device/accessControl/getQRCodeString';
-        $payload = [
-            'cardNo' => (string)$cardNo,
-            'key' => $key,
-            'cipher' => 'AES-256',
-            'cardType' => 1
-        ];
-        $body = json_encode($payload);
-        self::log("QR Request: " . $body);
-
-        $headers = self::generateSignV2($config, "POST", $body, $token, true);
-
-        $ch = curl_init($config['base_url'] . $path);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-        $response = curl_exec($ch);
-        curl_close($ch);
-        self::log("QR Response: " . $response);
-
-        $res = json_decode($response, true);
-        return $res['data'] ?? null;
     }
 
     public static function syncVisitor($visitId, $pdo = null)
@@ -315,13 +282,7 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = [
-                'deviceId' => $deviceId, 
-                'cardType' => 0, // 0 = Use our specific cardNo, 1 = Auto-generate
-                'cards' => [
-                    ['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]
-                ]
-            ];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {

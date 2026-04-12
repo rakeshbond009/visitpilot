@@ -2,11 +2,11 @@
 require_once 'includes/db.php';
 
 // Public Viewer for Digital Visitor Pass
-if (!isset($_GET['code']) && !isset($_GET['v'])) {
+if (!isset($_GET['code'])) {
     die("Access Denied");
 }
 
-$code = sanitize($_GET['code'] ?? $_GET['v']);
+$code = sanitize($_GET['code']);
 
 $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, emp.name as host_name, emp.department 
                        FROM visits v 
@@ -23,17 +23,7 @@ if (!$visit) {
          </div>");
 }
 
-require_once 'includes/dahua_helper.php';
-$dahuaQr = DahuaHelper::getQRCode($visit['visit_code'], $pdo);
-
-// Testing multiple formats if official QR fails
-$qrDirect = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
-$qrJson = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["cardNo" => $visit['visit_code']]));
-$qrJson2 = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["CardNo" => $visit['visit_code']]));
-$qrJson3 = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["Card" => $visit['visit_code']]));
-$qrPass = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code'] . "#");
-$qrOfficial = $dahuaQr ? "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($dahuaQr) : null;
-
+$qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -260,34 +250,7 @@ $qrOfficial = $dahuaQr ? "https://api.qrserver.com/v1/create-qr-code/?size=150x1
                 </div>
             </div>
 
-                        <div class="qr-test-container" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px;">
-                <div style="text-align: center;">
-                    <img src="<?php echo $qrDirect; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">DIRECT</div>
-                </div>
-                <div style="text-align: center;">
-                    <img src="<?php echo $qrJson; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON 1</div>
-                </div>
-                <div style="text-align: center;">
-                    <img src="<?php echo $qrJson2; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON 2</div>
-                </div>
-                <div style="text-align: center;">
-                    <img src="<?php echo $qrJson3; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON 3</div>
-                </div>
-                <div style="text-align: center;">
-                    <img src="<?php echo $qrPass; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;"># PASS</div>
-                </div>
-                <?php if($qrOfficial): ?>
-                <div style="text-align: center;">
-                    <img src="<?php echo $qrOfficial; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0; border-color: #28a745;">
-                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px; color: #28a745;">OFFICIAL</div>
-                </div>
-                <?php endif; ?>
-            </div>
+            <img src="<?php echo $qrUrl; ?>" class="qr-img" alt="Scan me at entry">
         </div>
 
         <div class="id-footer">
