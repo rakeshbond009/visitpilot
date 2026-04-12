@@ -214,7 +214,7 @@ class DahuaHelper
                 [
                     'userId' => $dahuaId,
                     'userName' => $visit['visitor_name'],
-                    'userType' => 0,
+                    'userType' => 2,
                     'authorityList' => ['1'],
                     'userPermission' => 1,
                     'role' => 'user',
