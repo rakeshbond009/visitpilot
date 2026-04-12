@@ -59,11 +59,9 @@ class DahuaHelper
         } else {
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
-            
-            // Inclusion of PATH for V2 signatures is mandatory in many global regions
             $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $path . $stringToSign;
-            
+            // Include path if provided (Singapore requirement for SOME endpoints)
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
             $version = 'V1';
         }
@@ -123,7 +121,7 @@ class DahuaHelper
         }
         $path = '/open-api/api-base/auth/getAppAccessToken';
         $url = $config['base_url'] . $path;
-        $headers = self::generateSignV2($config, "POST", "{}", "", false, $path);
+        $headers = self::generateSignV2($config, "POST", "{}");
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -228,7 +226,7 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, false, $userPath);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -240,9 +238,6 @@ class DahuaHelper
         $userResp = curl_exec($ch);
         curl_close($ch);
         self::log("Step 1 Response: " . substr($userResp, 0, 120));
-
-        // Delay to ensure user record is committed on cloud before adding face/card
-        sleep(2);
 
         // --- STEP 3: Authorize Face (retry up to 3x with 5s delay for device propagation) ---
         // Per Dahua API Guide v2.4 s4.12.1.4.2: photoData is array, header must be stripped.
@@ -267,7 +262,7 @@ class DahuaHelper
                     self::log("Face retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, false, $facePath);
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
                 $ch = curl_init($config['base_url'] . $facePath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -288,20 +283,14 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = [
-                'deviceId' => $deviceId,
-                'cardType' => 0, // 0 For normal/generic QR data
-                'cards' => [
-                    ['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]
-                ]
-            ];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0, 'cardType' => 1]]];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
                     self::log("Card retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2, false, $cardPath);
+                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
                 $ch = curl_init($config['base_url'] . $cardPath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
