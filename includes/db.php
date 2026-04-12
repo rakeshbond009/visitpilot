@@ -236,7 +236,7 @@ function redirect($url)
     exit;
 }
 
-function generateVisitCode() { return str_pad((string)mt_rand(1, 9999999999), 10, '0', STR_PAD_LEFT); }
+function generateVisitCode() { return strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8)); }
 
 /**
  * Quota Enforcement: Check if user limit is reached for the current tenant.
