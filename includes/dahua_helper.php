@@ -63,7 +63,7 @@ class DahuaHelper
             // Include path if provided (Singapore requirement for SOME endpoints)
             $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-            $version = 'v1';
+            $version = 'V1';
         }
 
         $headers = [
@@ -73,7 +73,7 @@ class DahuaHelper
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductId: ' . $productId,
+            'ProductID: ' . $productId,
             'X-TraceId-Header: ' . $traceId,
             'Accept-Language: en-US'
         ];
@@ -179,10 +179,6 @@ class DahuaHelper
         $compressedPath = $compressDir . $visitId . '.jpg';
         $photoUrl = null;
 
-        // Force Singapore timezone for access validity rules to avoid "Failed to Verify" due to time-sync mismatches
-        $oldTz = date_default_timezone_get();
-        date_default_timezone_set('Asia/Singapore');
-
         if (file_exists($photoPath) && !empty($visit['photo_path'])) {
             // Dahua face recognition needs sufficient resolution and quality.
             // Target: 640x480, under 95KB, minimum quality 55 to preserve facial features.
@@ -287,7 +283,7 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0, 'cardType' => 1]]];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
@@ -314,10 +310,6 @@ class DahuaHelper
 
         self::log("SUCCESS: Synced Visit ID $visitId");
         $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$dahuaId, $visitId]);
-
-        // Restore timezone
-        date_default_timezone_set($oldTz);
-
         return true;
     }
 
