@@ -214,22 +214,20 @@ class DahuaHelper
                 [
                     'userId' => $dahuaId,
                     'userName' => $visit['visitor_name'],
-                    'userType' => 2,
-                    'authorityList' => ['General Plan'],
-                    'authorityList' => ['General Plan'],
-                    'useTimes' => 500,
-                    'userTime' => 500,
-                    'limitTimes' => 500,
+                    'userType' => 0,
+                    'authorityList' => ['1'],
                     'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
-                    'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
+                    'verifyType' => 1,
+                    'personalMethod' => 25,
+                    'startTime' => date('Y-m-d H:i:s'),
                     'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
             ]
         ];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, true, $userPath);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -265,7 +263,7 @@ class DahuaHelper
                     self::log("Face retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, true, $facePath);
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
                 $ch = curl_init($config['base_url'] . $facePath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -286,20 +284,14 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = [
-                'deviceId' => $deviceId, 
-                'cardType' => 0, 
-                'cards' => [
-                    ['userId' => $dahuaId, 'cardNo' => str_pad($visit['visit_code'], 10, '0', STR_PAD_LEFT), 'cardStatus' => 0]
-                ]
-            ];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
                     self::log("Card retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2, true, $cardPath);
+                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
                 $ch = curl_init($config['base_url'] . $cardPath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
