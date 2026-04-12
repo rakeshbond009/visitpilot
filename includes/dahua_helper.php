@@ -68,14 +68,14 @@ class DahuaHelper
 
         $headers = [
             'Content-Type: application/json',
-            'Version: ' . $version,
-            'AccessKey: ' . $appId,
-            'Timestamp: ' . $timestamp,
-            'Nonce: ' . $nonce,
-            'Sign: ' . $sign,
-            'ProductID: ' . $productId,
-            'X-TraceId-Header: ' . $traceId,
-            'Accept-Language: en-US'
+            'version: ' . $version,
+            'accesskey: ' . $appId,
+            'timestamp: ' . $timestamp,
+            'nonce: ' . $nonce,
+            'sign: ' . $sign,
+            'productid: ' . $productId,
+            'x-traceid-header: ' . $traceId,
+            'accept-language: en-US'
         ];
 
         if ($appAccessToken) {
@@ -315,7 +315,13 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
+            $cardPayload = [
+                'deviceId' => $deviceId, 
+                'cardType' => 0, // 0 = Use our specific cardNo, 1 = Auto-generate
+                'cards' => [
+                    ['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]
+                ]
+            ];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
