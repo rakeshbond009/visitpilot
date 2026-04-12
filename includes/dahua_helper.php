@@ -216,6 +216,7 @@ class DahuaHelper
                     'userName' => $visit['visitor_name'],
                     'userType' => 2,
                     'authorityList' => ['General Plan'],
+                    'useTimes' => -1,
                     'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
