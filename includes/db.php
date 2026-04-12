@@ -102,10 +102,12 @@ function log_db_msg($msg)
 /**
  * Global Helper to fetch system settings
  */
-function get_setting($key, $default = null, $pdo_passed = null) {
+function get_setting($key, $default = null, $pdo_passed = null)
+{
     global $pdo;
     $db = $pdo_passed ?: $pdo;
-    if (!$db) return $default;
+    if (!$db)
+        return $default;
 
     static $settings_cache = null;
     if ($settings_cache === null) {
@@ -236,7 +238,7 @@ function redirect($url)
 
 function generateVisitCode()
 {
-    return (string)mt_rand(100000, 999999);
+    return strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
 }
 
 /**
@@ -296,7 +298,7 @@ function toggleUserMobileAccess($user_id, $status)
             $params = array_merge([$new_device_status, $tenant_key], $tokens);
             $mStmt = $master_pdo->prepare($msql);
             $mStmt->execute($params);
-            
+
             error_log("SYNC: Toggled mobile access to '$new_device_status' for User ID $user_id on " . count($tokens) . " devices.");
         }
     } catch (Exception $e) {

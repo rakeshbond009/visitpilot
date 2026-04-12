@@ -41,7 +41,7 @@ class DahuaHelper
         return preg_replace('/\s+/', '', $str);
     }
 
-    private static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
+    public static function generateSignV2($config, $method = "POST", $body = "{}", $appAccessToken = "", $isV1 = false, $path = "")
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
@@ -140,6 +140,39 @@ class DahuaHelper
         return null;
     }
 
+    public static function getQRCode($cardNo, $pdo = null)
+    {
+        $config = self::get_config($pdo);
+        $token = self::getAccessToken($pdo);
+        if (!$token) return null;
+
+        $key = "0123456789ABCDEF0123456789ABCDEF"; // Use this on hardware
+        $path = '/open-api/api-iot/device/accessControl/getQRCodeString';
+        $payload = [
+            'cardNo' => (string)$cardNo,
+            'key' => $key,
+            'cipher' => 'AES-256',
+            'cardType' => 1
+        ];
+        $body = json_encode($payload);
+        self::log("QR Request: " . $body);
+
+        $headers = self::generateSignV2($config, "POST", $body, $token, true, $path);
+
+        $ch = curl_init($config['base_url'] . $path);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+        self::log("QR Response: " . $response);
+
+        $res = json_decode($response, true);
+        return $res['data'] ?? null;
+    }
+
     public static function syncVisitor($visitId, $pdo = null)
     {
         if (!$pdo)
@@ -159,7 +192,7 @@ class DahuaHelper
             return false;
 
         $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
-        
+
         // Try to extract specific device ID from access_area (formatted as "Area Name-MachineID")
         if (!empty($visit['access_area']) && strpos($visit['access_area'], '-') !== false) {
             $parts = explode('-', $visit['access_area']);
