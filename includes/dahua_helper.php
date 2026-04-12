@@ -219,7 +219,7 @@ class DahuaHelper
                     'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
-                    'startTime' => date('Y-m-d H:i:s'),
+                    'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
                     'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
             ]
@@ -282,7 +282,13 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => str_pad($visit['visit_code'], 10, '0', STR_PAD_LEFT), 'cardStatus' => 0]]];
+            $cardPayload = [
+                'deviceId' => $deviceId, 
+                'cardType' => 0, 
+                'cards' => [
+                    ['userId' => $dahuaId, 'cardNo' => str_pad($visit['visit_code'], 10, '0', STR_PAD_LEFT), 'cardStatus' => 0]
+                ]
+            ];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
