@@ -217,6 +217,7 @@ class DahuaHelper
                     'userType' => 2,
                     'authorityList' => ['General Plan'],
                     'useTimes' => -1,
+                    'userTime' => -1,
                     'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
