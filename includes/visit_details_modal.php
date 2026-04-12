@@ -292,7 +292,7 @@
                             <div class="mt-4 p-3 bg-white rounded-4 shadow-sm d-inline-block">
                                 <img src="${v.qr_url}" class="img-fluid" style="width: 100px; height: 100px;" 
                                      onerror="this.src='../assets/img/qr-placeholder.png'">
-                                <div class="mt-2 fw-bold text-dark small" style="letter-spacing: 1px;">${v.visit_code}</div>
+                                <div class="mt-2 fw-bold text-dark small" style="letter-spacing: 1px;">#${v.visit_code}</div>
                             </div>
                         </div>
                     </div>
@@ -340,7 +340,7 @@
                                             <i class="bi bi-qr-code text-warning fs-5 me-2 mt-1"></i>
                                             <div>
                                                 <small class="text-muted d-block mb-1" style="font-size: 0.7rem;">Visit Code</small>
-                                                <span class="badge bg-gradient bg-primary text-white fw-bold px-3 py-2">${v.visit_code}</span>
+                                                <span class="badge bg-gradient bg-primary text-white fw-bold px-3 py-2">#${v.visit_code}</span>
                                             </div>
                                         </div>
                                     </div>
