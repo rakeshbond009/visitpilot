@@ -217,6 +217,9 @@ class DahuaHelper
                     'userType' => 2,
                     'authorityList' => ['General Plan'],
                     'authorityList' => ['General Plan'],
+                    'useTimes' => 500,
+                    'userTime' => 500,
+                    'limitTimes' => 500,
                     'userPermission' => 1,
                     'role' => 'user',
                     'departmentId' => '1',
@@ -226,7 +229,7 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, false, $userPath);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -262,7 +265,7 @@ class DahuaHelper
                     self::log("Face retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, false, $facePath);
                 $ch = curl_init($config['base_url'] . $facePath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -296,7 +299,7 @@ class DahuaHelper
                     self::log("Card retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
+                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2, false, $cardPath);
                 $ch = curl_init($config['base_url'] . $cardPath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
