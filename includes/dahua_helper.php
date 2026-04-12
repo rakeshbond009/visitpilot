@@ -157,7 +157,7 @@ class DahuaHelper
         $body = json_encode($payload);
         self::log("QR Request: " . $body);
 
-        $headers = self::generateSignV2($config, "POST", $body, $token, false);
+        $headers = self::generateSignV2($config, "POST", $body, $token, true);
 
         $ch = curl_init($config['base_url'] . $path);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

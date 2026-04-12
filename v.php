@@ -2,11 +2,11 @@
 require_once 'includes/db.php';
 
 // Public Viewer for Digital Visitor Pass
-if (!isset($_GET['code'])) {
+if (!isset($_GET['code']) && !isset($_GET['v'])) {
     die("Access Denied");
 }
 
-$code = sanitize($_GET['code']);
+$code = sanitize($_GET['code'] ?? $_GET['v']);
 
 $stmt = $pdo->prepare("SELECT v.*, vis.name as visitor_name, vis.photo_path, emp.name as host_name, emp.department 
                        FROM visits v 
