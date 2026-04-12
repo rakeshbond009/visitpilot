@@ -229,7 +229,7 @@ class DahuaHelper
             ]
         ];
         $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, false, $userPath);
+        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2, true, $userPath);
         $ch = curl_init($config['base_url'] . $userPath);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -265,7 +265,7 @@ class DahuaHelper
                     self::log("Face retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, false, $facePath);
+                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2, true, $facePath);
                 $ch = curl_init($config['base_url'] . $facePath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -299,7 +299,7 @@ class DahuaHelper
                     self::log("Card retry $attempt/3 (waiting 5s)...");
                     sleep(5);
                 }
-                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2, false, $cardPath);
+                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2, true, $cardPath);
                 $ch = curl_init($config['base_url'] . $cardPath);
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
