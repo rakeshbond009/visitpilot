@@ -282,13 +282,7 @@ class DahuaHelper
         // --- STEP 4: Authorize Card ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = [
-                'deviceId' => $deviceId, 
-                'cardType' => 0, // CRITICAL: 0 = Use our specific cardNo, 1 = Auto-generate random Hex
-                'cards' => [
-                    ['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]
-                ]
-            ];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0]]];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {

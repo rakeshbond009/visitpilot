@@ -938,7 +938,7 @@ endforeach; ?>
                                         </div>
                                         <div class="col-6 text-end">
                                             <small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.6rem">Visit Code</small>
-                                            <span class="text-primary fw-bold">#${d.data.visit_code}</span>
+                                            <span class="text-primary fw-bold">${d.data.visit_code}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -978,7 +978,7 @@ endforeach; ?>
                             <div class="text-center p-2">
                                 <i class="bi bi-patch-check-fill text-success display-1 mb-3 d-block"></i>
                                 <div class="bg-light p-3 rounded-4 border">
-                                    <p class="mb-0 fw-bold text-dark">Visit Code: <span class="text-primary">#${txt}</span></p>
+                                    <p class="mb-0 fw-bold text-dark">Visit Code: <span class="text-primary">${txt}</span></p>
                                     <p class="text-muted small mb-0">Processed at ${new Date().toLocaleTimeString()}</p>
                                 </div>
                             </div>

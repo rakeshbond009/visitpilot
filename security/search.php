@@ -580,7 +580,7 @@ if (isset($_GET['q'])) {
                                 </div>
                                 <div class="col-6">
                                     <label class="small text-muted d-block">Visit Code</label>
-                                    <span class="badge bg-light text-dark border fw-bold">#${v.visit_code}</span>
+                                    <span class="badge bg-light text-dark border fw-bold">${v.visit_code}</span>
                                 </div>
                             </div>
                             
