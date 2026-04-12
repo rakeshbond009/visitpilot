@@ -23,7 +23,15 @@ if (!$visit) {
          </div>");
 }
 
-$qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
+require_once 'includes/dahua_helper.php';
+$dahuaQr = DahuaHelper::getQRCode($visit['visit_code'], $pdo);
+
+// Testing multiple formats if official QR fails
+$qrDirect = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code']);
+$qrJson = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode(json_encode(["cardNo" => $visit['visit_code']]));
+$qrPass = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($visit['visit_code'] . "#");
+$qrOfficial = $dahuaQr ? "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($dahuaQr) : null;
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -250,7 +258,26 @@ $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urle
                 </div>
             </div>
 
-            <img src="<?php echo $qrUrl; ?>" class="qr-img" alt="Scan me at entry">
+                        <div class="qr-test-container" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px;">
+                <div style="text-align: center;">
+                    <img src="<?php echo $qrDirect; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">DIRECT</div>
+                </div>
+                <div style="text-align: center;">
+                    <img src="<?php echo $qrJson; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;">JSON</div>
+                </div>
+                <div style="text-align: center;">
+                    <img src="<?php echo $qrPass; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0;">
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px;"># PASS</div>
+                </div>
+                <?php if($qrOfficial): ?>
+                <div style="text-align: center;">
+                    <img src="<?php echo $qrOfficial; ?>" class="qr-img" style="width: 80px; height: 80px; margin: 0; border-color: #28a745;">
+                    <div style="font-size: 0.6rem; font-weight: bold; margin-top: 5px; color: #28a745;">OFFICIAL</div>
+                </div>
+                <?php endif; ?>
+            </div>
         </div>
 
         <div class="id-footer">
