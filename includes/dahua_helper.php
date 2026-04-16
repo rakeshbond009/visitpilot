@@ -159,16 +159,20 @@ class DahuaHelper
         if (!$visit)
             return false;
 
-        $deviceId = array_map('trim', explode(',', $config['device_sns']))[0] ?? '';
+        $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
 
         // Try to extract specific device ID from access_area (formatted as "Area Name-MachineID")
         if (!empty($visit['access_area']) && strpos($visit['access_area'], '-') !== false) {
             $parts = explode('-', $visit['access_area']);
-            // The machine ID is the last part if we use "-" as separator
             $extractedId = trim(end($parts));
-            if (!empty($extractedId)) {
-                $deviceId = $extractedId;
+            if (!empty($extractedId) && !in_array($extractedId, $allDevices)) {
+                $allDevices[] = $extractedId;
             }
+        }
+
+        if (empty($allDevices)) {
+            self::log("Error: No Dahua SN provided/found for sync.");
+            return false;
         }
 
         // --- STEP 1: Compress photo to <95KB and save to public path ---
@@ -200,10 +204,14 @@ class DahuaHelper
                 } while (filesize($compressedPath) > 95000 && $quality > 55);
                 imagedestroy($img);
                 imagedestroy($resized);
-                $photoUrl = 'https://visitor.codepilotx.com/uploads/dahua_compressed/' . $visitId . '.jpg';
+                $photoUrl = BASE_URL . 'uploads/dahua_compressed/' . $visitId . '.jpg';
                 self::log("Photo compressed: " . round(filesize($compressedPath) / 1024, 1) . "KB q=$quality → $photoUrl");
             }
         }
+
+        $overallSuccess = true;
+        foreach ($allDevices as $deviceId) {
+            self::log("--- Processing Device: $deviceId ---");
 
         // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
         $dahuaId = (string) $visitId . (string) $visit['visitor_id'];
@@ -217,11 +225,7 @@ class DahuaHelper
                     'userName' => $visit['visitor_name'],
                     'userType' => 0,
                     'authorityList' => [
-                        [
-                            'channelNo' => 0,
-                            'beginTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
-                            'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
-                        ]
+                        ['channelNo' => 0]
                     ],
                     'permission' => 0,
                     'departmentId' => 0,
@@ -292,12 +296,7 @@ class DahuaHelper
             self::log("Waiting 3s for user record to propagate...");
             sleep(3);
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardNo = trim((string) $visit['visit_code']);
-            // Convert Hex to Decimal if visit_code contains hex characters
-            if (!is_numeric($cardNo) && preg_match('/[a-fA-F]/', $cardNo)) {
-                $cardNo = (string) hexdec($cardNo);
-            }
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $cardNo, 'cardStatus' => 0, 'cardType' => 0]]];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
             $cardBody = json_encode($cardPayload);
             self::log("Step 3 Card Payload: " . $cardBody);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
@@ -323,9 +322,11 @@ class DahuaHelper
             }
         }
 
-        self::log("SUCCESS: Synced Visit ID $visitId");
+        }
+
+        self::log("SUCCESS: Synced Visit ID $visitId to devices: " . implode(',', $allDevices));
         $pdo->prepare("UPDATE visits SET dahua_person_id = ? WHERE id = ?")->execute([$dahuaId, $visitId]);
-        return true;
+        return $overallSuccess;
     }
 
     public static function deleteVisitor($visitId, $pdo = null)
@@ -336,48 +337,54 @@ class DahuaHelper
         if (empty($config['client_id']))
             return false;
 
-        $deviceId = explode(',', $config['device_sns'])[0] ?? '';
-        if (!$deviceId)
+        $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
+        if (empty($allDevices))
             return false;
 
         $stmt = $pdo->prepare("SELECT dahua_person_id, visitor_id FROM visits WHERE id = ?");
         $stmt->execute([$visitId]);
         $visitData = $stmt->fetch();
-        $dahuaUserId = $visitData['dahua_person_id'] ?: ((string) $visitId . (string) $visitData['visitor_id']);
+        if (!$visitData) return false;
 
-        self::log("Deleting visitor $visitId (Dahua ID: $dahuaUserId) from hardware...");
+        $dahuaUserId = $visitData['dahua_person_id'] ?: ((string) $visitId . (string) $visitData['visitor_id']);
 
         $tokenV2 = self::getAccessToken($pdo);
         if (!$tokenV2)
             return false;
 
-        $path = '/open-api/api-iot/v2/device/accessControl/remove';
-        $payload = [
-            'deviceId' => $deviceId,
-            'ids' => [(string) $dahuaUserId],
-            'type' => 'user'
-        ];
+        $overallSuccess = true;
+        foreach ($allDevices as $deviceId) {
+            self::log("Deleting visitor $visitId (Dahua ID: $dahuaUserId) from device $deviceId...");
 
-        $body = json_encode($payload);
-        $headers = self::generateSignV2($config, "POST", $body, $tokenV2);
+            $path = '/open-api/api-iot/v2/device/accessControl/remove';
+            $payload = [
+                'deviceId' => $deviceId,
+                'ids' => [(string) $dahuaUserId],
+                'type' => 'user'
+            ];
 
-        $ch = curl_init($config['base_url'] . $path);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        $response = curl_exec($ch);
-        curl_close($ch);
+            $body = json_encode($payload);
+            $headers = self::generateSignV2($config, "POST", $body, $tokenV2);
 
-        $data = json_decode($response, true);
-        if (isset($data['code']) && $data['code'] === "200") {
-            self::log("Successfully deleted visitor $visitId. Response: $response");
-            return true;
-        } else {
-            self::log("Failed to delete $visitId. Response: $response");
-            return false;
+            $ch = curl_init($config['base_url'] . $path);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            $response = curl_exec($ch);
+            curl_close($ch);
+
+            $data = json_decode($response, true);
+            if (!isset($data['code']) || $data['code'] !== "0" && $data['code'] !== "200") {
+                self::log("Failed to delete from $deviceId. Response: $response");
+                $overallSuccess = false;
+            } else {
+                self::log("Successfully deleted from $deviceId.");
+            }
         }
+
+        return $overallSuccess;
     }
 
     public static function processEvent($data, $pdo = null)
