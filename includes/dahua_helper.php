@@ -217,7 +217,11 @@ class DahuaHelper
                     'userName' => $visit['visitor_name'],
                     'userType' => 0,
                     'authorityList' => [
-                        ['channelNo' => 0]
+                        [
+                            'channelNo' => 0,
+                            'beginTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
+                            'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
+                        ]
                     ],
                     'permission' => 0,
                     'departmentId' => 0,
