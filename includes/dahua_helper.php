@@ -217,7 +217,7 @@ class DahuaHelper
                     'userType' => 0,
                     'authorityList' => ['1'],
                     'permission' => 0,
-                    'departmentId' => 1,
+                    'departmentId' => 0,
                     'verifyType' => 0,
                     'personalMethod' => 34,
                     'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
@@ -285,6 +285,7 @@ class DahuaHelper
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
             $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
             $cardBody = json_encode($cardPayload);
+            self::log("Step 3 Card Payload: " . $cardBody);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
                     self::log("Card retry $attempt/3 (waiting 5s)...");
