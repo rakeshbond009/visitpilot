@@ -206,7 +206,7 @@ class DahuaHelper
 
         // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
         $dahuaId = (string) $visitId . (string) $visit['visitor_id'];
-        self::log("Sync Step 1: Adding user $dahuaId (Method 34: Face/Card/QR)...");
+        self::log("Sync Step 1: Adding user $dahuaId (Method 37: QR Support)...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
@@ -217,9 +217,9 @@ class DahuaHelper
                     'userType' => 0,
                     'authorityList' => ['1'],
                     'permission' => 0,
-                    'departmentId' => 0,
+                    'departmentId' => 1,
                     'verifyType' => 0,
-                    'personalMethod' => 34,
+                    'personalMethod' => 37,
                     'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
                     'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
