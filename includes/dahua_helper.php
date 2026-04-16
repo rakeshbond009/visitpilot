@@ -206,7 +206,7 @@ class DahuaHelper
 
         // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
         $dahuaId = (string) $visitId . (string) $visit['visitor_id'];
-        self::log("Sync Step 1: Adding user $dahuaId...");
+        self::log("Sync Step 1: Adding user $dahuaId (Method 34: Face/Card/QR)...");
         $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
         $userPayload = [
             'deviceId' => $deviceId,
@@ -218,8 +218,8 @@ class DahuaHelper
                     'authorityList' => ['1'],
                     'permission' => 0,
                     'departmentId' => 1,
-                    'verifyType' => 1,
-                    'personalMethod' => 25,
+                    'verifyType' => 0,
+                    'personalMethod' => 34,
                     'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
                     'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
@@ -273,17 +273,17 @@ class DahuaHelper
                 ]);
                 $faceResp = curl_exec($ch);
                 curl_close($ch);
-                self::log("Step 2 Face (attempt $attempt): " . substr($faceResp, 0, 150));
+                self::log("Step 2 Face (attempt $attempt): " . $faceResp);
                 $faceData = json_decode($faceResp, true);
                 if (($faceData['code'] ?? '') !== 'IDV0098')
                     break;
             }
         }
 
-        // --- STEP 4: Authorize Card ---
+        // --- STEP 4: Authorize Card (Handles QR Code) ---
         if (!empty($visit['visit_code'])) {
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $visit['visit_code'], 'cardStatus' => 0, 'cardType' => 1]]];
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
             $cardBody = json_encode($cardPayload);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
                 if ($attempt > 1) {
@@ -301,7 +301,7 @@ class DahuaHelper
                 ]);
                 $cardResp = curl_exec($ch);
                 curl_close($ch);
-                self::log("Step 3 Card (attempt $attempt): " . substr($cardResp, 0, 120));
+                self::log("Step 3 Card (attempt $attempt): " . $cardResp);
                 $cardData = json_decode($cardResp, true);
                 if (($cardData['code'] ?? '') !== 'IDV0098')
                     break;
