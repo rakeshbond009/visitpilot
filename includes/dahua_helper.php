@@ -159,20 +159,43 @@ class DahuaHelper
         if (!$visit)
             return false;
 
-        $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
+        // Skip integration if area is empty, "Not Assigned", or "None"
+        if (empty($visit['access_area']) || $visit['access_area'] === 'Not Assigned' || $visit['access_area'] === 'None') {
+            self::log("Skipping Dahua Sync: Access area is '{$visit['access_area']}'. No hardware integration required.");
+            return true;
+        }
 
-        // Try to extract specific device ID from access_area (formatted as "Area Name-MachineID")
-        if (!empty($visit['access_area']) && strpos($visit['access_area'], '-') !== false) {
-            $parts = explode('-', $visit['access_area']);
-            $extractedId = trim(end($parts));
-            if (!empty($extractedId) && !in_array($extractedId, $allDevices)) {
-                $allDevices[] = $extractedId;
+        $allDevices = [];
+        $hasSpecificArea = false;
+        
+        // Support multiple selection in area (e.g., "Main-SN1, Office-SN2")
+        $areas = array_map('trim', explode(',', $visit['access_area']));
+        foreach ($areas as $area) {
+            if (!empty($area)) $hasSpecificArea = true;
+
+            if (strpos($area, '-') !== false) {
+                $parts = explode('-', $area);
+                $extractedId = trim(end($parts));
+                if (!empty($extractedId) && !in_array($extractedId, $allDevices)) {
+                    $allDevices[] = $extractedId;
+                }
             }
         }
 
+        // If specific areas were chosen but NONE have machines, skip hardware sync (User Requirement)
+        if ($hasSpecificArea && empty($allDevices)) {
+            self::log("Skipping Dahua Sync: Assigned area(s) '{$visit['access_area']}' have no machines tagged.");
+            return true;
+        }
+
+        // Fallback: If no specific devices were found but we didn't skip yet, use global settings
         if (empty($allDevices)) {
-            self::log("Error: No Dahua SN provided/found for sync.");
-            return false;
+            $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
+        }
+
+        if (empty($allDevices)) {
+            self::log("Info: No Dahua SN found for sync. Skipping.");
+            return true;
         }
 
         // --- STEP 1: Compress photo to <95KB and save to public path ---
@@ -337,14 +360,27 @@ class DahuaHelper
         if (empty($config['client_id']))
             return false;
 
-        $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
-        if (empty($allDevices))
-            return false;
-
-        $stmt = $pdo->prepare("SELECT dahua_person_id, visitor_id FROM visits WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT dahua_person_id, visitor_id, access_area FROM visits WHERE id = ?");
         $stmt->execute([$visitId]);
         $visitData = $stmt->fetch();
         if (!$visitData) return false;
+
+        // Collect all potential devices for cleanup
+        $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
+        if (!empty($visitData['access_area']) && $visitData['access_area'] !== 'Not Assigned') {
+            $areas = array_map('trim', explode(',', $visitData['access_area']));
+            foreach ($areas as $area) {
+                if (strpos($area, '-') !== false) {
+                    $parts = explode('-', $area);
+                    $sn = trim(end($parts));
+                    if (!empty($sn) && !in_array($sn, $allDevices)) {
+                        $allDevices[] = $sn;
+                    }
+                }
+            }
+        }
+
+        if (empty($allDevices)) return false;
 
         $dahuaUserId = $visitData['dahua_person_id'] ?: ((string) $visitId . (string) $visitData['visitor_id']);
 

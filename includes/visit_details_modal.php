@@ -348,7 +348,7 @@
                                         <div class="d-flex align-items-start">
                                             <i class="bi bi-geo-alt text-danger fs-5 me-2 mt-1"></i>
                                             <div>
-                                                <small class="text-muted d-block mb-1" style="font-size: 0.7rem;">Acces Area</small>
+                                                <small class="text-muted d-block mb-1" style="font-size: 0.7rem;">Access Area</small>
                                                 <span class="fw-bold ${v.access_area ? 'text-danger' : 'text-muted'}">${v.access_area || 'Not Assigned'}</span>
                                             </div>
                                         </div>

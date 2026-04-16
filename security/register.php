@@ -60,7 +60,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $id_proof_number = sanitize($_POST['id_proof_number']);
     $photo_data = $_POST['photo_data']; // Base64
     $assets_carried = sanitize($_POST['assets_carried'] ?? '');
-    $access_area = sanitize($_POST['access_area'] ?? '');
+    $assets_carried = sanitize($_POST['assets_carried'] ?? '');
+    
+    // Handle Multi-Select Access Area
+    $raw_area = $_POST['access_area'] ?? '';
+    if (is_array($raw_area)) {
+        // Filter out empty values and join with comma
+        $access_area = implode(', ', array_map('sanitize', array_filter($raw_area)));
+    } else {
+        $access_area = sanitize($raw_area);
+    }
+    
     if (empty($access_area))
         $access_area = 'Not Assigned';
 
@@ -289,6 +299,92 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         display: flex;
         align-items: center;
         gap: 10px;
+    }
+
+    /* Premium Select2 Refinement - Matches Floating Label Aesthetics */
+    .select2-container--default .select2-selection--multiple {
+        border: 1px solid #dee2e6 !important;
+        border-radius: 15px !important;
+        background-color: #fbfcfe !important;
+        min-height: 62px !important;
+        padding: 18px 10px 4px !important; /* Spaced for top label */
+        display: block !important;
+        position: relative !important;
+        transition: all 0.2s ease;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #4361ee !important;
+        background-color: #fff !important;
+        box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.1);
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+        padding: 0 !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background: #f0f3ff !important;
+        border: 1px solid #dce2ff !important;
+        border-radius: 20px !important;
+        padding: 4px 12px 4px 12px !important;
+        margin: 4px 4px !important;
+        font-weight: 600 !important;
+        color: #4361ee !important;
+        font-size: 0.75rem !important;
+        display: flex !important;
+        align-items: center !important;
+        flex-direction: row-reverse !important; /* Moves X to the right */
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(67, 97, 238, 0.05);
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice:hover {
+        background: #e5eaff !important;
+        border-color: #4361ee !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+        color: #8c9eff !important;
+        margin-left: 10px !important;
+        margin-right: 0 !important;
+        border: none !important;
+        font-size: 0.9rem !important;
+        transition: color 0.2s ease;
+    }
+    
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #ff4d4d !important;
+        background: none !important;
+    }
+
+    .select2-container--default .select2-search--inline .select2-search__field {
+        margin: 0 !important;
+        height: 32px !important;
+        font-family: inherit !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .select2-container--default .select2-selection--multiple .select2-selection__placeholder {
+        color: #999 !important;
+        font-size: 0.9rem !important;
+        margin-top: 0 !important;
+    }
+
+    .field-label {
+        font-weight: 800;
+        font-size: 0.65rem;
+        color: #4361ee;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        position: absolute;
+        top: 8px;
+        left: 15px;
+        z-index: 5;
+        pointer-events: none;
     }
 
     .section-title::after {
@@ -684,9 +780,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         </div>
                                     </div>
                                     <div class="col-md-12">
-                                        <div class="form-floating">
-                                            <select name="access_area" class="form-select" id="areaSelect" <?php echo isFieldMandatory('access_area') ? 'required' : ''; ?>>
-                                                <option value="">None / Not Specified</option>
+                                        <div class="mb-3 position-relative">
+                                            <label class="field-label" for="areaSelect">Designated Access Area(s) <?php echo isFieldMandatory('access_area') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
+                                            <select name="access_area[]" class="form-control" id="areaSelect" multiple <?php echo isFieldMandatory('access_area') ? 'required' : ''; ?>>
                                                 <?php foreach ($access_areas as $aa): ?>
                                                     <?php $areaVal = $aa['area_name'] . (!empty($aa['machine_id']) ? '-' . $aa['machine_id'] : ''); ?>
                                                     <option value="<?php echo htmlspecialchars($areaVal); ?>">
@@ -694,7 +790,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
-                                            <label for="areaSelect">Designated Access Area <?php echo isFieldMandatory('access_area') ? '<span class="text-danger">*</span>' : '(Optional)'; ?></label>
                                         </div>
                                     </div>
                                     <div class="col-12">
@@ -943,6 +1038,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             allowClear: true,
             width: '100%',
             dropdownParent: $('#hostSelect').parent()
+        });
+
+        $('#areaSelect').select2({
+            placeholder: "Select one or more areas...",
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#areaSelect').parent()
         });
 
         // Trigger invitation check if code is in URL

@@ -57,7 +57,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
     header('Content-Type: text/csv');
     header('Content-Disposition: attachment; filename=\"visitor_report.csv\"');
     $output = fopen('php://output', 'w');
-    fputcsv($output, ['Visit ID', 'Entry Date/Time', 'Visitor Name', 'Mobile', 'Host', 'Department', 'Purpose', 'Check In', 'Check Out', 'Status']);
+    fputcsv($output, ['Visit ID', 'Entry Date/Time', 'Visitor Name', 'Mobile', 'Host', 'Department', 'Access Areas', 'Purpose', 'Check In', 'Check Out', 'Status']);
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
@@ -70,6 +70,7 @@ if (isset($_GET['export']) && $_GET['export'] == 'csv') {
             $row['mobile'],
             $row['host_name'],
             $row['department'],
+            $row['access_area'],
             $row['purpose'],
             formatTime($row['check_in_time']),
             formatTime($row['check_out_time']),
@@ -348,6 +349,7 @@ if ($predicted > ($avgDaily * 1.25)) {
                     <th>Visitor</th>
                     <th>Host</th>
                     <th>Department</th>
+                    <th>Access Areas</th>
                     <th>In Time</th>
                     <th>Out Time</th>
                     <th>Status</th>
@@ -364,6 +366,9 @@ if ($predicted > ($avgDaily * 1.25)) {
                         <td><?php echo htmlspecialchars($v['host_name']); ?></td>
                         <td><span
                                 class="badge bg-light text-dark border"><?php echo htmlspecialchars($v['department'] ?? '-'); ?></span>
+                        </td>
+                        <td>
+                            <div class="small fw-bold text-primary"><?php echo htmlspecialchars($v['access_area'] ?: 'Not Assigned'); ?></div>
                         </td>
                         <td><?php echo formatTime($v['check_in_time']); ?></td>
                         <td><?php echo formatTime($v['check_out_time']); ?></td>
