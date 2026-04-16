@@ -218,9 +218,9 @@ class DahuaHelper
                     'userType' => 0,
                     'authorityList' => ['1'],
                     'permission' => 0,
-                    'departmentId' => 1,
+                    'departmentId' => 0,
                     'verifyType' => 0,
-                    'personalMethod' => 37,
+                    'personalMethod' => 34,
                     'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
                     'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                 ]
@@ -283,6 +283,8 @@ class DahuaHelper
 
         // --- STEP 4: Authorize Card (Handles QR Code) ---
         if (!empty($visit['visit_code'])) {
+            self::log("Waiting 3s for user record to propagate...");
+            sleep(3);
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
             $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
             $cardBody = json_encode($cardPayload);
