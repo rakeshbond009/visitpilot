@@ -292,7 +292,12 @@ class DahuaHelper
             self::log("Waiting 3s for user record to propagate...");
             sleep(3);
             $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
+            $cardNo = trim((string) $visit['visit_code']);
+            // Convert Hex to Decimal if visit_code contains hex characters
+            if (!is_numeric($cardNo) && preg_match('/[a-fA-F]/', $cardNo)) {
+                $cardNo = (string) hexdec($cardNo);
+            }
+            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => $cardNo, 'cardStatus' => 0, 'cardType' => 0]]];
             $cardBody = json_encode($cardPayload);
             self::log("Step 3 Card Payload: " . $cardBody);
             for ($attempt = 1; $attempt <= 3; $attempt++) {
