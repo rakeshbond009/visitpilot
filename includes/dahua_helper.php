@@ -142,6 +142,7 @@ class DahuaHelper
 
     public static function syncVisitor($visitId, $pdo = null)
     {
+        self::log("--- INITIATING SYNC FOR VISIT ID: $visitId ---");
         if (!$pdo)
             global $pdo;
         if (!$pdo)
