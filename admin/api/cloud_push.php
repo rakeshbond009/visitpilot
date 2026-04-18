@@ -82,11 +82,14 @@ $output = shell_exec($push_cmd);
 if ($output)
     streamOutput("[GIT LOG]: " . trim($output));
 
-if (strpos($output, 'Permission to') !== false || strpos($output, 'fatal') !== false || strpos($output, 'error') !== false) {
+$is_error = (strpos($output, 'fatal:') !== false || strpos($output, 'error:') !== false || strpos($output, '[remote rejected]') !== false);
+$is_uptodate = (strpos($output, 'Everything up-to-date') !== false);
+
+if ($is_error && !$is_uptodate) {
     if (strpos($output, '403') !== false) {
-        streamOutput("[FAILED]: GitHub Authentication Error (403). Your Token (PAT) does not have write permissions for this repository.");
+        streamOutput("[FAILED]: GitHub Authentication Error (403).");
     } else {
-        streamOutput("[FAILED]: Git Push Error. Please check your credentials and network connection.");
+        streamOutput("[FAILED]: Git Push Error.");
     }
 }
 
