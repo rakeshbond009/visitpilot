@@ -123,30 +123,43 @@ foreach ($targets as $domain) {
     }
 }
 
-// 5. Trigger Official Webhooks for Native Hostinger Deployment
-$webhooks = [
-    'https://webhooks.hostinger.com/deploy/76b62f19d8cb5408d1113b8484c451c4', // Atithi.online
-    'https://webhooks.hostinger.com/deploy/2ec9b2d8778f62304677732d84784783'  // visitor.codepilotx.com
-];
+// 5. ATITHI DIRECT UPLOAD (BYPASS GIT)
+streamOutput("[SYSTEM]: Initiating Direct Shipment to Atithi.online...");
+$zip_file = $vms_root . '/temp_update.zip';
+$zip = new ZipArchive();
+if ($zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+    // Add only core logic files to keep it light
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($vms_root),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+    foreach ($files as $name => $file) {
+        if (!$file->isDir()) {
+            $filePath = $file->getRealPath();
+            $relativePath = substr($filePath, strlen($vms_root) + 1);
+            if (strpos($relativePath, '.git') === false && strpos($relativePath, 'node_modules') === false) {
+                $zip->addFile($filePath, $relativePath);
+            }
+        }
+    }
+    $zip->close();
 
-foreach ($webhooks as $url) {
-    if (empty($url)) continue;
-    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment Signal...");
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $ch = curl_init('https://atithi.online/admin/api/manual_sync.php');
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, []); // Clean multipart POST ensures 200/202 response
+    curl_setopt($ch, CURLOPT_POSTFIELDS, [
+        'key' => 'vms_cloud_sync_2026',
+        'bundle' => new CURLFile($zip_file)
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $res = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
+    unlink($zip_file);
 
-    if ($http_code >= 200 && $http_code < 300) {
-        streamOutput("[SUCCESS]: Deployment Signal Accepted ($http_code).");
+    if (strpos($res, 'SUCCESS') !== false) {
+        streamOutput("[SUCCESS]: Atithi.online Folders Updated via Direct Shipment.");
     } else {
-        streamOutput("[WARN]: Hostinger rejected signal ($http_code). Please check manually.");
+        streamOutput("[WARN]: Direct shipment to Atithi failed: $res");
     }
 }
 
