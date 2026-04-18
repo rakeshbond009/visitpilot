@@ -13,6 +13,17 @@ $vms_root = realpath(__DIR__ . '/../../');
 chdir($vms_root);
 
 echo "<h3>Initializing System Repair...</h3>";
+
+if (!is_dir('.git')) {
+    echo "NO GIT REPO DETECTED. Running git init...<br>";
+    $output = shell_exec('git init 2>&1');
+    echo "<pre>$output</pre>";
+    
+    echo "Setting remote origin...<br>";
+    $output = shell_exec('git remote add origin https://github.com/rakeshbond009/visitpilot.git 2>&1');
+    echo "<pre>$output</pre>";
+}
+
 echo "Performing Git Fetch from origin...<br>";
 $output = shell_exec('git fetch origin 2>&1');
 echo "<pre>$output</pre>";
