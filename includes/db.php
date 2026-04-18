@@ -184,19 +184,7 @@ if ($tenant) {
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+05:30'"
         ]);
     } catch (PDOException $e) {
-        $errorMsg = "Tenant Connection Failed: " . $e->getMessage();
-        log_db_msg($errorMsg);
-        
-        // If it's an API or AJAX request, return JSON so frontend doesn't crash on parse
-        if (strpos($_SERVER['PHP_SELF'], '/api/') !== false || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
-            header('Content-Type: application/json');
-            die(json_encode([
-                'status' => 'error',
-                'message' => 'System connection error',
-                'debug' => $errorMsg
-            ]));
-        }
-        die("System Maintenance: Database connection failed. Please try again in 2 minutes.");
+        die("Tenant Connection Failed.");
     }
 } else {
     $pdo = $master_pdo ?? null;
@@ -232,31 +220,19 @@ if ($tenant && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 }
 
 // 9. BASE URL & REDIRECTS
-if (!defined('BASE_URL')) {
-    $protocol = $is_https ? "https://" : "http://";
-    $domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    
-    // Physical paths
-    $phys_root = str_replace('\\', '/', dirname(__DIR__)); // Current project folder
-    $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+$protocol = $is_https ? "https://" : "http://";
+$domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-    // Web path
-    $base_folder = str_ireplace($doc_root, '', $phys_root);
-    
-    // Safety check: if DOCUMENT_ROOT isn't part of the path (shared hosts)
-    if ($base_folder === $phys_root) {
-        // Fallback: detect via SCRIPT_NAME which is usually reliable for the URL part
-        $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
-        if (strpos($script_name, '/visitpilot/') !== false) {
-            $base_folder = '/visitpilot/';
-        } else {
-            $base_folder = '/';
-        }
-    } else {
-        $base_folder = '/' . trim($base_folder, '/') . '/';
-        if ($base_folder === '//') $base_folder = '/';
-    }
-    
+// Automatically detect the base folder (Safest Method)
+$domain = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$base_folder = '/';
+
+// If on local XAMPP, use the subfolder. If on atithi.online, use root.
+if (strpos($domain, 'localhost') !== false || strpos($_SERVER['SCRIPT_NAME'], '/visitpilot/') !== false) {
+    $base_folder = '/visitpilot/';
+}
+
+if (!defined('BASE_URL')) {
     define('BASE_URL', $protocol . $domainName . $base_folder);
 }
 

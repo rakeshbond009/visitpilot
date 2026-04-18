@@ -1060,19 +1060,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     document.getElementById('mobileInput').addEventListener('blur', function () {
         const mobile = this.value;
         if (mobile.length >= 10) {
-            console.log("[VMS] Searching for mobile:", mobile);
             fetch(`../api/visitor/search.php?mobile=${mobile}`)
-                .then(response => {
-                    if (!response.ok) {
-                         console.error("[VMS] Search fetch failed with status:", response.status);
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    console.log("[VMS] Search data received:", data);
                     if (data.status === 'success') {
                         const v = data.data;
-                        // ... auto-fill logic ...
                         document.getElementById('nameInput').value = v.name || '';
                         document.getElementById('emailInput').value = v.email || '';
                         document.getElementById('addressInput').value = v.address || '';
@@ -1094,16 +1086,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             const toggle = document.getElementById('captureIdToggle');
                             if (toggle) { // Ensure the toggle element exists
                                 toggle.checked = true;
-                                if (typeof toggleIdProof === 'function') toggleIdProof(toggle);
+                                toggleIdProof(toggle);
+                            }
+                        } else {
+                            // If no ID proof, ensure the toggle is off ONLY IF it's not mandatory (not disabled)
+                            const toggle = document.getElementById('captureIdToggle');
+                            if (toggle && !toggle.disabled) {
+                                toggle.checked = false;
+                                toggleIdProof(toggle);
                             }
                         }
 
                         // If last host exists, auto-select it in Select2
                         if (v.last_visit && v.last_visit.employee_id) {
-                            if (typeof $ !== 'undefined') {
-                                $('#hostSelect').val(v.last_visit.employee_id).trigger('change');
-                            }
+                            $('#hostSelect').val(v.last_visit.employee_id).trigger('change');
                         }
+
 
                         let visitInfo = `Welcome back, <b>${v.name}</b>. Your details have been auto-filled.`;
 
@@ -1119,22 +1117,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </div>`;
                         }
 
-                        if (typeof AppDialog !== 'undefined') {
-                            AppDialog.show({
-                                title: 'Existing Visitor Found!',
-                                html: visitInfo,
-                                icon: 'info',
-                                confirmButtonText: 'OK, Continue'
-                            });
-                        } else {
-                            console.warn("[VMS] AppDialog not defined. Using alert fallback.");
-                            alert("Welcome back, " + v.name + "! Your details have been auto-filled.");
-                        }
+                        AppDialog.show({
+                            title: 'Existing Visitor Found!',
+                            html: visitInfo,
+                            icon: 'info',
+                            confirmButtonText: 'OK, Continue'
+                        });
                     }
                 })
-                .catch(err => {
-                    console.error("[VMS] Search JSON parsing error or network error:", err);
-                });
+                .catch(console.error);
         }
     });
 

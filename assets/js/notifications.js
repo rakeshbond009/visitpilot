@@ -50,13 +50,14 @@
         }
 
         try {
-            const currentOrigin = window.location.origin;
+            // Robust Root Detection for AJAX
             const currentPath = window.location.pathname;
-            const isInsideHost = currentPath.includes('/host/');
-
-            let apiPath = (typeof BASE_URL !== 'undefined') ? BASE_URL : (isInsideHost ? '../' : '');
-            if (!apiPath.endsWith('/')) apiPath += '/';
-            let url = apiPath + 'host/api/check_new_visits.php';
+            let rootPath = '/';
+            if (currentPath.includes('/visitpilot/')) {
+                rootPath = currentPath.substring(0, currentPath.indexOf('/visitpilot/') + 12);
+            }
+            
+            let url = rootPath + 'host/api/check_new_visits.php';
 
             if (lastCheckTime) {
                 url += `?last_check=${encodeURIComponent(lastCheckTime)}`;
