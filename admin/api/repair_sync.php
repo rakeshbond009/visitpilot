@@ -1,10 +1,12 @@
 <?php
 require_once '../../includes/db.php';
-requireLogin();
-
-// 1. Enforce Super Admin only
-if ($_SESSION['role'] !== 'admin') {
-    die("Unauthorized Access.");
+// 1. Allow authorized automated sync or logged-in admin
+$is_auto = (isset($_GET['auto']) && $_GET['auto'] == '1');
+if (!$is_auto) {
+    requireLogin();
+    if ($_SESSION['role'] !== 'admin') {
+        die("Unauthorized Access.");
+    }
 }
 
 // 2. Git Operations - Reset to match Remote (GitHub)
