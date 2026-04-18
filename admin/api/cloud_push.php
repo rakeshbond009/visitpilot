@@ -131,12 +131,13 @@ $webhooks = [
 
 foreach ($webhooks as $webhook_url) {
     if (empty($webhook_url)) continue;
-    streamOutput("[SYSTEM]: Triggering Hostinger Native Deployment...");
+    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment Signal...");
 
+    // Use a clean, headerless Trigger (Matches Hostinger's expectation)
     $ch = curl_init($webhook_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, ""); // Bare POST as expected by basic webhooks
+    curl_setopt($ch, CURLOPT_POSTFIELDS, []); // Use array for standard multipart/form-data
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $response = curl_exec($ch);
@@ -144,9 +145,9 @@ foreach ($webhooks as $webhook_url) {
     curl_close($ch);
 
     if ($wh_code == 200 || $wh_code == 204 || $wh_code == 202) {
-        streamOutput("[SUCCESS]: Deployment Signal Received by Server.");
+        streamOutput("[SUCCESS]: Official Deployment Signal Accepted.");
     } else {
-        streamOutput("[WARN]: Hostinger Webhook Error (HTTP $wh_code). Response: " . substr(strip_tags($response), 0, 50));
+        streamOutput("[WARN]: Hostinger Webhook Status: $wh_code. (Manual Deploy check recommended)");
     }
 }
 
