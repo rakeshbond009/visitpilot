@@ -196,7 +196,7 @@ if ($tenant) {
                 'debug' => $errorMsg
             ]));
         }
-        die("<h1>System Status: Offline</h1><p>We are currently experiencing database connectivity issues ($tenant_key). Please try again in 2 minutes.</p>");
+        die("System Maintenance: Database connection failed. Please try again in 2 minutes.");
     }
 } else {
     $pdo = $master_pdo ?? null;
@@ -232,27 +232,32 @@ if ($tenant && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 }
 
 // 9. BASE URL & REDIRECTS
-$protocol = $is_https ? "https://" : "http://";
-$domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
-
 if (!defined('BASE_URL')) {
-    // Robust detection: Calculate base path by comparing current file directory to executing script
-    $physical_file = str_replace('\\', '/', __FILE__); // .../includes/db.php
-    $physical_root = dirname(dirname($physical_file)); // project root physical path
+    $protocol = $is_https ? "https://" : "http://";
+    $domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
     
-    $exec_phys = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME']);
-    $exec_url  = $_SERVER['SCRIPT_NAME'];
+    // Physical paths
+    $phys_root = str_replace('\\', '/', dirname(__DIR__)); // Current project folder
+    $doc_root = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? '');
+
+    // Web path
+    $base_folder = str_ireplace($doc_root, '', $phys_root);
     
-    // Find the relative path of the executing script to the project root
-    $relative_path = str_ireplace($physical_root, '', $exec_phys);
+    // Safety check: if DOCUMENT_ROOT isn't part of the path (shared hosts)
+    if ($base_folder === $phys_root) {
+        // Fallback: detect via SCRIPT_NAME which is usually reliable for the URL part
+        $script_name = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+        if (strpos($script_name, '/visitpilot/') !== false) {
+            $base_folder = '/visitpilot/';
+        } else {
+            $base_folder = '/';
+        }
+    } else {
+        $base_folder = '/' . trim($base_folder, '/') . '/';
+        if ($base_folder === '//') $base_folder = '/';
+    }
     
-    // Subtract the relative path from the URL to get the Root URL
-    $base_folder_url = substr($exec_url, 0, strlen($exec_url) - strlen($relative_path));
-    
-    $base_folder_url = rtrim($base_folder_url, '/') . '/';
-    if ($base_folder_url === '//') $base_folder_url = '/';
-    
-    define('BASE_URL', $protocol . $domainName . $base_folder_url);
+    define('BASE_URL', $protocol . $domainName . $base_folder);
 }
 
 function redirect($url)
