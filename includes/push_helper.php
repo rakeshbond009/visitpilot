@@ -55,6 +55,14 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         $platform = strtolower($user['platform'] ?? 'android');
         $log("Targeting User ID: {$user['user_id']} | Platform: $platform | Token: " . substr($user['fcm_token'], 0, 20) . '...');
 
+        // Ensure Photo URL is 100% dynamic based on current hosting
+        $photo_url = '';
+        if (!empty($data['visitor_photo']) || !empty($data['photo_path'])) {
+            $path = $data['visitor_photo'] ?? $data['photo_path'];
+            // Detect if path is already absolute, otherwise prepended BASE_URL
+            $photo_url = (strpos($path, 'http') === 0) ? $path : (rtrim(BASE_URL, '/') . '/' . ltrim($path, '/'));
+        }
+
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
@@ -66,7 +74,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
                     'visitor_name' => (string) ($data['visitor_name'] ?? $data['name'] ?? ''),
                     'visitor_mobile' => (string) ($data['visitor_mobile'] ?? $data['mobile'] ?? ''),
-                    'visitor_photo' => (string) ($data['visitor_photo'] ?? $data['photo_url'] ?? ''),
+                    'visitor_photo' => (string) $photo_url,
                     'company' => (string) ($data['company'] ?? ''),
                     'purpose' => (string) ($data['purpose'] ?? ''),
                     'assets_carried' => (string) ($data['assets_carried'] ?? $data['assets'] ?? ''),

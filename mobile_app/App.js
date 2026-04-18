@@ -90,7 +90,13 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
 const Stack = createStackNavigator();
 
 const linking = {
-    prefixes: ['https://visitor.codepilotx.com', 'com.codepilotx.vms://', 'visitpilot://'],
+    prefixes: [
+        'https://visitor.codepilotx.com', 
+        'https://atithi.online', 
+        'https://visitor.visitpilot.com',
+        'com.codepilotx.vms://', 
+        'visitpilot://'
+    ],
     config: {
         screens: {
             Login: 'login',
