@@ -96,17 +96,26 @@ if ($is_error && !$is_uptodate) {
 // 4. Force Update Server (Bypass Hostinger's unreliable autodeploy)
 $buster = time();
 $server_repair_url = BASE_URL . "admin/api/repair_sync.php?auto=1&v=" . $buster;
-// Convert Local BASE_URL to Remote if needed
-$remote_url = str_replace('localhost/visitpilot', 'visitor.codepilotx.com', $server_repair_url);
+// Convert Local BASE_URL to Remote if needed - Force HTTPS
+$remote_url = str_replace(['http://localhost/visitpilot', 'localhost/visitpilot'], 'https://visitor.codepilotx.com', $server_repair_url);
 
 streamOutput("[SYSTEM]: Triggering Forced Server Update (v=$buster)...");
-$repair_res = file_get_contents($remote_url);
 
-if (strpos($repair_res, 'Repair Sequence Completed') !== false) {
+// Use robust curl instead of file_get_contents
+$ch = curl_init($remote_url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+$repair_res = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($http_code == 200 && strpos($repair_res, 'Repair Sequence Completed') !== false) {
     streamOutput("[SUCCESS]: SERVER UPDATED AND SYNCHRONIZED SUCCESSFULLY.");
 } else {
-    streamOutput("[WARN]: Git Push OK, but Server Update requires manual refresh.");
-    streamOutput("[INFO]: Visit: " . $remote_url);
+    streamOutput("[WARN]: Git Push OK, but Server Update failed (HTTP $http_code).");
+    streamOutput("[INFO]: Please visit this link manually if needed: " . $remote_url);
 }
 
 // 5. Trigger Webhook (If set)
