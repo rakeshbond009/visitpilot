@@ -36,15 +36,9 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         return false;
     }
 
-    // Dynamically find the Firebase JSON file in the same directory
-    $certPath = '';
-    $jsonFiles = glob(__DIR__ . '/vms-notification-*.json');
-    if (!empty($jsonFiles)) {
-        $certPath = $jsonFiles[0];
-    }
-
-    if (!$certPath || !file_exists($certPath)) {
-        $log("CRITICAL ERROR: Firebase JSON not found in " . __DIR__);
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-b8987c9f5b.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase JSON not found");
         return false;
     }
     $serviceAccount = json_decode(file_get_contents($certPath), true);
@@ -61,13 +55,6 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
         $platform = strtolower($user['platform'] ?? 'android');
         $log("Targeting User ID: {$user['user_id']} | Platform: $platform | Token: " . substr($user['fcm_token'], 0, 20) . '...');
 
-        // Ensure Photo URL is absolute for Android App
-        $photo_url = '';
-        if (!empty($data['visitor_photo']) || !empty($data['photo_path'])) {
-            $path = $data['visitor_photo'] ?? $data['photo_path'];
-            $photo_url = BASE_URL . $path;
-        }
-
         $message = [
             'message' => [
                 'token' => (string) $user['fcm_token'],
@@ -79,7 +66,7 @@ function sendPushNotification($pdo, $employee_id, $title, $body, $data = [])
                     'visit_id' => (string) ($data['visit_id'] ?? ''),
                     'visitor_name' => (string) ($data['visitor_name'] ?? $data['name'] ?? ''),
                     'visitor_mobile' => (string) ($data['visitor_mobile'] ?? $data['mobile'] ?? ''),
-                    'visitor_photo' => (string) $photo_url,
+                    'visitor_photo' => (string) ($data['visitor_photo'] ?? $data['photo_url'] ?? ''),
                     'company' => (string) ($data['company'] ?? ''),
                     'purpose' => (string) ($data['purpose'] ?? ''),
                     'assets_carried' => (string) ($data['assets_carried'] ?? $data['assets'] ?? ''),
@@ -222,17 +209,12 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         return false;
     }
 
-    // Dynamically find the Firebase JSON file in the same directory (Matches Section 3B of README)
-    $certPath = '';
-    $jsonFiles = glob(__DIR__ . '/vms-notification-*.json');
-    if (!empty($jsonFiles)) {
-        $certPath = $jsonFiles[0];
-    }
-
-    if (!$certPath || !file_exists($certPath)) {
-        $log("CRITICAL ERROR: Firebase JSON not found in " . __DIR__);
+    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-78d91d684a.json';
+    if (!file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase Service Account JSON not found");
         return false;
     }
+
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
