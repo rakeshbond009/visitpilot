@@ -102,6 +102,16 @@ try {
     $validity_number = intval($data['validity_number'] ?? 8);
     $validity_unit = $data['validity_unit'] ?? 'hours';
 
+    // Fetch Approval Matrix Setting
+    $stmtMatrix = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix'");
+    $stmtMatrix->execute();
+    $matrix_enabled = $stmtMatrix->fetchColumn();
+    if ($matrix_enabled === false)
+        $matrix_enabled = '1'; // Default to enabled
+
+    $visit_status = ($matrix_enabled == '1') ? 'pending' : 'approved';
+    $visit_approval = ($matrix_enabled == '1') ? 'pending' : 'approved';
+
     if ($invitation_id) {
         $visit_id = $invitation_id;
 
@@ -128,13 +138,15 @@ try {
         ]);
     } else {
         $visit_code = generateVisitCode();
-        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visitor_id,
             $photo_path,
             $data['employee_id'],
             $data['purpose'],
             $visit_code,
+            $visit_status,
+            $visit_approval,
             $access_area,
             $assets,
             $id_proof_type,
@@ -164,12 +176,14 @@ try {
     $vRow->execute([$visitor_id]);
     $visitorRow = $vRow->fetch(PDO::FETCH_ASSOC);
 
-    // Determine if Dahua sync is needed (only for pre-approved invitation flow)
+    // Determine if Dahua sync is needed (only for pre-approved invitation flow OR if matrix is disabled)
     $needsDahuaSync = false;
     if ($invitation_id) {
         $chkStmt = $pdo->prepare("SELECT approval_status FROM visits WHERE id = ?");
         $chkStmt->execute([$visit_id]);
         $needsDahuaSync = ($chkStmt->fetchColumn() === 'approved');
+    } elseif ($matrix_enabled == '0') {
+        $needsDahuaSync = true;
     }
 
     // ✅ COMMIT DB — data is safe before dispatching
@@ -187,6 +201,7 @@ try {
         'visitor_address' => $visitorRow['address'] ?? '',
         'assets' => $assets,
         'sync_dahua' => $needsDahuaSync,
+        'approval_matrix' => $matrix_enabled,
     ];
 
     // ⚡ STEP 1: No-op job writing
@@ -205,8 +220,8 @@ try {
     sendInstantResponse('success', 'Visitor registered successfully', [
         'visit_id' => $visit_id,
         'visit_code' => $visit_code,
-        'status' => $invitation_id ? 'approved' : 'pending',
-        'approval_status' => $invitation_id ? 'approved' : 'pending'
+        'status' => ($invitation_id || $matrix_enabled == '0') ? 'approved' : 'pending',
+        'approval_status' => ($invitation_id || $matrix_enabled == '0') ? 'approved' : 'pending'
     ]);
 
     // ⚡ STEP 3: Run job synchronously after client disconnects

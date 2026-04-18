@@ -39,44 +39,52 @@ function runJob_registerVisitor($pdo, $payload)
     }
 
     // 2. FCM Push to host
-    try {
-        _vms_log("Sending FCM Push to host $employee_id");
-        require_once dirname(__DIR__) . '/../includes/push_helper.php';
-        $pushData = [
-            'visitor_id' => (string) $visitor_id,
-            'visit_id' => (string) $visit_id,
-            'visitor_name' => $visitor_name,
-            'visitor_mobile' => $visitor_mobile,
-            'purpose' => $purpose,
-            'company' => $visitor_address ?: 'General Visitor',
-            'photo_url' => $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '',
-            'type' => 'visitor_arrival',
-            'assets_carried' => $assets,
-        ];
-        sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
-        _vms_log("FCM Push sent to host $employee_id");
-    } catch (Throwable $e) {
-        _vms_log("FCM register error: " . $e->getMessage());
+    if (($payload['approval_matrix'] ?? '1') == '1') {
+        try {
+            _vms_log("Sending FCM Push to host $employee_id");
+            require_once dirname(__DIR__) . '/../includes/push_helper.php';
+            $pushData = [
+                'visitor_id' => (string) $visitor_id,
+                'visit_id' => (string) $visit_id,
+                'visitor_name' => $visitor_name,
+                'visitor_mobile' => $visitor_mobile,
+                'purpose' => $purpose,
+                'company' => $visitor_address ?: 'General Visitor',
+                'photo_url' => $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '',
+                'type' => 'visitor_arrival',
+                'assets_carried' => $assets,
+            ];
+            sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
+            _vms_log("FCM Push sent to host $employee_id");
+        } catch (Throwable $e) {
+            _vms_log("FCM register error: " . $e->getMessage());
+        }
+    } else {
+        _vms_log("Skipping FCM Push: Approval Matrix disabled.");
     }
 
     // 3. WhatsApp to host
-    try {
-        _vms_log("Sending WhatsApp to host $employee_id");
-        require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
-        $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
-        $hStmt->execute([$employee_id]);
-        $host = $hStmt->fetch(PDO::FETCH_ASSOC);
-        if ($host && !empty($host['mobile'])) {
-            sendWhatsAppNotification(
-                $host['mobile'],
-                "Visitor $visitor_name has arrived to meet you.",
-                'visitor_arrival_host_alert',
-                ["*{$host['name']}*", "*{$visitor_name}*", "*{$purpose}*"]
-            );
-            _vms_log("WhatsApp sent to host mobile " . $host['mobile']);
+    if (($payload['approval_matrix'] ?? '1') == '1') {
+        try {
+            _vms_log("Sending WhatsApp to host $employee_id");
+            require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
+            $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
+            $hStmt->execute([$employee_id]);
+            $host = $hStmt->fetch(PDO::FETCH_ASSOC);
+            if ($host && !empty($host['mobile'])) {
+                sendWhatsAppNotification(
+                    $host['mobile'],
+                    "Visitor $visitor_name has arrived to meet you.",
+                    'visitor_arrival_host_alert',
+                    ["*{$host['name']}*", "*{$visitor_name}*", "*{$purpose}*"]
+                );
+                _vms_log("WhatsApp sent to host mobile " . $host['mobile']);
+            }
+        } catch (Throwable $e) {
+            _vms_log("WhatsApp register error: " . $e->getMessage());
         }
-    } catch (Throwable $e) {
-        _vms_log("WhatsApp register error: " . $e->getMessage());
+    } else {
+        _vms_log("Skipping WhatsApp: Approval Matrix disabled.");
     }
 
     // 4. Dahua sync (invitation flow only)

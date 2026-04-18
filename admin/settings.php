@@ -299,6 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $fields = $_POST['reg_fields'] ?? [];
         $settings = [
             'mandatory_registration_fields' => json_encode($fields),
+            'approval_matrix' => isset($_POST['approval_matrix']) ? '1' : '0',
             'default_validity_number' => $_POST['default_validity_number'] ?? '8',
             'default_validity_unit' => $_POST['default_validity_unit'] ?? 'hours'
         ];
@@ -449,6 +450,7 @@ $email_defaults = [
     'whatsapp_enabled_processes' => '["visitor_arrival_host_alert","visitor_otp_verification","visit_approval_visitor_notify","visit_rejection_visitor_notify","visitor_meet_notify","invite_cancelled"]',
     'ai_api_key' => '',
     'ai_model' => 'gemma-4-e4b',
+    'approval_matrix' => '1',
     'mandatory_registration_fields' => '["visitor_name","mobile_number","id_proof","purpose","meeting_host","otp_check"]'
 ];
 $config = array_merge($email_defaults, $raw_settings);
@@ -1709,6 +1711,20 @@ $active_tab_id = false;
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
+                                </div>
+
+                                <div class="mb-5 p-4 rounded-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 shadow-sm">
+                                    <div class="form-check form-switch d-flex align-items-center justify-content-between p-0">
+                                        <div class="flex-grow-1">
+                                            <label class="form-check-label h6 fw-bold text-primary mb-1" for="approval_matrix">
+                                                <i class="bi bi-shield-check me-2"></i>Activate Approval Matrix
+                                            </label>
+                                            <p class="text-muted small mb-0">When enabled, new visitors require host approval via notification. When disabled, visitors are auto-approved and no notifications are sent.</p>
+                                        </div>
+                                        <input class="form-check-input ms-3" type="checkbox" name="approval_matrix" id="approval_matrix" 
+                                               <?php echo ($config['approval_matrix'] ?? '1') == '1' ? 'checked' : ''; ?> 
+                                               style="width: 3rem; height: 1.5rem; cursor: pointer;">
+                                    </div>
                                 </div>
 
                                 <div class="row g-4 mb-5 border-top pt-4">
