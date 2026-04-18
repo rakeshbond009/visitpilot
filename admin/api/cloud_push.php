@@ -103,7 +103,7 @@ $targets = [
 streamOutput("[SYSTEM]: Broadcasting Update to " . count($targets) . " servers...");
 
 foreach ($targets as $domain) {
-    $remote_url = rtrim($domain, '/') . "/admin/api/repair_sync.php?auto=1&v=" . $buster;
+    $remote_url = rtrim($domain, '/') . "/admin/api/repair_sync.php?key=vms_cloud_sync_2026&v=" . $buster;
     streamOutput("[SYNC]: Updating $domain...");
 
     // Use robust curl for multi-server broadcast
@@ -111,12 +111,12 @@ foreach ($targets as $domain) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60); // Increased timeout for heavy sync
     $repair_res = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($http_code == 200 && strpos($repair_res, 'Repair Sequence Completed') !== false) {
+    if ($http_code == 200 && strpos($repair_res, 'FOLDERS UPDATED SUCCESSFULLY') !== false) {
         streamOutput("[SUCCESS]: $domain is now Synchronized.");
     } else {
         streamOutput("[WARN]: $domain failed to sync (HTTP $http_code). Please check manually.");

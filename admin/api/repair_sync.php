@@ -1,38 +1,43 @@
 <?php
-require_once '../../includes/db.php';
-// 1. Allow authorized automated sync or logged-in admin
-$is_auto = (isset($_GET['auto']) && $_GET['auto'] == '1');
-if (!$is_auto) {
-    requireLogin();
-    if ($_SESSION['role'] !== 'admin') {
-        die("Unauthorized Access.");
-    }
+/**
+ * BRUTE FORCE REPAIR BRIDGE v2.0
+ * NO DEPENDENCIES - NO LOGIN REQUIRED
+ * FORCES LOCAL FILES TO MATCH GITHUB
+ */
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Security Check: Simple secret key (matches what we send from dashboard)
+$secret = 'vms_cloud_sync_2026';
+if (($_GET['key'] ?? '') !== $secret) {
+    die("Access Denied: Invalid Sync Token.");
 }
 
-// 2. Git Operations - Forces a hard sync even on restricted Hostinger environments
 $vms_root = realpath(__DIR__ . '/../../');
 chdir($vms_root);
 
-echo "<h3>Initializing System Repair...</h3>";
+header('Content-Type: text/plain');
+echo "Starting Force-Fulfillment Sequence...\n";
+echo "Active Directory: $vms_root\n";
 
-// Force init and reset remote to ensure we have control
-shell_exec('git init 2>&1');
-shell_exec('git remote remove origin 2>&1');
-shell_exec('git remote add origin https://github.com/rakeshbond009/visitpilot.git 2>&1');
+function run($cmd) {
+    echo "> $cmd\n";
+    $output = shell_exec($cmd . ' 2>&1');
+    echo $output . "\n";
+}
 
-echo "Performing Git Fetch from origin...<br>";
-$output = shell_exec('git fetch --all 2>&1');
-echo "<pre>$output</pre>";
+// Ensure Git is Initialized
+if (!is_dir('.git')) {
+    run('git init');
+    run('git remote add origin https://github.com/rakeshbond009/visitpilot.git');
+} else {
+    run('git remote set-url origin https://github.com/rakeshbond009/visitpilot.git');
+}
 
-echo "FORCING DEEP CLEAN...<br>";
-shell_exec('git clean -fd 2>&1'); // Remove untracked files
-shell_exec('git reset --hard origin/main 2>&1'); // Force overwrite everything
+// FORCE OVERWRITE
+run('git fetch --all');
+run('git reset --hard origin/main');
+run('git clean -fd');
 
-echo "Repair Sequence Completed.<br>";
-echo "<b>Server Timestamp: " . date('Y-m-d H:i:s') . "</b><br>";
-
-echo "<hr>";
-echo "<h4 style='color: green;'>Repair Sequence Completed.</h4>";
-echo "<p>Your local codebase now exactly matches the main branch on GitHub.</p>";
-echo "<a href='../cloud_deployment.php' style='padding: 10px 20px; background: #000; color: #fff; text-decoration: none; border-radius: 5px;'>Return to Deployment</a>";
-?>
+echo "\n--- FOLDERS UPDATED SUCCESSFULLY ---";
