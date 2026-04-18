@@ -93,7 +93,22 @@ if ($is_error && !$is_uptodate) {
     }
 }
 
-// 4. Trigger Webhook (If set)
+// 4. Force Update Server (Bypass Hostinger's unreliable autodeploy)
+$server_repair_url = BASE_URL . "admin/api/repair_sync.php?auto=1";
+// Convert Local BASE_URL to Remote if needed
+$remote_url = str_replace('localhost/visitpilot', 'visitor.codepilotx.com', $server_repair_url);
+
+streamOutput("[SYSTEM]: Triggering Forced Server Update...");
+$repair_res = file_get_contents($remote_url);
+
+if (strpos($repair_res, 'Repair Sequence Completed') !== false) {
+    streamOutput("[SUCCESS]: SERVER UPDATED AND SYNCHRONIZED SUCCESSFULLY.");
+} else {
+    streamOutput("[WARN]: Git Push OK, but Server Update requires manual refresh.");
+    streamOutput("[INFO]: Visit: " . $remote_url);
+}
+
+// 5. Trigger Webhook (If set)
 if (!empty($webhook)) {
     streamOutput("[SYSTEM]: Triggering Hostinger Webhook for automated deployment...");
     $ch = curl_init();
