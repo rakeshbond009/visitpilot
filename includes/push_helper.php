@@ -222,12 +222,17 @@ function sendPushNotificationToRole($pdo, $role, $title, $body, $data = [])
         return false;
     }
 
-    $certPath = __DIR__ . '/vms-notification-c484b-firebase-adminsdk-fbsvc-78d91d684a.json';
-    if (!file_exists($certPath)) {
-        $log("CRITICAL ERROR: Firebase Service Account JSON not found");
-        return false;
+    // Dynamically find the Firebase JSON file in the same directory (Matches Section 3B of README)
+    $certPath = '';
+    $jsonFiles = glob(__DIR__ . '/vms-notification-*.json');
+    if (!empty($jsonFiles)) {
+        $certPath = $jsonFiles[0];
     }
 
+    if (!$certPath || !file_exists($certPath)) {
+        $log("CRITICAL ERROR: Firebase JSON not found in " . __DIR__);
+        return false;
+    }
     $serviceAccount = json_decode(file_get_contents($certPath), true);
     $projectId = $serviceAccount['project_id'];
 
