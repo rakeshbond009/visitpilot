@@ -103,7 +103,7 @@ $targets = [
 streamOutput("[SYSTEM]: Broadcasting Update to " . count($targets) . " servers...");
 
 foreach ($targets as $domain) {
-    $remote_url = rtrim($domain, '/') . "/admin/api/repair_sync.php?key=vms_cloud_sync_2026&v=" . $buster;
+    $remote_url = rtrim($domain, '/') . "/admin/api/repair_sync.php?auto=1&v=" . $buster;
     streamOutput("[SYNC]: Updating $domain...");
 
     // Use robust curl for multi-server broadcast
@@ -111,44 +111,45 @@ foreach ($targets as $domain) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 60); // Increased timeout for heavy sync
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $repair_res = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($http_code == 200 && (strpos($repair_res, 'FOLDERS UPDATED') !== false || strpos($repair_res, 'Repair Sequence Completed') !== false)) {
+    if ($http_code == 200 && strpos($repair_res, 'Repair Sequence Completed') !== false) {
         streamOutput("[SUCCESS]: $domain is now Synchronized.");
     } else {
         streamOutput("[WARN]: $domain failed to sync (HTTP $http_code). Please check manually.");
     }
 }
 
-// 5. Trigger Webhooks for Official Hostinger Deployment
-$webhooks = [
-    'https://webhooks.hostinger.com/deploy/76b62f19d8cb5408d1113b8484c451c4', // Atithi.online
-    'https://webhooks.hostinger.com/deploy/2ec9b2d8778f62304677732d84784783'  // visitor.codepilotx.com
-];
-
-foreach ($webhooks as $url) {
-    if (empty($url)) continue;
-    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment Signaling...");
-    
-    // VERIFIED: Hostinger requires POST, but prefers standard Form Data or empty body
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+// 5. Trigger Webhook (If set)
+if (!empty($webhook)) {
+    streamOutput("[SYSTEM]: Triggering Hostinger Webhook for automated deployment...");
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $webhook);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, ['trigger' => 'manual']); 
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['remarks' => $remarks])); // Use JSON for better compatibility
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-GitHub-Event: push',                 // Mimics GitHub push event
+        'X-GitHub-Delivery: ' . uniqid(),       // Professional unique delivery ID
+        'User-Agent: GitHub-Hookshot/VisitPilot' // Mimics GitHub's automated service
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
     $response = curl_exec($ch);
-    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
-    if ($http_status >= 200 && $http_status < 300) {
-        streamOutput("[SUCCESS]: Official Deployment Signal Accepted ($http_status).");
+
+    if ($http_code === 200 || $http_code === 202) {
+        streamOutput("[STATUS]: Webhook triggered successfully (HTTP $http_code).");
     } else {
-        streamOutput("[WARN]: Signal returned status $http_status. (Recommended: Check Hostinger Panel)");
+        streamOutput("[WARN]: Webhook failed or returned unusual status (HTTP $http_code). Response: " . substr(strip_tags($response), 0, 100));
     }
+} else {
+    streamOutput("[INFO]: No Hostinger Webhook configured. Manual pull on server might be required.");
 }
 
 streamOutput("\n[SUCCESS]: CLOUD SNYCHRONIZATION SUCCESSFULLY COMPLETED.");
