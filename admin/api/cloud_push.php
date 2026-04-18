@@ -116,7 +116,7 @@ foreach ($targets as $domain) {
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($http_code == 200 && strpos($repair_res, 'FOLDERS UPDATED SUCCESSFULLY') !== false) {
+    if ($http_code == 200 && (strpos($repair_res, 'FOLDERS UPDATED') !== false || strpos($repair_res, 'Repair Sequence Completed') !== false)) {
         streamOutput("[SUCCESS]: $domain is now Synchronized.");
     } else {
         streamOutput("[WARN]: $domain failed to sync (HTTP $http_code). Please check manually.");

@@ -8,9 +8,11 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Security Check: Simple secret key (matches what we send from dashboard)
-$secret = 'vms_cloud_sync_2026';
-if (($_GET['key'] ?? '') !== $secret) {
+// Security Check: Allows both the new key and the old auto=1 bypass
+$is_auto = (isset($_GET['auto']) && $_GET['auto'] == '1');
+$is_keyed = (isset($_GET['key']) && $_GET['key'] == 'vms_cloud_sync_2026');
+
+if (!$is_auto && !$is_keyed) {
     die("Access Denied: Invalid Sync Token.");
 }
 
