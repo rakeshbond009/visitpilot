@@ -9,22 +9,16 @@ if (!$is_auto) {
     }
 }
 
-// 2. Git Operations - Reset to match Remote (GitHub)
-// Change directory to the VMS root
+// 2. Git Operations - Forces a hard sync even on restricted Hostinger environments
 $vms_root = realpath(__DIR__ . '/../../');
 chdir($vms_root);
 
 echo "<h3>Initializing System Repair...</h3>";
 
-if (!is_dir('.git')) {
-    echo "NO GIT REPO DETECTED. Running git init...<br>";
-    $output = shell_exec('git init 2>&1');
-    echo "<pre>$output</pre>";
-
-    echo "Setting remote origin...<br>";
-    $output = shell_exec('git remote add origin https://github.com/rakeshbond009/visitpilot.git 2>&1');
-    echo "<pre>$output</pre>";
-}
+// Force init and reset remote to ensure we have control
+shell_exec('git init 2>&1');
+shell_exec('git remote remove origin 2>&1');
+shell_exec('git remote add origin https://github.com/rakeshbond009/visitpilot.git 2>&1');
 
 echo "Performing Git Fetch from origin...<br>";
 $output = shell_exec('git fetch --all 2>&1');
