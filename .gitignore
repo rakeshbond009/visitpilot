@@ -3,6 +3,8 @@
 error.log
 whatsapp_log.txt
 db_debug.log
+includes/db.php
+mobile_app/utils/config.js
 
 # User Data & Photos (Keep these safe and PERSISTENT on your server!)
 uploads/

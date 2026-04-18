@@ -20,7 +20,7 @@ if (!is_dir('.git')) {
     echo "NO GIT REPO DETECTED. Running git init...<br>";
     $output = shell_exec('git init 2>&1');
     echo "<pre>$output</pre>";
-    
+
     echo "Setting remote origin...<br>";
     $output = shell_exec('git remote add origin https://github.com/rakeshbond009/visitpilot.git 2>&1');
     echo "<pre>$output</pre>";
@@ -30,28 +30,9 @@ echo "Performing Git Fetch from origin...<br>";
 $output = shell_exec('git fetch --all 2>&1');
 echo "<pre>$output</pre>";
 
-// 3. Backup Server-Specific Configurations
-$protected_files = [
-    'includes/db.php',
-    'mobile_app/utils/config.js'
-];
-$backups = [];
-foreach ($protected_files as $file) {
-    if (file_exists($file)) {
-        $backups[$file] = file_get_contents($file);
-        echo "Backing up $file...<br>";
-    }
-}
-
 echo "FORCING DEEP CLEAN...<br>";
 shell_exec('git clean -fd 2>&1'); // Remove untracked files
 shell_exec('git reset --hard origin/main 2>&1'); // Force overwrite everything
-
-// 4. Restore Server-Specific Configurations
-foreach ($backups as $file => $content) {
-    file_put_contents($file, $content);
-    echo "Restored $file (Server-Specific).<br>";
-}
 
 echo "Repair Sequence Completed.<br>";
 echo "<b>Server Timestamp: " . date('Y-m-d H:i:s') . "</b><br>";
