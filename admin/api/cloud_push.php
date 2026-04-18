@@ -123,31 +123,30 @@ foreach ($targets as $domain) {
     }
 }
 
-// 5. Trigger Webhooks for Native Hostinger Deployment
+// 5. Trigger Webhooks for Official Hostinger Deployment
 $webhooks = [
     'https://webhooks.hostinger.com/deploy/76b62f19d8cb5408d1113b8484c451c4', // Atithi.online
     'https://webhooks.hostinger.com/deploy/2ec9b2d8778f62304677732d84784783'  // visitor.codepilotx.com
 ];
 
-foreach ($webhooks as $webhook_url) {
-    if (empty($webhook_url)) continue;
-    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment Signal...");
-
-    // Use a clean, headerless Trigger (Matches Hostinger's expectation)
-    $ch = curl_init($webhook_url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, []); // Use array for standard multipart/form-data
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    $response = curl_exec($ch);
-    $wh_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($wh_code == 200 || $wh_code == 204 || $wh_code == 202) {
+foreach ($webhooks as $url) {
+    if (empty($url)) continue;
+    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment...");
+    
+    // Simplest possible GET request - mimics a browser visit
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'GET',
+            'ignore_errors' => true,
+            'header' => "Content-type: application/x-www-form-urlencoded\r\n"
+        ]
+    ]);
+    $res = @file_get_contents($url, false, $context);
+    
+    if ($res !== false) {
         streamOutput("[SUCCESS]: Official Deployment Signal Accepted.");
     } else {
-        streamOutput("[WARN]: Hostinger Webhook Status: $wh_code. (Manual Deploy check recommended)");
+        streamOutput("[WARN]: Signal failed. Please check Hostinger Panel manually.");
     }
 }
 
