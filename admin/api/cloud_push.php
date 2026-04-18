@@ -131,22 +131,23 @@ $webhooks = [
 
 foreach ($webhooks as $url) {
     if (empty($url)) continue;
-    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment...");
+    streamOutput("[SYSTEM]: Triggering Official Hostinger Deployment Signaling...");
     
-    // Simplest possible GET request - mimics a browser visit
-    $context = stream_context_create([
-        'http' => [
-            'method' => 'GET',
-            'ignore_errors' => true,
-            'header' => "Content-type: application/x-www-form-urlencoded\r\n"
-        ]
-    ]);
-    $res = @file_get_contents($url, false, $context);
+    // VERIFIED: Hostinger requires POST, but prefers standard Form Data or empty body
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, ['trigger' => 'manual']); 
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $response = curl_exec($ch);
+    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
     
-    if ($res !== false) {
-        streamOutput("[SUCCESS]: Official Deployment Signal Accepted.");
+    if ($http_status >= 200 && $http_status < 300) {
+        streamOutput("[SUCCESS]: Official Deployment Signal Accepted ($http_status).");
     } else {
-        streamOutput("[WARN]: Signal failed. Please check Hostinger Panel manually.");
+        streamOutput("[WARN]: Signal returned status $http_status. (Recommended: Check Hostinger Panel)");
     }
 }
 
