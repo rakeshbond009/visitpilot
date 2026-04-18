@@ -122,7 +122,12 @@ include_once 'header.php';
                         <div class="mt-4 d-flex flex-column gap-2">
                             <button type="button" id="pushBtn"
                                 class="btn btn-primary w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
-                                <i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)
+                                <i class="bi bi-cloud-upload"></i> Push to Cloud (Main/Codepilotx)
+                            </button>
+
+                            <button type="button" id="atithiPushBtn"
+                                class="btn btn-success w-100 py-3 rounded-3 fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2">
+                                <i class="bi bi-cloud-arrow-up"></i> Sync Directly to Atithi
                             </button>
 
                             <a href="api/repair_sync.php"
@@ -188,7 +193,7 @@ include_once 'header.php';
                     return reader.read().then(({ done, value }) => {
                         if (done) {
                             btn.disabled = false;
-                            btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)';
+                            btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Main/Codepilotx)';
                             return;
                         }
                         const chunk = decoder.decode(value, { stream: true });
@@ -212,8 +217,53 @@ include_once 'header.php';
                 statusBadge.className = 'badge bg-danger rounded-pill px-3';
                 statusBadge.innerText = 'Failed';
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Sync GitHub)';
+                btn.innerHTML = '<i class="bi bi-cloud-upload"></i> Push to Cloud (Main/Codepilotx)';
             });
+    });
+
+    // Atithi Sync Listener
+    document.getElementById('atithiPushBtn').addEventListener('click', function () {
+        const remarks = document.getElementById('commit_remarks').value;
+        const outputDiv = document.getElementById('deploymentOutput');
+        const logContent = document.getElementById('logContent');
+        const statusBadge = document.getElementById('pushStatus');
+        const btn = this;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Shipping to Atithi...';
+        outputDiv.classList.remove('d-none');
+        logContent.innerHTML = 'Initialising Atithi shipment...\n';
+
+        fetch('api/atithi_push.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'remarks=' + encodeURIComponent(remarks)
+        })
+        .then(response => {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            function read() {
+                return reader.read().then(({ done, value }) => {
+                    if (done) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> Sync Directly to Atithi';
+                        return;
+                    }
+                    const chunk = decoder.decode(value, { stream: true });
+                    logContent.innerHTML += chunk;
+                    logContent.scrollTop = logContent.scrollHeight;
+                    if (chunk.includes('FAILURE') || chunk.includes('WARN')) {
+                        statusBadge.className = 'badge bg-warning rounded-pill px-3';
+                        statusBadge.innerText = 'Warnings';
+                    } else if (chunk.includes('COMPLETED')) {
+                        statusBadge.className = 'badge bg-success rounded-pill px-3';
+                        statusBadge.innerText = 'Completed';
+                    }
+                    return read();
+                });
+            }
+            return read();
+        });
     });
 </script>
 

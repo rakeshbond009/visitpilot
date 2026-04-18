@@ -123,44 +123,33 @@ foreach ($targets as $domain) {
     }
 }
 
-// 5. ATITHI DIRECT UPLOAD (BYPASS GIT)
-streamOutput("[SYSTEM]: Initiating Direct Shipment to Atithi.online...");
-$zip_file = $vms_root . '/temp_update.zip';
-$zip = new ZipArchive();
-if ($zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
-    // Add only core logic files to keep it light
-    $files = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($vms_root),
-        RecursiveIteratorIterator::LEAVES_ONLY
-    );
-    foreach ($files as $name => $file) {
-        if (!$file->isDir()) {
-            $filePath = $file->getRealPath();
-            $relativePath = substr($filePath, strlen($vms_root) + 1);
-            if (strpos($relativePath, '.git') === false && strpos($relativePath, 'node_modules') === false) {
-                $zip->addFile($filePath, $relativePath);
-            }
-        }
-    }
-    $zip->close();
-
-    $ch = curl_init('https://atithi.online/admin/api/manual_sync.php');
+// 5. Trigger Webhook (If set)
+if (!empty($webhook)) {
+    streamOutput("[SYSTEM]: Triggering Hostinger Webhook for automated deployment...");
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $webhook);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, [
-        'key' => 'vms_cloud_sync_2026',
-        'bundle' => new CURLFile($zip_file)
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['remarks' => $remarks])); // Use JSON for better compatibility
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-GitHub-Event: push',                 // Mimics GitHub push event
+        'X-GitHub-Delivery: ' . uniqid(),       // Professional unique delivery ID
+        'User-Agent: GitHub-Hookshot/VisitPilot' // Mimics GitHub's automated service
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $res = curl_exec($ch);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    unlink($zip_file);
 
-    if (strpos($res, 'SUCCESS') !== false) {
-        streamOutput("[SUCCESS]: Atithi.online Folders Updated via Direct Shipment.");
+    if ($http_code === 200 || $http_code === 202) {
+        streamOutput("[STATUS]: Webhook triggered successfully (HTTP $http_code).");
     } else {
-        streamOutput("[WARN]: Direct shipment to Atithi failed: $res");
+        streamOutput("[WARN]: Webhook failed or returned unusual status (HTTP $http_code). Response: " . substr(strip_tags($response), 0, 100));
     }
+} else {
+    streamOutput("[INFO]: No Hostinger Webhook configured. Manual pull on server might be required.");
 }
 
 streamOutput("\n[SUCCESS]: CLOUD SNYCHRONIZATION SUCCESSFULLY COMPLETED.");
