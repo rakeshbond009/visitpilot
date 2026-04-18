@@ -123,33 +123,29 @@ foreach ($targets as $domain) {
     }
 }
 
-// 5. Trigger Webhook (If set)
-if (!empty($webhook)) {
-    streamOutput("[SYSTEM]: Triggering Hostinger Webhook for automated deployment...");
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $webhook);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['remarks' => $remarks])); // Use JSON for better compatibility
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'X-GitHub-Event: push',                 // Mimics GitHub push event
-        'X-GitHub-Delivery: ' . uniqid(),       // Professional unique delivery ID
-        'User-Agent: GitHub-Hookshot/VisitPilot' // Mimics GitHub's automated service
-    ]);
+// 5. Trigger Webhooks for Native Hostinger Deployment
+$webhooks = [
+    'https://webhooks.hostinger.com/deploy/76b62f19d8cb5408d1113b8484c451c4', // Atithi.online
+    'https://webhooks.hostinger.com/deploy/2ec9b2d8778f62304677732d84784783'  // visitor.codepilotx.com (Retrieved from history)
+];
+
+foreach ($webhooks as $webhook_url) {
+    if (empty($webhook_url)) continue;
+    streamOutput("[SYSTEM]: Triggering Hostinger Native Webhook...");
+    $ch = curl_init($webhook_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $webhook_res = curl_exec($ch);
+    $wh_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($http_code === 200 || $http_code === 202) {
-        streamOutput("[STATUS]: Webhook triggered successfully (HTTP $http_code).");
+    if ($wh_code == 200 || $wh_code == 204) {
+        streamOutput("[SUCCESS]: Hostinger Native Deployment Triggered.");
     } else {
-        streamOutput("[WARN]: Webhook failed or returned unusual status (HTTP $http_code). Response: " . substr(strip_tags($response), 0, 100));
+        streamOutput("[WARN]: Hostinger Webhook returned code $wh_code.");
     }
-} else {
-    streamOutput("[INFO]: No Hostinger Webhook configured. Manual pull on server might be required.");
 }
 
 streamOutput("\n[SUCCESS]: CLOUD SNYCHRONIZATION SUCCESSFULLY COMPLETED.");
