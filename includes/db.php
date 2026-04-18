@@ -184,7 +184,19 @@ if ($tenant) {
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET time_zone = '+05:30'"
         ]);
     } catch (PDOException $e) {
-        die("Tenant Connection Failed.");
+        $errorMsg = "Tenant Connection Failed: " . $e->getMessage();
+        log_db_msg($errorMsg);
+        
+        // If it's an API or AJAX request, return JSON so frontend doesn't crash on parse
+        if (strpos($_SERVER['PHP_SELF'], '/api/') !== false || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
+            header('Content-Type: application/json');
+            die(json_encode([
+                'status' => 'error',
+                'message' => 'System connection error',
+                'debug' => $errorMsg
+            ]));
+        }
+        die("<h1>System Status: Offline</h1><p>We are currently experiencing database connectivity issues ($tenant_key). Please try again in 2 minutes.</p>");
     }
 } else {
     $pdo = $master_pdo ?? null;
@@ -222,8 +234,25 @@ if ($tenant && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 // 9. BASE URL & REDIRECTS
 $protocol = $is_https ? "https://" : "http://";
 $domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
 if (!defined('BASE_URL')) {
-    define('BASE_URL', $is_local ? $protocol . $domainName . '/visitpilot/' : $protocol . $domainName . '/');
+    // Robust detection: Calculate base path by comparing current file directory to executing script
+    $physical_file = str_replace('\\', '/', __FILE__); // .../includes/db.php
+    $physical_root = dirname(dirname($physical_file)); // project root physical path
+    
+    $exec_phys = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME']);
+    $exec_url  = $_SERVER['SCRIPT_NAME'];
+    
+    // Find the relative path of the executing script to the project root
+    $relative_path = str_ireplace($physical_root, '', $exec_phys);
+    
+    // Subtract the relative path from the URL to get the Root URL
+    $base_folder_url = substr($exec_url, 0, strlen($exec_url) - strlen($relative_path));
+    
+    $base_folder_url = rtrim($base_folder_url, '/') . '/';
+    if ($base_folder_url === '//') $base_folder_url = '/';
+    
+    define('BASE_URL', $protocol . $domainName . $base_folder_url);
 }
 
 function redirect($url)

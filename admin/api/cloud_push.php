@@ -82,26 +82,30 @@ $output = shell_exec($push_cmd);
 if ($output)
     streamOutput("[GIT LOG]: " . trim($output));
 
-if (strpos($output, 'Permission to') !== false || strpos($output, 'fatal') !== false || strpos($output, 'error') !== false) {
+if (strpos($output, 'Permission to') !== false || strpos($output, 'fatal') !== false || strpos($output, 'error') !== false || strpos($output, 'rejected') !== false) {
     if (strpos($output, '403') !== false) {
         streamOutput("[FAILED]: GitHub Authentication Error (403). Your Token (PAT) does not have write permissions for this repository.");
+    } elseif (strpos($output, 'exceeds GitHub\'s file size limit') !== false) {
+        streamOutput("[FAILED]: FILE TOO LARGE. GitHub has a 100MB limit. Please remove or compress large video files before syncing.");
     } else {
-        streamOutput("[FAILED]: Git Push Error. Please check your credentials and network connection.");
+        streamOutput("[FAILED]: Git Push Error. Pulling and syncing aborted to prevent data loss.");
     }
+    exit; // STOP HERE
 }
 
 // 4. Trigger Webhook (If set)
 if (!empty($webhook)) {
     streamOutput("[SYSTEM]: Triggering Hostinger Webhook for automated deployment...");
+    // ... curl logic ...
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $webhook);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['remarks' => $remarks])); // Use JSON for better compatibility
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['remarks' => $remarks])); 
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'X-GitHub-Event: push',                 // Mimics GitHub push event
-        'X-GitHub-Delivery: ' . uniqid(),       // Professional unique delivery ID
-        'User-Agent: GitHub-Hookshot/VisitPilot' // Mimics GitHub's automated service
+        'X-GitHub-Event: push',
+        'X-GitHub-Delivery: ' . uniqid(),
+        'User-Agent: GitHub-Hookshot/VisitPilot'
     ]);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
@@ -119,5 +123,5 @@ if (!empty($webhook)) {
     streamOutput("[INFO]: No Hostinger Webhook configured. Manual pull on server might be required.");
 }
 
-streamOutput("\n[SUCCESS]: CLOUD SNYCHRONIZATION SUCCESSFULLY COMPLETED.");
+streamOutput("\n[SUCCESS]: CLOUD SYNCHRONIZATION SUCCESSFULLY COMPLETED.");
 ?>

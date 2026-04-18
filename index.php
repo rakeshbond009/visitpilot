@@ -138,8 +138,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-    <link rel="stylesheet" href="assets/css/landing.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>assets/css/landing.css">
     <style>
+        :root {
+            --primary-bg: #0F172A;
+        }
+        .hero-section-new {
+            background-color: var(--primary-bg);
+            min-h: 90vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            padding: 100px 0;
+            color: white;
+        }
+        .hero-title-new {
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+            letter-spacing: -1px;
+        }
+        @media (min-width: 992px) {
+            .hero-title-new { font-size: 4.5rem; }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            padding: 30px;
+        }
+        .video-container {
+            position: relative;
+            border-radius: 48px;
+            overflow: hidden;
+            border: 12px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.5);
+            transition: transform 0.3s ease;
+        }
+        .video-container:hover {
+            transform: scale(1.02);
+        }
+        .nav-social-icon {
+            color: rgba(0,0,0,0.5);
+            transition: all 0.3s;
+            margin-right: 15px;
+        }
+        .nav-social-icon:hover {
+            color: #0d6efd;
+            transform: scale(1.1);
+        }
+        .feature-bubble {
+            position: absolute;
+            bottom: -30px;
+            right: -30px;
+            z-index: 10;
+        }
         @media (max-width: 991.98px) {
             .navbar-collapse {
                 background: white;
@@ -148,6 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
                 box-shadow: 0 15px 30px rgba(0,0,0,0.1);
                 margin-top: 10px;
             }
+            .hero-section-new { padding: 80px 0; }
         }
     </style>
 </head>
@@ -170,17 +228,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
                 <i class="bi bi-list fs-1 text-dark"></i>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto me-3">
+                <ul class="navbar-nav ms-auto me-4">
                     <li class="nav-item"><a class="nav-link px-2" href="#features">Features</a></li>
                     <li class="nav-item"><a class="nav-link px-2" href="#ai-intelligence">AI Power</a></li>
                     <li class="nav-item"><a class="nav-link px-2" href="#hardware">Hardware</a></li>
                     <li class="nav-item"><a class="nav-link px-2" href="#video">Video</a></li>
                     <li class="nav-item"><a class="nav-link px-2" href="#how">Process</a></li>
-                    <li class="nav-item"><a class="nav-link px-2" href="https://www.codepilotx.com/pages/contact.html" target="_blank">Connect</a></li>
                 </ul>
-                <div class="d-flex align-items-center pe-3">
+                <div class="d-flex align-items-center">
+                    <div class="d-none d-md-flex me-4">
+                        <a href="https://www.linkedin.com/in/rakesh-verma-22a8b996/" target="_blank" class="nav-social-icon"><i data-lucide="linkedin"></i></a>
+                        <a href="https://x.com/rakesh_bond009" target="_blank" class="nav-social-icon"><i data-lucide="twitter"></i></a>
+                    </div>
                     <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal"
-                        class="btn btn-primary-cta btn-cta py-2 px-3" style="font-size: 0.9rem;">Portal Login <i
+                        class="btn btn-primary-cta btn-cta py-2 px-4 shadow-sm" style="font-size: 0.9rem; border-radius: 25px;">Portal Login <i
                             class="bi bi-box-arrow-in-right ms-1"></i></a>
                 </div>
             </div>
@@ -188,36 +249,98 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="hero-bg-blob blob-1"></div>
-        <div class="hero-bg-blob blob-2"></div>
-        <div class="container">
+    <section class="hero-section-new">
+        <div class="container-fluid px-lg-5">
             <div class="row align-items-center">
-                <div class="col-lg-6 mb-5 mb-lg-0 animate__animated animate__fadeInLeft">
-                    <span class="hero-badge">Next-Gen Visitor Management</span>
-                    <h1 class="hero-title">Elevate Your Reception Experience</h1>
-                    <p class="hero-subtitle">Transform your front desk into a high-tech entrance. Secure, seamless, and
-                        fully digital visitor management for the modern workplace.</p>
-                    <div class="d-flex gap-3">
-                        <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal"
-                            class="btn btn-primary-cta btn-cta px-5">Get Started</a>
-                        <a href="#features" class="btn btn-outline-secondary btn-cta px-4">Explore Features</a>
+                <div class="col-lg-5 mb-5 mb-lg-0 px-lg-5">
+                    <div class="animate__animated animate__fadeInLeft">
+                        <span class="hero-badge bg-white bg-opacity-10 border-white border-opacity-10 text-white mb-4">
+                            <i data-lucide="star" class="me-2 text-warning" style="width: 14px;"></i> Next-Gen Visitor Management
+                        </span>
+                        <h1 class="hero-title-new text-white">
+                            Elevate Your <br>
+                            <span class="text-info">Reception</span> <br>
+                            Experience.
+                        </h1>
+                        <p class="text-white text-opacity-70 fs-5 mb-5 max-w-lg">
+                            Transform your front desk into a high-tech entrance. Secure, seamless, and fully digital visitor management for the modern workplace.
+                        </p>
+                        <div class="d-flex flex-wrap gap-3">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#loginModal"
+                                class="btn btn-light py-3 px-5 fw-black rounded-4 d-flex align-items-center gap-2">
+                                Get Started <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            </a>
+                            <a href="#video" class="btn btn-outline-light py-3 px-4 rounded-4 d-flex align-items-center gap-2">
+                                <i data-lucide="play" class="w-5 h-5"></i> Watch Preview
+                            </a>
+                        </div>
                     </div>
                 </div>
-                <div class="col-lg-6 animate__animated animate__fadeInRight">
-                    <div class="hero-image-wrapper">
-                        <!-- Glass Mockup Wrapper -->
-                        <div class="hero-card border-0 shadow-2xl overflow-hidden">
-                            <img src="assets/img/website images/Elivate.png" alt="Modern Office" class="img-fluid w-100"
-                                style="height: auto; object-fit: contain;">
+                <div class="col-lg-7 position-relative">
+                    <div class="animate__animated animate__zoomIn animate__delay-1s px-lg-4">
+                        <div class="video-container">
+                            <video 
+                                src="<?php echo BASE_URL; ?>assets/img/Videos/Video_VisitPilot.mp4" 
+                                autoPlay muted loop playsInline 
+                                class="w-100 h-auto d-block">
+                            </video>
                         </div>
-                        <!-- Decorative Elements -->
-
+                        
+                        <!-- Dynamic Feature Bubble -->
+                        <div class="feature-bubble glass-card d-none d-xl-block animate__animated animate__fadeInUp animate__delay-2s" style="min-width: 320px;">
+                            <div class="d-flex align-items-center gap-4" id="feature-looper">
+                                <div class="bg-primary rounded-4 p-3 text-white shadow-lg" id="looper-icon">
+                                    <i data-lucide="shield" class="w-8 h-8"></i>
+                                </div>
+                                <div>
+                                    <h4 class="fw-black text-white m-0 h2" id="looper-value">99.9%</h4>
+                                    <p class="text-white text-opacity-50 m-0 fw-bold small text-uppercase ls-wide" id="looper-label">Uptime Accuracy</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
+
+    <script>
+        // Initialize Lucid Icons
+        lucide.createIcons();
+
+        // Feature Looper Script
+        const heroFeatures = [
+            { label: "Uptime Accuracy", value: "99.9%", icon: "shield", color: "bg-primary" },
+            { label: "Check-in Speed", value: "Instant", icon: "zap", color: "bg-success" },
+            { label: "Security Level", value: "Bank-Grade", icon: "lock", color: "bg-danger" },
+            { label: "AI Recognition", value: "Smart", icon: "cpu", color: "bg-info" }
+        ];
+
+        let currentIndex = 0;
+        const looperIcon = document.getElementById('looper-icon');
+        const looperValue = document.getElementById('looper-value');
+        const looperLabel = document.getElementById('looper-label');
+
+        setInterval(() => {
+            currentIndex = (currentIndex + 1) % heroFeatures.length;
+            const feature = heroFeatures[currentIndex];
+            
+            // Fade out
+            document.getElementById('feature-looper').style.opacity = '0';
+            
+            setTimeout(() => {
+                looperValue.innerText = feature.value;
+                looperLabel.innerText = feature.label;
+                looperIcon.className = `rounded-4 p-3 text-white shadow-lg ${feature.color}`;
+                looperIcon.innerHTML = `<i data-lucide="${feature.icon}" class="w-8 h-8"></i>`;
+                lucide.createIcons();
+                
+                // Fade in
+                document.getElementById('feature-looper').style.opacity = '1';
+                document.getElementById('feature-looper').style.transition = 'opacity 0.5s ease-in-out';
+            }, 500);
+        }, 4000);
+    </script>
 
     <!-- AI Intelligence - Moved Up -->
     <section id="ai-intelligence" class="pt-5 pb-100 bg-light">

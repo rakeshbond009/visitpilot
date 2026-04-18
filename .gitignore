@@ -27,3 +27,9 @@ api_stats_log.txt
 *.log
 *.txt
 includes/sessions/*.json
+# Large Media & Static Assets
+assets/img/Videos/
+App Images/
+*.mp4
+*.zip
+*.mov

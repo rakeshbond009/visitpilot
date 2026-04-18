@@ -776,3 +776,12 @@
 [2026-04-05 20:44:31] CALL: Template invite_cancelled to 919873028739
 [2026-04-05 20:44:31] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"invite_cancelled","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"Rakesh Verma"},{"type":"text","text":"John Doe"}]}]}}
 [2026-04-05 20:44:31] SUCCESS (200): Template invite_cancelled sent to 919873028739 (Lang: en)
+[2026-04-18 17:46:13] CALL: Template visitor_otp_verification to 919152078513
+[2026-04-18 17:46:13] TRACE (Payload): To: 919152078513 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919152078513","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"251382"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"251382"}]}]}}
+[2026-04-18 17:46:14] SUCCESS (200): Template visitor_otp_verification sent to 919152078513 (Lang: en)
+[2026-04-18 17:46:26] CALL: Template visitor_otp_verification to 919152078513
+[2026-04-18 17:46:26] TRACE (Payload): To: 919152078513 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919152078513","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"480711"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"480711"}]}]}}
+[2026-04-18 17:46:26] SUCCESS (200): Template visitor_otp_verification sent to 919152078513 (Lang: en)
+[2026-04-18 17:52:23] CALL: Template visitor_otp_verification to 919873028739
+[2026-04-18 17:52:23] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"962057"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"962057"}]}]}}
+[2026-04-18 17:52:24] SUCCESS (200): Template visitor_otp_verification sent to 919873028739 (Lang: en)
