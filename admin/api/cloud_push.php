@@ -93,29 +93,34 @@ if ($is_error && !$is_uptodate) {
     }
 }
 
-// 4. Force Update Server (Bypass Hostinger's unreliable autodeploy)
+// 4. Force Update Remote Servers (Bypass Hostinger's unreliable autodeploy)
 $buster = time();
-$server_repair_url = BASE_URL . "admin/api/repair_sync.php?auto=1&v=" . $buster;
-// Convert Local BASE_URL to Remote if needed - Force HTTPS
-$remote_url = str_replace(['http://localhost/visitpilot', 'localhost/visitpilot'], 'https://visitor.codepilotx.com', $server_repair_url);
+$targets = [
+    'https://visitor.codepilotx.com',
+    'https://atithi.online'
+];
 
-streamOutput("[SYSTEM]: Triggering Forced Server Update (v=$buster)...");
+streamOutput("[SYSTEM]: Broadcasting Update to " . count($targets) . " servers...");
 
-// Use robust curl instead of file_get_contents
-$ch = curl_init($remote_url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-$repair_res = curl_exec($ch);
-$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+foreach ($targets as $domain) {
+    $remote_url = rtrim($domain, '/') . "/admin/api/repair_sync.php?auto=1&v=" . $buster;
+    streamOutput("[SYNC]: Updating $domain...");
 
-if ($http_code == 200 && strpos($repair_res, 'Repair Sequence Completed') !== false) {
-    streamOutput("[SUCCESS]: SERVER UPDATED AND SYNCHRONIZED SUCCESSFULLY.");
-} else {
-    streamOutput("[WARN]: Git Push OK, but Server Update failed (HTTP $http_code).");
-    streamOutput("[INFO]: Please visit this link manually if needed: " . $remote_url);
+    // Use robust curl for multi-server broadcast
+    $ch = curl_init($remote_url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $repair_res = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code == 200 && strpos($repair_res, 'Repair Sequence Completed') !== false) {
+        streamOutput("[SUCCESS]: $domain is now Synchronized.");
+    } else {
+        streamOutput("[WARN]: $domain failed to sync (HTTP $http_code). Please check manually.");
+    }
 }
 
 // 5. Trigger Webhook (If set)
