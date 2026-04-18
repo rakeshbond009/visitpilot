@@ -25,13 +25,15 @@ if (!is_dir('.git')) {
 }
 
 echo "Performing Git Fetch from origin...<br>";
-$output = shell_exec('git fetch origin 2>&1');
+$output = shell_exec('git fetch --all 2>&1');
 echo "<pre>$output</pre>";
 
-echo "Resetting local branch to match 'origin/main'...<br>";
-echo "<i>(This will discard any local uncommitted changes)</i><br>";
-$output = shell_exec('git reset --hard origin/main 2>&1');
-echo "<pre>$output</pre>";
+echo "FORCING DEEP CLEAN...<br>";
+shell_exec('git clean -fd 2>&1'); // Remove untracked files
+shell_exec('git reset --hard origin/main 2>&1'); // Force overwrite everything
+
+echo "Repair Sequence Completed.<br>";
+echo "<b>Server Timestamp: " . date('Y-m-d H:i:s') . "</b><br>";
 
 echo "<hr>";
 echo "<h4 style='color: green;'>Repair Sequence Completed.</h4>";

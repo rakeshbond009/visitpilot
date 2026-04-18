@@ -94,11 +94,12 @@ if ($is_error && !$is_uptodate) {
 }
 
 // 4. Force Update Server (Bypass Hostinger's unreliable autodeploy)
-$server_repair_url = BASE_URL . "admin/api/repair_sync.php?auto=1";
+$buster = time();
+$server_repair_url = BASE_URL . "admin/api/repair_sync.php?auto=1&v=" . $buster;
 // Convert Local BASE_URL to Remote if needed
 $remote_url = str_replace('localhost/visitpilot', 'visitor.codepilotx.com', $server_repair_url);
 
-streamOutput("[SYSTEM]: Triggering Forced Server Update...");
+streamOutput("[SYSTEM]: Triggering Forced Server Update (v=$buster)...");
 $repair_res = file_get_contents($remote_url);
 
 if (strpos($repair_res, 'Repair Sequence Completed') !== false) {
