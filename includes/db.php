@@ -223,13 +223,15 @@ if ($tenant && isset($_SESSION['role']) && $_SESSION['role'] === 'admin') {
 $protocol = $is_https ? "https://" : "http://";
 $domainName = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-// Automatically detect the base folder (Safest Method)
+// Domain-Based Root Detection (Prevents Double-Admin bug)
 $domain = $_SERVER['HTTP_HOST'] ?? 'localhost';
 $base_folder = '/';
 
-// If on local XAMPP, use the subfolder. If on atithi.online, use root.
+// Only add subfolder on local XAMPP
 if (strpos($domain, 'localhost') !== false || strpos($_SERVER['SCRIPT_NAME'], '/visitpilot/') !== false) {
-    $base_folder = '/visitpilot/';
+    if (strpos($_SERVER['SCRIPT_NAME'], '/visitpilot/') !== false) {
+        $base_folder = '/visitpilot/';
+    }
 }
 
 if (!defined('BASE_URL')) {
