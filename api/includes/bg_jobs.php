@@ -19,40 +19,41 @@ require_once __DIR__ . '/../../includes/dahua_helper.php';
 
 function runJob_registerVisitor($pdo, $payload)
 {
-    $visit_id = $payload['visit_id'] ?? 0;
-    $visitor_id = $payload['visitor_id'] ?? 0;
-    $visit_code = $payload['visit_code'] ?? '';
-    $photo_path = $payload['photo_path'] ?? '';
-    $employee_id = $payload['employee_id'] ?? 0;
-    $purpose = $payload['purpose'] ?? '';
-    $visitor_name = $payload['visitor_name'] ?? '';
+    $visit_id       = $payload['visit_id']       ?? 0;
+    $visitor_id     = $payload['visitor_id']     ?? 0;
+    $visit_code     = $payload['visit_code']     ?? '';
+    $photo_path     = $payload['photo_path']     ?? '';
+    $employee_id    = $payload['employee_id']    ?? 0;
+    $purpose        = $payload['purpose']        ?? '';
+    $visitor_name   = $payload['visitor_name']   ?? '';
     $visitor_mobile = $payload['visitor_mobile'] ?? '';
-    $visitor_address = $payload['visitor_address'] ?? '';
-    $assets = $payload['assets'] ?? 'None';
+    $visitor_address= $payload['visitor_address']?? '';
+    $assets         = $payload['assets']         ?? 'None';
+    $matrix_on      = $payload['matrix_on']      ?? '1'; // default: approval required
 
-    _vms_log("Job registerVisitor starting: visit_id $visit_id");
+    _vms_log("Job registerVisitor starting: visit_id $visit_id (matrix_on=$matrix_on)");
 
-    // 1. QR Code
+    // 1. QR Code (always generate)
     if ($visit_code) {
         _vms_log("Generating QR for $visit_code");
         bgHelper_generateQrCode($visit_code, $visit_id, $pdo);
     }
 
-    // 2. FCM Push to host
-    if (($payload['approval_matrix'] ?? '1') == '1') {
+    // 2. FCM Push to host — only when approval matrix is ON
+    if ($matrix_on === '1') {
         try {
             _vms_log("Sending FCM Push to host $employee_id");
             require_once dirname(__DIR__) . '/../includes/push_helper.php';
             $pushData = [
-                'visitor_id' => (string) $visitor_id,
-                'visit_id' => (string) $visit_id,
-                'visitor_name' => $visitor_name,
-                'visitor_mobile' => $visitor_mobile,
-                'purpose' => $purpose,
-                'company' => $visitor_address ?: 'General Visitor',
-                'photo_url' => $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '',
-                'type' => 'visitor_arrival',
-                'assets_carried' => $assets,
+                'visitor_id'    => (string) $visitor_id,
+                'visit_id'      => (string) $visit_id,
+                'visitor_name'  => $visitor_name,
+                'visitor_mobile'=> $visitor_mobile,
+                'purpose'       => $purpose,
+                'company'       => $visitor_address ?: 'General Visitor',
+                'photo_url'     => $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '',
+                'type'          => 'visitor_arrival',
+                'assets_carried'=> $assets,
             ];
             sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
             _vms_log("FCM Push sent to host $employee_id");
@@ -60,11 +61,11 @@ function runJob_registerVisitor($pdo, $payload)
             _vms_log("FCM register error: " . $e->getMessage());
         }
     } else {
-        _vms_log("Skipping FCM Push: Approval Matrix disabled.");
+        _vms_log("Approval Matrix OFF — skipping FCM Push to host");
     }
 
-    // 3. WhatsApp to host
-    if (($payload['approval_matrix'] ?? '1') == '1') {
+    // 3. WhatsApp to host — only when approval matrix is ON
+    if ($matrix_on === '1') {
         try {
             _vms_log("Sending WhatsApp to host $employee_id");
             require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
@@ -84,10 +85,10 @@ function runJob_registerVisitor($pdo, $payload)
             _vms_log("WhatsApp register error: " . $e->getMessage());
         }
     } else {
-        _vms_log("Skipping WhatsApp: Approval Matrix disabled.");
+        _vms_log("Approval Matrix OFF — skipping WhatsApp to host");
     }
 
-    // 4. Dahua sync (invitation flow only)
+    // 4. Dahua sync (invitation flow OR auto-approved when matrix is OFF)
     if (!empty($payload['sync_dahua'])) {
         bgHelper_syncDahua($pdo, $visit_id);
     }
@@ -260,10 +261,10 @@ function bgHelper_syncDahua($pdo, $visit_id)
 {
     try {
         require_once dirname(__DIR__) . '/../includes/dahua_helper.php';
-        
+
         // Use our high-level static method that handles everything inside
         DahuaHelper::syncVisitor($visit_id, $pdo);
-        
+
     } catch (Throwable $e) {
         error_log("[BG] Dahua error: " . $e->getMessage());
     }

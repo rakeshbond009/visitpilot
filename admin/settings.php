@@ -1275,15 +1275,19 @@ $active_tab_id = false;
                             </div>
                             <form method="POST">
                                 <div class="mb-4">
-                                    <label class="form-label fw-bold small text-uppercase text-muted">Dahua Webhook URL (For Portal)</label>
+                                    <label class="form-label fw-bold small text-uppercase text-muted">Dahua Webhook URL (For
+                                        Portal)</label>
                                     <div class="input-group">
-                                        <input type="text" class="form-control bg-light border-0 py-2" id="webhook_url_final_v4" 
-                                               value="<?php echo BASE_URL; ?>api/dahua/webhook.php?tenant=<?php echo $_SESSION['tenant_key'] ?? 'default'; ?>" readonly>
+                                        <input type="text" class="form-control bg-light border-0 py-2"
+                                            id="webhook_url_final_v4"
+                                            value="<?php echo BASE_URL; ?>api/dahua/webhook.php?tenant=<?php echo $_SESSION['tenant_key'] ?? 'default'; ?>"
+                                            readonly>
                                         <button class="btn btn-primary px-4" type="button" onclick="copyWebhookV4()">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     </div>
-                                    <small class="text-muted mt-2 d-block small"><i class="bi bi-info-circle me-1"></i> Copy this to Dahua Portal > Message Subscription.</small>
+                                    <small class="text-muted mt-2 d-block small"><i class="bi bi-info-circle me-1"></i> Copy
+                                        this to Dahua Portal > Message Subscription.</small>
                                 </div>
                                 <hr class="my-3 opacity-10">
                                 <div class="mb-4">
@@ -1311,9 +1315,11 @@ $active_tab_id = false;
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold small text-uppercase text-muted">Dahua Product ID (v2)</label>
+                                        <label class="form-label fw-bold small text-uppercase text-muted">Dahua Product ID
+                                            (v2)</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-0"><i class="bi bi-box-seam text-primary"></i></span>
+                                            <span class="input-group-text bg-light border-0"><i
+                                                    class="bi bi-box-seam text-primary"></i></span>
                                             <input type="text" name="dahua_product_id"
                                                 class="form-control border-0 bg-light rounded-end"
                                                 value="<?php echo htmlspecialchars($config['dahua_product_id'] ?? ''); ?>"
@@ -1321,9 +1327,11 @@ $active_tab_id = false;
                                         </div>
                                     </div>
                                     <div class="col-md-6 mb-4">
-                                        <label class="form-label fw-bold small text-uppercase text-muted">API Base URL</label>
+                                        <label class="form-label fw-bold small text-uppercase text-muted">API Base
+                                            URL</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-0"><i class="bi bi-globe text-primary"></i></span>
+                                            <span class="input-group-text bg-light border-0"><i
+                                                    class="bi bi-globe text-primary"></i></span>
                                             <input type="text" name="dahua_base_url"
                                                 class="form-control border-0 bg-light rounded-end"
                                                 value="<?php echo htmlspecialchars($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com'); ?>"
@@ -1713,38 +1721,71 @@ $active_tab_id = false;
                                     <?php endforeach; ?>
                                 </div>
 
-                                <div class="mb-5 p-4 rounded-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 shadow-sm">
-                                    <div class="form-check form-switch d-flex align-items-center justify-content-between p-0">
-                                        <div class="flex-grow-1">
-                                            <label class="form-check-label h6 fw-bold text-primary mb-1" for="approval_matrix">
-                                                <i class="bi bi-shield-check me-2"></i>Activate Approval Matrix
+                                <!-- Approval Matrix Toggle -->
+                                <div class="mb-4 p-4 rounded-4 border border-2 <?php echo ($config['approval_matrix'] ?? '1') == '1' ? 'border-success bg-success bg-opacity-10' : 'border-warning bg-warning bg-opacity-10'; ?>" id="approvalMatrixCard">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="flex-grow-1 me-3">
+                                            <label for="approval_matrix" class="form-check-label cursor-pointer">
+                                                <div class="fw-bold fs-6 mb-1">
+                                                    <i class="bi bi-shield-check me-2 <?php echo ($config['approval_matrix'] ?? '1') == '1' ? 'text-success' : 'text-warning'; ?>"></i>
+                                                    Activate Approval Matrix
+                                                </div>
+                                                <div class="small text-muted">
+                                                    <strong>ON:</strong> New visits require host approval &amp; send notifications (default). &nbsp;
+                                                    <strong>OFF:</strong> Every new visitor is auto-approved instantly — no notifications sent.
+                                                </div>
                                             </label>
-                                            <p class="text-muted small mb-0">When enabled, new visitors require host approval via notification. When disabled, visitors are auto-approved and no notifications are sent.</p>
                                         </div>
-                                        <input class="form-check-input ms-3" type="checkbox" name="approval_matrix" id="approval_matrix" 
-                                               <?php echo ($config['approval_matrix'] ?? '1') == '1' ? 'checked' : ''; ?> 
-                                               style="width: 3rem; height: 1.5rem; cursor: pointer;">
+                                        <div class="form-check form-switch m-0">
+                                            <input class="form-check-input" type="checkbox" name="approval_matrix"
+                                                id="approval_matrix"
+                                                <?php echo ($config['approval_matrix'] ?? '1') == '1' ? 'checked' : ''; ?>
+                                                style="width:3rem;height:1.5rem;cursor:pointer;"
+                                                onchange="updateApprovalCard(this)">
+                                        </div>
                                     </div>
                                 </div>
+                                <script>
+                                function updateApprovalCard(el) {
+                                    const card = document.getElementById('approvalMatrixCard');
+                                    const icon = card.querySelector('.bi-shield-check');
+                                    if (el.checked) {
+                                        card.className = card.className.replace(/border-warning|bg-warning/g, '').trim();
+                                        card.classList.add('border-success', 'bg-success', 'bg-opacity-10', 'border-2');
+                                        icon.classList.replace('text-warning', 'text-success');
+                                    } else {
+                                        card.className = card.className.replace(/border-success|bg-success/g, '').trim();
+                                        card.classList.add('border-warning', 'bg-warning', 'bg-opacity-10', 'border-2');
+                                        icon.classList.replace('text-success', 'text-warning');
+                                    }
+                                }
+                                </script>
 
                                 <div class="row g-4 mb-5 border-top pt-4">
                                     <div class="col-12">
-                                        <h6 class="fw-bold text-uppercase text-muted small mb-3">Default Visitor Validity</h6>
-                                        <p class="text-muted small mb-3">Define the default stay duration for new visitors. This value is pushed to Dahua hardware during registration.</p>
+                                        <h6 class="fw-bold text-uppercase text-muted small mb-3">Default Visitor Validity
+                                        </h6>
+                                        <p class="text-muted small mb-3">Define the default stay duration for new visitors.
+                                            This value is pushed to Dahua hardware during registration.</p>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold small text-muted">Validity Duration</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-0"><i class="bi bi-clock-history"></i></span>
-                                            <input type="number" name="default_validity_number" class="form-control border-0 bg-light" 
-                                                   value="<?php echo htmlspecialchars($config['default_validity_number'] ?? '8'); ?>" required min="1">
+                                            <span class="input-group-text bg-light border-0"><i
+                                                    class="bi bi-clock-history"></i></span>
+                                            <input type="number" name="default_validity_number"
+                                                class="form-control border-0 bg-light"
+                                                value="<?php echo htmlspecialchars($config['default_validity_number'] ?? '8'); ?>"
+                                                required min="1">
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label fw-bold small text-muted">Unit</label>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-light border-0"><i class="bi bi-calendar-event"></i></span>
-                                            <select name="default_validity_unit" class="form-select border-0 bg-light" required>
+                                            <span class="input-group-text bg-light border-0"><i
+                                                    class="bi bi-calendar-event"></i></span>
+                                            <select name="default_validity_unit" class="form-select border-0 bg-light"
+                                                required>
                                                 <option value="hours" <?php echo ($config['default_validity_unit'] ?? 'hours') == 'hours' ? 'selected' : ''; ?>>Hours</option>
                                                 <option value="days" <?php echo ($config['default_validity_unit'] ?? '') == 'days' ? 'selected' : ''; ?>>Days</option>
                                             </select>

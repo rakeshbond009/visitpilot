@@ -102,15 +102,15 @@ try {
     $validity_number = intval($data['validity_number'] ?? 8);
     $validity_unit = $data['validity_unit'] ?? 'hours';
 
-    // Fetch Approval Matrix Setting
-    $stmtMatrix = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix'");
-    $stmtMatrix->execute();
-    $matrix_enabled = $stmtMatrix->fetchColumn();
-    if ($matrix_enabled === false)
-        $matrix_enabled = '1'; // Default to enabled
+    // Fetch Approval Matrix setting
+    $stmtAM = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix'");
+    $stmtAM->execute();
+    $matrix_on = $stmtAM->fetchColumn();
+    $matrix_on = ($matrix_on === false) ? '1' : $matrix_on; // default ON
 
-    $visit_status = ($matrix_enabled == '1') ? 'pending' : 'approved';
-    $visit_approval = ($matrix_enabled == '1') ? 'pending' : 'approved';
+    $auto_approve = ($matrix_on !== '1'); // true when matrix is OFF
+    $visit_status    = $auto_approve ? 'approved' : 'pending';
+    $approval_status = $auto_approve ? 'approved' : 'pending';
 
     if ($invitation_id) {
         $visit_id = $invitation_id;
@@ -146,7 +146,7 @@ try {
             $data['purpose'],
             $visit_code,
             $visit_status,
-            $visit_approval,
+            $approval_status,
             $access_area,
             $assets,
             $id_proof_type,
@@ -176,13 +176,14 @@ try {
     $vRow->execute([$visitor_id]);
     $visitorRow = $vRow->fetch(PDO::FETCH_ASSOC);
 
-    // Determine if Dahua sync is needed (only for pre-approved invitation flow OR if matrix is disabled)
+    // Determine if Dahua sync is needed
     $needsDahuaSync = false;
     if ($invitation_id) {
         $chkStmt = $pdo->prepare("SELECT approval_status FROM visits WHERE id = ?");
         $chkStmt->execute([$visit_id]);
         $needsDahuaSync = ($chkStmt->fetchColumn() === 'approved');
-    } elseif ($matrix_enabled == '0') {
+    } elseif ($auto_approve) {
+        // No approval matrix: visitor is already approved, sync immediately
         $needsDahuaSync = true;
     }
 
@@ -190,18 +191,18 @@ try {
     $pdo->commit();
 
     $bgPayload = [
-        'visit_id' => $visit_id,
-        'visitor_id' => $visitor_id,
-        'visit_code' => $visit_code,
-        'photo_path' => $photo_path,
-        'employee_id' => $data['employee_id'],
-        'purpose' => $data['purpose'],
-        'visitor_name' => $visitorRow['name'] ?? $data['name'],
-        'visitor_mobile' => $visitorRow['mobile'] ?? $data['mobile'],
+        'visit_id'        => $visit_id,
+        'visitor_id'      => $visitor_id,
+        'visit_code'      => $visit_code,
+        'photo_path'      => $photo_path,
+        'employee_id'     => $data['employee_id'],
+        'purpose'         => $data['purpose'],
+        'visitor_name'    => $visitorRow['name']   ?? $data['name'],
+        'visitor_mobile'  => $visitorRow['mobile'] ?? $data['mobile'],
         'visitor_address' => $visitorRow['address'] ?? '',
-        'assets' => $assets,
-        'sync_dahua' => $needsDahuaSync,
-        'approval_matrix' => $matrix_enabled,
+        'assets'          => $assets,
+        'sync_dahua'      => $needsDahuaSync,
+        'matrix_on'       => $matrix_on,     // '1' = notifications active, '0' = silent
     ];
 
     // ⚡ STEP 1: No-op job writing
@@ -218,10 +219,10 @@ try {
 
     // ⚡ STEP 2: Respond IMMEDIATELY (flush / fastcgi_finish_request)
     sendInstantResponse('success', 'Visitor registered successfully', [
-        'visit_id' => $visit_id,
-        'visit_code' => $visit_code,
-        'status' => ($invitation_id || $matrix_enabled == '0') ? 'approved' : 'pending',
-        'approval_status' => ($invitation_id || $matrix_enabled == '0') ? 'approved' : 'pending'
+        'visit_id'        => $visit_id,
+        'visit_code'      => $visit_code,
+        'status'          => ($invitation_id || $auto_approve) ? 'approved' : 'pending',
+        'approval_status' => ($invitation_id || $auto_approve) ? 'approved' : 'pending'
     ]);
 
     // ⚡ STEP 3: Run job synchronously after client disconnects

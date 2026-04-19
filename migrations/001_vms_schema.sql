@@ -256,7 +256,8 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
   KEY `idx_audit_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Seed Default Validity
+-- Seed Default Settings
 INSERT IGNORE INTO `system_settings` (`setting_key`, `setting_value`) VALUES 
 ('default_validity_number', '8'),
-('default_validity_unit', 'hours');
+('default_validity_unit', 'hours'),
+('approval_matrix', '1');
