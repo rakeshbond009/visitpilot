@@ -19,35 +19,39 @@ class DahuaManagementHelper {
     public static function generateHeaders($config, $method, $path, $body, $token, $isV1 = false) {
         $timestamp = (string)round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
+        $appId = $config['client_id'];
+        $secret = $config['client_secret'];
+        $productId = $config['product_id'] ?: '1539964762';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
-        
+
         $cleanBody = preg_replace('/\s+/', '', $body);
-        $bodyHash = ($body === "{}" || $body === "") ? "" : hash('sha512', $cleanBody);
         
         if ($isV1) {
-            $factor = $config['client_id'] . $timestamp . $nonce . $bodyHash . $config['client_secret'];
+            $bodyHash = ($body === "{}" || $body === "") ? "" : hash('sha512', $cleanBody);
+            $factor = $appId . $timestamp . $nonce . $bodyHash . $secret;
             $sign = strtoupper(md5($factor));
             $version = 'v1';
         } else {
+            $bodyHash = hash('sha512', $cleanBody);
             $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
-            $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
+            // Non-path signature to match addUsers
+            $strAuthFactor = $appId . $token . $timestamp . $nonce . $stringToSign;
+            $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
             $version = 'V1';
         }
 
-        $headers = [
+        return [
             'Content-Type: application/json',
-            'AppAccessToken: ' . $token,
+            'Version: ' . $version,
+            'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'AccessKey: ' . $config['client_id'],
-            'Version: ' . $version,
+            'ProductID: ' . $productId,
             'X-TraceId-Header: ' . $traceId,
-            'ProductID: ' . ($config['product_id'] ?: '1539964762'),
-            'Accept-Language: en-US'
+            'Accept-Language: en-US',
+            'AppAccessToken: ' . $token
         ];
-        return $headers;
     }
 
     public static function getPeopleList($deviceId, $pdo) {
