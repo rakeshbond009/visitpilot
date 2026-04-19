@@ -525,9 +525,14 @@ class DahuaHelper
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
+
         $response = curl_exec($ch);
         $data = json_decode($response, true);
         curl_close($ch);
+
+        if (empty($data['data'])) {
+            log_db_msg("Dahua API Error for Device $deviceId: " . $response);
+        }
 
         return $data['data'] ?? null;
     }

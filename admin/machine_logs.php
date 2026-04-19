@@ -92,9 +92,13 @@ if ($active_tab === 'logs') {
 
 
 
+
+
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
             $user_data = DahuaHelper::getPeopleList($target_machine);
+            log_db_msg("Sync Debug for $target_machine: " . json_encode($user_data));
+            
             if (!empty($user_data['pageData'])) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, validity_start, validity_end, created_at) 
@@ -129,7 +133,7 @@ if ($active_tab === 'logs') {
                 }
                 $_SESSION['app_msg'] = "Sync Successful: " . count($user_data['pageData']) . " users updated.";
             } else {
-                $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device.";
+                $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device. Raw Count: " . (isset($user_data['totalRows']) ? $user_data['totalRows'] : '0');
             }
         } catch (Exception $e) { 
             $_SESSION['sync_error'] = "Hardware Sync Failed: " . $e->getMessage();
