@@ -504,8 +504,9 @@ class DahuaHelper
     {
         if (!$pdo) global $pdo;
         $config = self::get_config($pdo);
+
         $token = self::getAccessToken($pdo);
-        if (!$token) return null;
+        if (!$token) return ['error' => 'Failed to obtain Access Token. Check Client ID/Secret.'];
 
         $path = '/open-api/api-device/person/pageGetPerson';
         $url = $config['base_url'] . $path;
@@ -526,14 +527,16 @@ class DahuaHelper
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         
 
+
         $response = curl_exec($ch);
+        $curl_error = curl_error($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $data = json_decode($response, true);
         curl_close($ch);
 
-        if (empty($data['data'])) {
-            log_db_msg("Dahua API Error for Device $deviceId: " . $response);
-        }
-
-        return $data['data'] ?? null;
+        if ($curl_error) return ['error' => "CURL Error: " . $curl_error];
+        if ($http_code !== 200) return ['error' => "HTTP $http_code: " . $response];
+        
+        return $data['data'] ?? ['error' => 'Invalid JSON structure', 'raw' => $response];
     }
 }
