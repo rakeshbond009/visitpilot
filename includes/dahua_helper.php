@@ -167,11 +167,12 @@ class DahuaHelper
 
         $allDevices = [];
         $hasSpecificArea = false;
-        
+
         // Support multiple selection in area (e.g., "Main-SN1, Office-SN2")
         $areas = array_map('trim', explode(',', $visit['access_area']));
         foreach ($areas as $area) {
-            if (!empty($area)) $hasSpecificArea = true;
+            if (!empty($area))
+                $hasSpecificArea = true;
 
             if (strpos($area, '-') !== false) {
                 $parts = explode('-', $area);
@@ -236,114 +237,114 @@ class DahuaHelper
         foreach ($allDevices as $deviceId) {
             self::log("--- Processing Device: $deviceId ---");
 
-        // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
-        $dahuaId = (string) $visitId . (string) $visit['visitor_id'];
-        self::log("Sync Step 1: Adding user $dahuaId (Method 37: QR Support)...");
-        $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
-        $userPayload = [
-            'deviceId' => $deviceId,
-            'users' => [
-                [
-                    'userId' => $dahuaId,
-                    'userName' => $visit['visitor_name'],
-                    'userType' => 0,
-                    'authorityList' => [
-                        ['channelNo' => 0]
-                    ],
-                    'permission' => 0,
-                    'departmentId' => 0,
-                    'verifyType' => 0,
-                    'personalMethod' => 35,
-                    'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
-                    'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
-                ]
-            ]
-        ];
-        $userBody = json_encode($userPayload);
-        $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
-        $ch = curl_init($config['base_url'] . $userPath);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $userBody,
-            CURLOPT_HTTPHEADER => $userHeaders
-        ]);
-        $userResp = curl_exec($ch);
-        curl_close($ch);
-        self::log("Step 1 Response: " . substr($userResp, 0, 120));
-
-        // --- STEP 3: Authorize Face (retry up to 3x with 5s delay for device propagation) ---
-        // Per Dahua API Guide v2.4 s4.12.1.4.2: photoData is array, header must be stripped.
-        // When both photoData + photoURL sent, photoData prevails; photoURL satisfies cloud validation.
-        if ($photoUrl && file_exists($compressedPath)) {
-            $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
-            $rawBase64 = base64_encode(file_get_contents($compressedPath)); // No data:image prefix
-            $facePayload = [
+            // --- STEP 2: Add User only (no face/card embedded — they are silently ignored by addUsers API) ---
+            $dahuaId = (string) $visitId . (string) $visit['visitor_id'];
+            self::log("Sync Step 1: Adding user $dahuaId (Method 37: QR Support)...");
+            $userPath = '/open-api/api-iot/v2/device/accessControl/addUsers';
+            $userPayload = [
                 'deviceId' => $deviceId,
-                'faces' => [
+                'users' => [
                     [
                         'userId' => $dahuaId,
-                        'photoData' => [$rawBase64],     // array per spec
-                        'photoURL' => $photoUrl         // real hosted URL — satisfies cloud validation
+                        'userName' => $visit['visitor_name'],
+                        'userType' => 0,
+                        'authorityList' => [
+                            ['channelNo' => 0]
+                        ],
+                        'permission' => 0,
+                        'departmentId' => 0,
+                        'verifyType' => 0,
+                        'personalMethod' => 35,
+                        'startTime' => date('Y-m-d H:i:s', strtotime('-1 day')),
+                        'endTime' => date('Y-m-d H:i:s', strtotime("+" . ($visit['validity_number'] ?: $config['default_validity_number'] ?: '8') . " " . ($visit['validity_unit'] ?: $config['default_validity_unit'] ?: 'hours')))
                     ]
                 ]
             ];
-            $faceBody = json_encode($facePayload);
-            sleep(2); // brief propagation window before first attempt
-            for ($attempt = 1; $attempt <= 3; $attempt++) {
-                if ($attempt > 1) {
-                    self::log("Face retry $attempt/3 (waiting 5s)...");
-                    sleep(5);
-                }
-                $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
-                $ch = curl_init($config['base_url'] . $facePath);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_POST => true,
-                    CURLOPT_POSTFIELDS => $faceBody,
-                    CURLOPT_HTTPHEADER => $faceHeaders
-                ]);
-                $faceResp = curl_exec($ch);
-                curl_close($ch);
-                self::log("Step 2 Face (attempt $attempt): " . $faceResp);
-                $faceData = json_decode($faceResp, true);
-                if (($faceData['code'] ?? '') !== 'IDV0098')
-                    break;
-            }
-        }
+            $userBody = json_encode($userPayload);
+            $userHeaders = self::generateSignV2($config, "POST", $userBody, $tokenV2);
+            $ch = curl_init($config['base_url'] . $userPath);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $userBody,
+                CURLOPT_HTTPHEADER => $userHeaders
+            ]);
+            $userResp = curl_exec($ch);
+            curl_close($ch);
+            self::log("Step 1 Response: " . substr($userResp, 0, 120));
 
-        // --- STEP 4: Authorize Card (Handles QR Code) ---
-        if (!empty($visit['visit_code'])) {
-            self::log("Waiting 3s for user record to propagate...");
-            sleep(3);
-            $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
-            $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
-            $cardBody = json_encode($cardPayload);
-            self::log("Step 3 Card Payload: " . $cardBody);
-            for ($attempt = 1; $attempt <= 3; $attempt++) {
-                if ($attempt > 1) {
-                    self::log("Card retry $attempt/3 (waiting 5s)...");
-                    sleep(5);
+            // --- STEP 3: Authorize Face (retry up to 3x with 5s delay for device propagation) ---
+            // Per Dahua API Guide v2.4 s4.12.1.4.2: photoData is array, header must be stripped.
+            // When both photoData + photoURL sent, photoData prevails; photoURL satisfies cloud validation.
+            if ($photoUrl && file_exists($compressedPath)) {
+                $facePath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessFace';
+                $rawBase64 = base64_encode(file_get_contents($compressedPath)); // No data:image prefix
+                $facePayload = [
+                    'deviceId' => $deviceId,
+                    'faces' => [
+                        [
+                            'userId' => $dahuaId,
+                            'photoData' => [$rawBase64],     // array per spec
+                            'photoURL' => $photoUrl         // real hosted URL — satisfies cloud validation
+                        ]
+                    ]
+                ];
+                $faceBody = json_encode($facePayload);
+                sleep(2); // brief propagation window before first attempt
+                for ($attempt = 1; $attempt <= 3; $attempt++) {
+                    if ($attempt > 1) {
+                        self::log("Face retry $attempt/3 (waiting 5s)...");
+                        sleep(5);
+                    }
+                    $faceHeaders = self::generateSignV2($config, "POST", $faceBody, $tokenV2);
+                    $ch = curl_init($config['base_url'] . $facePath);
+                    curl_setopt_array($ch, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_POST => true,
+                        CURLOPT_POSTFIELDS => $faceBody,
+                        CURLOPT_HTTPHEADER => $faceHeaders
+                    ]);
+                    $faceResp = curl_exec($ch);
+                    curl_close($ch);
+                    self::log("Step 2 Face (attempt $attempt): " . $faceResp);
+                    $faceData = json_decode($faceResp, true);
+                    if (($faceData['code'] ?? '') !== 'IDV0098')
+                        break;
                 }
-                $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
-                $ch = curl_init($config['base_url'] . $cardPath);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_POST => true,
-                    CURLOPT_POSTFIELDS => $cardBody,
-                    CURLOPT_HTTPHEADER => $cardHeaders
-                ]);
-                $cardResp = curl_exec($ch);
-                curl_close($ch);
-                self::log("Step 3 Card (attempt $attempt): " . $cardResp);
-                $cardData = json_decode($cardResp, true);
-                if (($cardData['code'] ?? '') !== 'IDV0098')
-                    break;
             }
-        }
+
+            // --- STEP 4: Authorize Card (Handles QR Code) ---
+            if (!empty($visit['visit_code'])) {
+                self::log("Waiting 3s for user record to propagate...");
+                sleep(3);
+                $cardPath = '/open-api/api-iot/v2/device/accessControl/authorizeAccessCard';
+                $cardPayload = ['deviceId' => $deviceId, 'cards' => [['userId' => $dahuaId, 'cardNo' => trim((string) $visit['visit_code']), 'cardStatus' => 0, 'cardType' => 0]]];
+                $cardBody = json_encode($cardPayload);
+                self::log("Step 3 Card Payload: " . $cardBody);
+                for ($attempt = 1; $attempt <= 3; $attempt++) {
+                    if ($attempt > 1) {
+                        self::log("Card retry $attempt/3 (waiting 5s)...");
+                        sleep(5);
+                    }
+                    $cardHeaders = self::generateSignV2($config, "POST", $cardBody, $tokenV2);
+                    $ch = curl_init($config['base_url'] . $cardPath);
+                    curl_setopt_array($ch, [
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_SSL_VERIFYPEER => false,
+                        CURLOPT_POST => true,
+                        CURLOPT_POSTFIELDS => $cardBody,
+                        CURLOPT_HTTPHEADER => $cardHeaders
+                    ]);
+                    $cardResp = curl_exec($ch);
+                    curl_close($ch);
+                    self::log("Step 3 Card (attempt $attempt): " . $cardResp);
+                    $cardData = json_decode($cardResp, true);
+                    if (($cardData['code'] ?? '') !== 'IDV0098')
+                        break;
+                }
+            }
 
         }
 
@@ -363,7 +364,8 @@ class DahuaHelper
         $stmt = $pdo->prepare("SELECT dahua_person_id, visitor_id, access_area FROM visits WHERE id = ?");
         $stmt->execute([$visitId]);
         $visitData = $stmt->fetch();
-        if (!$visitData) return false;
+        if (!$visitData)
+            return false;
 
         // Collect all potential devices for cleanup
         $allDevices = array_filter(array_map('trim', explode(',', $config['device_sns'])));
@@ -380,7 +382,8 @@ class DahuaHelper
             }
         }
 
-        if (empty($allDevices)) return false;
+        if (empty($allDevices))
+            return false;
 
         $dahuaUserId = $visitData['dahua_person_id'] ?: ((string) $visitId . (string) $visitData['visitor_id']);
 
@@ -502,43 +505,35 @@ class DahuaHelper
     }
     public static function getPeopleList($deviceId = null, $pdo = null)
     {
-        if (!$pdo) global $pdo;
+        if (!$pdo)
+            global $pdo;
         $config = self::get_config($pdo);
-
         $token = self::getAccessToken($pdo);
-        if (!$token) return ['error' => 'Failed to obtain Access Token. Check Client ID/Secret.'];
+        if (!$token)
+            return null;
 
-
-        $path = '/open-api/api-base/person/pageGetPerson';
+        $path = '/open-api/api-device/person/pageGetPerson';
         $url = $config['base_url'] . $path;
-        
+
         $body = json_encode([
             'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
             'pageSize' => 100,
             'pageNum' => 1
         ]);
 
+        $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
 
-        $headers = self::generateSignV2($config, "POST", $body, $token);
-        
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        
-
 
         $response = curl_exec($ch);
-        $curl_error = curl_error($ch);
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $data = json_decode($response, true);
         curl_close($ch);
 
-        if ($curl_error) return ['error' => "CURL Error: " . $curl_error];
-        if ($http_code !== 200) return ['error' => "HTTP $http_code: " . $response];
-        
-        return $data['data'] ?? ['error' => 'Invalid JSON structure', 'raw' => $response];
+        return $data['data'] ?? null;
     }
 }
