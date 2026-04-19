@@ -94,10 +94,11 @@ if ($active_tab === 'logs') {
 
 
 
+
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
             $user_data = DahuaHelper::getPeopleList($target_machine);
-            log_db_msg("Sync Debug for $target_machine: " . json_encode($user_data));
+            $_SESSION['raw_debug'] = json_encode($user_data);
             
             if (!empty($user_data['pageData'])) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
@@ -123,7 +124,7 @@ if ($active_tab === 'logs') {
                         $target_machine, 
                         $u['personId'], 
                         $u['name'], 
-                        $u['cardNo'] ?? '',
+                        $u['card_no'] ?? '',
                         count($u['faceList'] ?? []),
                         count($u['fingerprintList'] ?? []),
                         $v_start,
@@ -157,17 +158,24 @@ include 'header.php';
 ?>
 
 
+
 <div class="container-fluid py-3 px-4">
     <?php if (isset($_SESSION['sync_error'])): ?>
         <div class="alert alert-warning shadow-sm border-0 rounded-4 mb-4">
             <div class="d-flex align-items-center">
                 <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
-                <div>
+                <div class="flex-grow-1">
                     <div class="fw-bold">Hardware Sync Warning</div>
-                    <div class="small"><?php echo $_SESSION['sync_error']; unset($_SESSION['sync_error']); ?></div>
+                    <div class="small"><?php echo $_SESSION['sync_error']; ?></div>
+                    <?php if (isset($_SESSION['raw_debug'])): ?>
+                        <div class="mt-2 p-2 bg-dark text-warning rounded-3 font-monospace" style="font-size: 10px; max-height: 100px; overflow: auto;">
+                            RAW: <?php echo htmlspecialchars($_SESSION['raw_debug']); ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
+        <?php unset($_SESSION['sync_error'], $_SESSION['raw_debug']); ?>
     <?php endif; ?>
 
     <!-- Header with Tabs -->
