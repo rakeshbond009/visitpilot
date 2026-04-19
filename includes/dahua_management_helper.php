@@ -24,8 +24,8 @@ class DahuaManagementHelper {
         $bodyHash = hash('sha512', $cleanBody);
         
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-        // Signature factor for Singapore V2
-        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
+        // Signature factor for Singapore V2 - include path for query endpoints
+        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
 
         $headers = [
@@ -51,8 +51,8 @@ class DahuaManagementHelper {
         if (!$token) return ['error' => 'Auth Token Failed'];
 
 
-        // Correct V2 Path for Singapore Region
-        $path = '/open-api/api-iot/v2/person/pageGetPerson';
+        // Correct V2 Path for Singapore Region Access Control User List
+        $path = '/open-api/api-iot/v2/device/accessControl/user/pageGet';
         $url = $config['base_url'] . $path;
         
         $body = json_encode([
@@ -72,9 +72,12 @@ class DahuaManagementHelper {
             CURLOPT_HTTPHEADER => $headers
         ]);
         
+
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        file_put_contents(dirname(__DIR__) . '/dahua_mgmt_debug.txt', "[" . date('Y-m-d H:i:s') . "] Path: $path Response: $response\n", FILE_APPEND);
 
         $data = json_decode($response, true);
         if ($http_code !== 200) return ['error' => "HTTP $http_code", 'raw' => $response];
