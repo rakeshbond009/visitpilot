@@ -2,39 +2,64 @@
 require_once __DIR__ . '/../../includes/db.php';
 require_once __DIR__ . '/../../includes/dahua_helper.php';
 
-header('Content-Type: application/json');
+header('Content-Type: text/plain');
 
 try {
-    // Step 1: Get people list
-    $list = DahuaHelper::getPeopleList($pdo, null);
-    $list_data   = $list['data'] ?? $list;
-    $people_list = $list_data['pageData'] ?? $list_data['list'] ?? (is_array($list_data) ? array_values($list_data) : []);
+    $token = DahuaHelper::getAccessToken($pdo);
+    $config = (new ReflectionMethod('DahuaHelper', 'get_config'))->invoke(null, $pdo);
+    $deviceId = trim(explode(',', $config['device_sns'] ?? '')[0]);
 
-    $output = [
-        'list_raw_keys' => array_keys((array)$list),
-        'data_keys'     => array_keys((array)$list_data),
-        'people_count'  => count($people_list),
-        'people_stubs'  => array_slice($people_list, 0, 3),
-        'details'       => []
-    ];
+    echo "Running Endpoint Tests on Live Server...\n";
 
-    // Step 2: For first 3 users, get full detail
-    foreach (array_slice($people_list, 0, 3) as $stub) {
-        $pid = $stub['personId'] ?? $stub['userId'] ?? null;
-        $dev = $stub['deviceId'] ?? null;
-        if (!$pid) continue;
-        $detail = DahuaHelper::getPersonDetail($dev, $pid, $pdo);
-        $output['details'][$pid] = $detail;
+    function test_endpoint($path, $payload) {
+        global $config, $token;
+        echo "\n=== Testing $path ===\n";
+        $body = json_encode($payload);
+        echo "Body: $body\n";
+        
+        $headers = (new ReflectionMethod('DahuaHelper', 'generateSignV2'))->invoke(null, $config, "POST", $body, $token);
+        
+        $ch = curl_init($config['base_url'] . $path);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $headers
+        ]);
+        $response = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        echo "HTTP $code\n";
+        echo "Response: $response\n";
     }
 
-    // Also read debug log tail
-    $logFile = dirname(dirname(__DIR__)) . '/dahua_debug.txt';
-    if (file_exists($logFile)) {
-        $lines = file($logFile);
-        $output['recent_logs'] = array_slice($lines, -20);
-    }
+    test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
+        'productId' => (string)$config['product_id'],
+        'deviceId'  => $deviceId,
+        'pageSize'  => 10,
+        'pageNum'   => 1
+    ]);
 
-    echo json_encode($output, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
+        'productId' => (int)$config['product_id'],
+        'deviceId'  => $deviceId,
+        'pageSize'  => 10,
+        'pageNum'   => 1
+    ]);
+
+    test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
+        'deviceId'  => $deviceId,
+        'pageSize'  => 10,
+        'pageNum'   => 1
+    ]);
+
+    test_endpoint('/open-api/api-device/person/pageGetPerson', [
+        'deviceId' => $deviceId,
+        'pageSize' => 10,
+        'pageNum' => 1
+    ]);
+
 } catch (Exception $e) {
-    echo json_encode(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    echo "Error: " . $e->getMessage();
 }
