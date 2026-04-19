@@ -25,7 +25,7 @@ class DahuaManagementHelper {
         
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
         // Match Dahua Singapore V2 signing factor
-        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
+        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
 
         $headers = [
@@ -51,13 +51,13 @@ class DahuaManagementHelper {
         if (!$token) return ['error' => 'Auth Token Failed'];
 
         // Correct V2 Path for Singapore Region Access Control User List
-        $path = '/open-api/api-device/person/pageGetPerson';
+        $path = '/open-api/api-iot/v2/device/accessControl/user/pageGet';
         $url = $config['base_url'] . $path;
         
         $body = json_encode([
             'deviceId' => $deviceId,
             'pageSize' => 100,
-            'pageNum' => 1
+            'pageNo' => 1
         ]);
 
         $headers = self::generateHeaders($config, "POST", $path, $body, $token);
