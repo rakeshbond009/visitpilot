@@ -78,4 +78,30 @@ class DahuaManagementHelper {
         
         return $data['data'] ?? ['error' => 'No Data', 'raw' => $response];
     }
+    
+    public static function getDeviceInfo($deviceId, $pdo) {
+        $config = self::get_config($pdo);
+        require_once 'dahua_helper.php';
+        $token = DahuaHelper::getAccessToken($pdo);
+        if (!$token) return ['error' => 'Auth Token Failed'];
+
+        $path = '/open-api/api-iot/v1/device/getDeviceInfo';
+        $url = $config['base_url'] . $path;
+        
+        $body = json_encode(['deviceId' => $deviceId]);
+        $headers = self::generateHeaders($config, "POST", $path, $body, $token);
+        
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $headers
+        ]);
+        
+        $response = curl_exec($ch);
+        curl_close($ch);
+        return json_decode($response, true);
+    }
 }
