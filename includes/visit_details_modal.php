@@ -167,10 +167,22 @@
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-date">${formatDateTime(v.created_at)}</div>
-                            <div class="timeline-title">Visit Registered${v.created_by_name ? ` by ${v.created_by_name}` : ''}</div>
+                            <div class="timeline-title">${v.is_invited == 1 ? 'Invitation Sent' : 'Visit Registered'}${v.created_by_name ? ` by ${v.created_by_name}` : ''}</div>
                             <small class="text-muted">Visitor: ${v.visitor_name}</small>
                         </div>
                     </div>`;
+
+                if (v.gate_registered_at) {
+                    timelineHtml += `
+                    <div class="timeline-item success">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">${formatDateTime(v.gate_registered_at)}</div>
+                            <div class="timeline-title">Registered at Security Desk</div>
+                            <small class="text-muted">Visitor arrived and details captured</small>
+                        </div>
+                    </div>`;
+                }
 
                 if (v.approved_at) {
                     let decision = v.approval_status === 'approved' ? 'Approved' : 'Rejected';

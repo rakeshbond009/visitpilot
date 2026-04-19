@@ -12,6 +12,7 @@ try {
     $sql = "SELECT v.*, vis.name as visitor_name, vis.mobile, vis.photo_path, 
                    COALESCE(NULLIF(v.id_proof_type, ''), vis.id_proof_type) as id_proof_type,
                    COALESCE(NULLIF(v.id_proof_number, ''), vis.id_proof_number) as id_proof_number,
+                   v.gate_registered_at,
                    emp.name as host_name, emp.department, v.access_area, v.assets_carried,
                    u1.full_name as created_by_name,
                    u2.full_name as approved_by_name,

@@ -129,13 +129,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $invited_visit_id = $_POST['invited_visit_id'] ?? null;
 
         if ($invited_visit_id) {
-            // Update existing Invitation - Set to 'approved' status but 'pending' approval_status 
-            // so host can "Acknowledge" it. PDF pass will be sent upon acknowledgement.
+            // Update existing Invitation 
             $visit_id = $invited_visit_id;
             $current_time = current_datetime();
-            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status='pending', assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, created_at=?, created_by=?, validity_number=?, validity_unit=? WHERE id=?");
-            $stmt->execute([$assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $_SESSION['user_id'], $validity_number, $validity_unit, $visit_id]);
-            logAction($pdo, $_SESSION['user_id'], "Invited visitor arrived, awaiting host acknowledgement. (Visit ID: $visit_id)");
+            $new_approval = $auto_approve_visit ? 'approved' : 'pending';
+            
+            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status=?, assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, gate_registered_at=?, validity_number=?, validity_unit=? WHERE id=?");
+            $stmt->execute([$new_approval, $assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $validity_number, $validity_unit, $visit_id]);
+            logAction($pdo, $_SESSION['user_id'], "Invited visitor arrived at gate" . ($auto_approve_visit ? " (Auto-Approved)" : ", awaiting host acknowledgement") . ". (Visit ID: $visit_id)");
         } else {
             // Create New Visit with pending status (requires host approval)
             $visit_code = generateVisitCode();

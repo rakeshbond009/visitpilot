@@ -116,11 +116,13 @@ try {
         $vStmt->execute([$visit_id]);
         $visit_code = $vStmt->fetchColumn();
 
-        $stmt = $pdo->prepare("UPDATE visits SET visitor_id=?, employee_id=?, purpose=?, status='approved', approval_status='approved', check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, created_at=?, created_by=?, validity_number=?, validity_unit=? WHERE id=?");
+        $new_approval = $auto_approve ? 'approved' : 'pending';
+        $stmt = $pdo->prepare("UPDATE visits SET visitor_id=?, employee_id=?, purpose=?, status='approved', approval_status=?, check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, gate_registered_at=?, validity_number=?, validity_unit=? WHERE id=?");
         $stmt->execute([
             $visitor_id,
             $data['employee_id'],
             $data['purpose'],
+            $new_approval,
             $assets,
             $id_proof_type,
             $id_proof_number,
@@ -128,7 +130,6 @@ try {
             $photo_path,
             $total_visitors,
             $current_time,
-            $user_id,
             $validity_number,
             $validity_unit,
             $visit_id
