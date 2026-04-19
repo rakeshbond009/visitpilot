@@ -514,6 +514,18 @@ class DahuaHelper
         return true;
     }
 
+    public static function getConfig($pdo = null) {
+        if (!$pdo) {
+            global $pdo;
+        }
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+        $config = [];
+        while ($row = $stmt->fetch()) {
+            $config[$row['setting_key']] = $row['setting_value'];
+        }
+        return $config;
+    }
+
     public static function getPersonDetail($deviceId, $personId) {
         try {
             $config = self::getConfig();
@@ -572,9 +584,9 @@ class DahuaHelper
         }
         return true;
     }
-    public static function getPeopleList($deviceId = null, $page = 1, $pageSize = 100) {
+    public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100) {
         try {
-            $config = self::getConfig();
+            $config = self::getConfig($pdo);
             $token = self::getAuthToken();
             if (!$token) return ['error' => 'No Token'];
 
