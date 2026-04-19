@@ -16,27 +16,33 @@ class DahuaManagementHelper {
         ];
     }
 
-    private static function generateHeaders($config, $method, $path, $body, $token = "") {
-        $timestamp = (string) round(microtime(true) * 1000);
+    public static function generateHeaders($config, $method, $path, $body, $token, $isV1 = false) {
+        $timestamp = (string)round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
-        $cleanBody = preg_replace('/\s+/', '', $body);
-        $bodyHash = hash('sha512', $cleanBody);
         
-        $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-        // Match Dahua Singapore V2 signing factor
-        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
+        $cleanBody = preg_replace('/\s+/', '', $body);
+        $bodyHash = ($body === "{}" || $body === "") ? "" : hash('sha512', $cleanBody);
+        
+        if ($isV1) {
+            $factor = $config['client_id'] . $timestamp . $nonce . $bodyHash . $config['client_secret'];
+            $sign = strtoupper(md5($factor));
+            $version = 'v1';
+        } else {
+            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+            $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
+            $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
+            $version = 'V1';
+        }
 
         $headers = [
             'Content-Type: application/json',
             'AppAccessToken: ' . $token,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
-
             'Sign: ' . $sign,
             'AccessKey: ' . $config['client_id'],
-            'Version: V1',
+            'Version: ' . $version,
             'X-TraceId-Header: ' . $traceId,
             'ProductID: ' . ($config['product_id'] ?: '1'),
             'Accept-Language: en-US'
@@ -51,16 +57,16 @@ class DahuaManagementHelper {
         if (!$token) return ['error' => 'Auth Token Failed'];
 
         // Correct V2 Path for Singapore Region Access Control User List
-        $path = '/open-api/api-iot/v2/device/accessControl/user/pageGet';
+        $path = '/open-api/api-device/person/pageGetPerson';
         $url = $config['base_url'] . $path;
         
         $body = json_encode([
             'deviceId' => $deviceId,
-            'pageNo' => 1,
+            'pageNum' => 1,
             'pageSize' => 50
         ]);
 
-        $headers = self::generateHeaders($config, "POST", $path, $body, $token);
+        $headers = self::generateHeaders($config, "POST", $path, $body, $token, true);
         
         $ch = curl_init($url);
         curl_setopt_array($ch, [
