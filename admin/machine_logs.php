@@ -133,7 +133,7 @@ if ($active_tab === 'logs') {
                     if (!$pid) continue;
                     
                     // Fetch FULL detail per person — has card/pwd/face/fingerprint/photo
-                    $detail = DahuaHelper::getPersonDetail($target_machine, $pid);
+                    $detail = DahuaHelper::getPersonDetail($target_machine, $pid, $pdo);
                     $u = $detail ?: $person_stub; // fallback to list stub if detail fails
                     
                     // --- Biometrics ---

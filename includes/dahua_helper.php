@@ -514,11 +514,14 @@ class DahuaHelper
         return true;
     }
 
-    public static function getPersonDetail($deviceId, $personId) {
+    public static function getPersonDetail($deviceId, $personId, $pdo = null) {
         try {
-            $config = self::get_config();
-            $token = self::getAccessToken();
-            if (!$token) return null;
+            $config = self::get_config($pdo);
+            $token = self::getAccessToken($pdo);
+            if (!$token) {
+                self::log("getPersonDetail: No token for pid=$personId");
+                return null;
+            }
 
             // IoT v2 endpoint — used for reading person info back from the device
             $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
