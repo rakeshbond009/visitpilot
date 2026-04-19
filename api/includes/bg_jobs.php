@@ -64,31 +64,27 @@ function runJob_registerVisitor($pdo, $payload)
         _vms_log("Approval Matrix OFF — skipping FCM Push to host");
     }
 
-    // 3. WhatsApp to host — only when approval matrix is ON
-    if ($matrix_on === '1') {
-        try {
-            _vms_log("Sending WhatsApp to host $employee_id");
-            require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
-            $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
-            $hStmt->execute([$employee_id]);
-            $host = $hStmt->fetch(PDO::FETCH_ASSOC);
-            if ($host && !empty($host['mobile'])) {
-                sendWhatsAppNotification(
-                    $host['mobile'],
-                    "Visitor $visitor_name has arrived to meet you.",
-                    'visitor_arrival_host_alert',
-                    ["*{$host['name']}*", "*{$visitor_name}*", "*{$purpose}*"]
-                );
-                _vms_log("WhatsApp sent to host mobile " . $host['mobile']);
-            }
-        } catch (Throwable $e) {
-            _vms_log("WhatsApp register error: " . $e->getMessage());
+    // 3. WhatsApp to host
+    try {
+        _vms_log("Sending WhatsApp to host $employee_id");
+        require_once dirname(__DIR__) . '/../includes/whatsapp_helper.php';
+        $hStmt = $pdo->prepare("SELECT mobile, name FROM employees WHERE id = ?");
+        $hStmt->execute([$employee_id]);
+        $host = $hStmt->fetch(PDO::FETCH_ASSOC);
+        if ($host && !empty($host['mobile'])) {
+            sendWhatsAppNotification(
+                $host['mobile'],
+                "Visitor $visitor_name has arrived to meet you.",
+                'visitor_arrival_host_alert',
+                ["*{$host['name']}*", "*{$visitor_name}*", "*{$purpose}*"]
+            );
+            _vms_log("WhatsApp sent to host mobile " . $host['mobile']);
         }
-    } else {
-        _vms_log("Approval Matrix OFF — skipping WhatsApp to host");
+    } catch (Throwable $e) {
+        _vms_log("WhatsApp register error: " . $e->getMessage());
     }
 
-    // 4. Dahua sync (invitation flow OR auto-approved when matrix is OFF)
+    // 4. Dahua sync (invitation flow only)
     if (!empty($payload['sync_dahua'])) {
         bgHelper_syncDahua($pdo, $visit_id);
     }

@@ -176,15 +176,12 @@ try {
     $vRow->execute([$visitor_id]);
     $visitorRow = $vRow->fetch(PDO::FETCH_ASSOC);
 
-    // Determine if Dahua sync is needed
+    // Determine if Dahua sync is needed (only for pre-approved invitation flow)
     $needsDahuaSync = false;
     if ($invitation_id) {
         $chkStmt = $pdo->prepare("SELECT approval_status FROM visits WHERE id = ?");
         $chkStmt->execute([$visit_id]);
         $needsDahuaSync = ($chkStmt->fetchColumn() === 'approved');
-    } elseif ($auto_approve) {
-        // No approval matrix: visitor is already approved, sync immediately
-        $needsDahuaSync = true;
     }
 
     // ✅ COMMIT DB — data is safe before dispatching
