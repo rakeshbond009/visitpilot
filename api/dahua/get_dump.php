@@ -5,13 +5,23 @@ require_once __DIR__ . '/../../includes/dahua_helper.php';
 header('Content-Type: text/plain');
 
 try {
-    $token = DahuaHelper::getAccessToken($pdo);
-    $config = (new ReflectionMethod('DahuaHelper', 'get_config'))->invoke(null, $pdo);
+    $_SESSION['tenant_key'] = 'siddhi'; // SET TENANT HERE!
+    
+    // recreate PDO for siddhi
+    global $master_pdo;
+    $stmt = $master_pdo->prepare("SELECT * FROM tenants WHERE tenant_key = ?");
+    $stmt->execute(['siddhi']);
+    $tenant = $stmt->fetch();
+    $pdoSiddhi = new PDO("mysql:host={$tenant['db_host']};dbname={$tenant['db_name']}", $tenant['db_user'], $tenant['db_pass']);
+    $pdoSiddhi->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $token = DahuaHelper::getAccessToken($pdoSiddhi);
+    $config = (new ReflectionMethod('DahuaHelper', 'get_config'))->invoke(null, $pdoSiddhi);
     $deviceId = trim(explode(',', $config['device_sns'] ?? '')[0]);
 
-    echo "Running Endpoint Tests on Live Server...\n";
+    echo "Running Endpoint Tests on Live Server for Siddhi ($deviceId with PID: {$config['product_id']})...\n";
 
-    function test_endpoint($path, $payload) {
+    function test_endpoint($path, $payload, $pdo = null) {
         global $config, $token;
         echo "\n=== Testing $path ===\n";
         $body = json_encode($payload);
@@ -39,26 +49,22 @@ try {
         'deviceId'  => $deviceId,
         'pageSize'  => 10,
         'pageNum'   => 1
-    ]);
+    ], $pdoSiddhi);
 
+    // Also try without deviceId
     test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
-        'productId' => (int)$config['product_id'],
-        'deviceId'  => $deviceId,
+        'productId' => (string)$config['product_id'],
         'pageSize'  => 10,
         'pageNum'   => 1
-    ]);
+    ], $pdoSiddhi);
 
-    test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
-        'deviceId'  => $deviceId,
-        'pageSize'  => 10,
-        'pageNum'   => 1
-    ]);
-
+    // And try the old DSS style one just in case
     test_endpoint('/open-api/api-device/person/pageGetPerson', [
+        'productId' => (string)$config['product_id'],
         'deviceId' => $deviceId,
         'pageSize' => 10,
         'pageNum' => 1
-    ]);
+    ], $pdoSiddhi);
 
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
