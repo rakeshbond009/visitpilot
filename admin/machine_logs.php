@@ -99,10 +99,10 @@ if ($active_tab === 'logs') {
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
-            // Use DahuaHelper::getPeopleList — same class that successfully runs addUsers
-            $raw_response = DahuaHelper::getPeopleList($target_machine, $pdo);
-            $user_data = $raw_response; // already returns data array or null
-            $_SESSION['raw_debug'] = json_encode($raw_response);
+            // Test: call without deviceId first to check if deviceId format is the issue
+            $raw_response = DahuaHelper::getPeopleList(null, $pdo);
+            $user_data = $raw_response;
+            $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
             
             // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
             $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
