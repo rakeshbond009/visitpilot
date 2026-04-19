@@ -318,6 +318,7 @@ $permission_groups = [
             'security_register' => 'Visitor Registration',
             'security_scan' => 'Access Point QR Scanning',
             'security_search' => 'Global History Search',
+            'view_hardware_logs' => 'Hardware Access Logs',
         ]
     ],
     'host_module' => [

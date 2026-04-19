@@ -446,9 +446,26 @@ class DahuaHelper
                 $scanTime = date('Y-m-d H:i:s', $timeMs / 1000);
                 $deviceId = $event['deviceId'] ?? 'Dahua';
                 $personId = $event['userId'] ?? $event['personId'] ?? null;
-                $personName = $event['userName'] ?? $event['name'] ?? 'Unknown';
+                $personName = $event['userName'] ?? $event['name'] ?? null;
+
+                // Resolve name from DB if missing
+                if (!$personName && $personId) {
+                    $stmtName = $pdo->prepare("(SELECT name as full_name FROM employees WHERE dahua_person_id = ? OR id = ? LIMIT 1) 
+                                               UNION 
+                                               (SELECT full_name FROM users WHERE id = ? LIMIT 1)");
+                    $stmtName->execute([$personId, $personId, $personId]);
+                    $dbName = $stmtName->fetchColumn();
+                    if ($dbName) {
+                        $personName = $dbName;
+                    } else {
+                        $personName = 'Unknown';
+                    }
+                } elseif (!$personName) {
+                    $personName = 'Unknown';
+                }
+
                 $image = $event['capturedImage'] ?? null;
-                $eventType = $event['details'] ?? $event['type'] ?? 'Verification';
+                $eventType = $event['details'] ?? $event['type'] ?? $event['openType'] ?? 'Verification';
 
                 $stmtLog = $pdo->prepare("INSERT INTO machine_logs (machine_id, person_id, person_name, event_type, event_time, image_path, raw_payload) VALUES (?, ?, ?, ?, ?, ?, ?)");
                 $stmtLog->execute([
@@ -482,5 +499,36 @@ class DahuaHelper
             }
         }
         return true;
+    }
+    public static function getPeopleList($deviceId = null, $pdo = null)
+    {
+        if (!$pdo) global $pdo;
+        $config = self::get_config($pdo);
+        $token = self::getAccessToken($pdo);
+        if (!$token) return null;
+
+        $path = '/open-api/api-device/person/pageGetPerson';
+        $url = $config['base_url'] . $path;
+        
+        $body = json_encode([
+            'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
+            'pageSize' => 100,
+            'pageNum' => 1
+        ]);
+
+        $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+        
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        $response = curl_exec($ch);
+        $data = json_decode($response, true);
+        curl_close($ch);
+
+        return $data['data'] ?? null;
     }
 }
