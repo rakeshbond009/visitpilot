@@ -33,8 +33,9 @@ class DahuaManagementHelper {
             'AppAccessToken: ' . $token,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
+
             'Sign: ' . $sign,
-            'AppId: ' . $config['client_id'],
+            'AccessKey: ' . $config['client_id'],
             'Version: V2',
             'X-TraceId-Header: ' . $traceId,
             'ProductID: ' . ($config['product_id'] ?: '1'),
