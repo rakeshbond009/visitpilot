@@ -514,22 +514,10 @@ class DahuaHelper
         return true;
     }
 
-    public static function getConfig($pdo = null) {
-        if (!$pdo) {
-            global $pdo;
-        }
-        $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
-        $config = [];
-        while ($row = $stmt->fetch()) {
-            $config[$row['setting_key']] = $row['setting_value'];
-        }
-        return $config;
-    }
-
     public static function getPersonDetail($deviceId, $personId) {
         try {
-            $config = self::getConfig();
-            $token = self::getAuthToken();
+            $config = self::get_config();
+            $token = self::getAccessToken();
             if (!$token) return null;
 
             $path = "/open-api/api-device/person/getPerson";
@@ -538,10 +526,18 @@ class DahuaHelper
                 'personId' => (string)$personId
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
+            $headers = self::generateSignV2($config, "POST", $body, $token);
 
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $ch = curl_init($config['base_url'] . $path);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => $headers
+            ]);
+            $response = curl_exec($ch);
+            curl_close($ch);
             $data = json_decode($response, true);
 
             return $data['data'] ?? null;
@@ -604,21 +600,31 @@ class DahuaHelper
     }
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100) {
         try {
-            $config = self::getConfig($pdo);
-            $token = self::getAuthToken();
+            $config = self::get_config($pdo);
+            $token = self::getAccessToken($pdo);
             if (!$token) return ['error' => 'No Token'];
 
             $path = "/open-api/api-device/person/pageGetPerson";
+            $targetDeviceId = $deviceId ?: explode(',', $config['device_sns'] ?? '')[0];
             $body = json_encode([
-                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
+                'deviceId' => $targetDeviceId,
                 'pageSize' => $pageSize,
                 'pageNum' => $page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
+            $headers = self::generateSignV2($config, "POST", $body, $token);
 
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $ch = curl_init($config['base_url'] . $path);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => $headers
+            ]);
+            $response = curl_exec($ch);
+            curl_close($ch);
+            
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());

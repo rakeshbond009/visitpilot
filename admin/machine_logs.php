@@ -108,17 +108,16 @@ if ($active_tab === 'logs') {
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
-            // Test: call without deviceId first to check if deviceId format is the issue
-            $raw_response = DahuaHelper::getPeopleList($pdo, null);
-            $user_data = $raw_response;
-            $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
+            $list_response = DahuaHelper::getPeopleList($pdo, $target_machine);
+            // Dahua wraps in data.pageData
+            $list_data   = $list_response['data'] ?? $list_response;
+            $people_list = $list_data['pageData'] ?? (is_array($list_data) ? $list_data : []);
+            $_SESSION['raw_debug'] = 'List returned ' . count($people_list) . ' people | raw keys: ' . implode(',', array_keys($list_response ?? []));
             
-            // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
-            $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
-            if (!empty($people)) {
+            if (!empty($people_list)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, photo_path, validity_start, validity_end, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name), card_no = VALUES(card_no), 
                         face_count = VALUES(face_count), fp_count = VALUES(fp_count), pwd_count = VALUES(pwd_count),
@@ -128,40 +127,60 @@ if ($active_tab === 'logs') {
                         validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
                         updated_at = NOW()");
                 
-                foreach ($people as $u) {
-                    $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime']/1000) : date('Y-m-d H:i:s');
-                    $vp = $u['validityPeriod'] ?? '';
+                $synced = 0;
+                foreach ($people_list as $person_stub) {
+                    $pid = $person_stub['personId'] ?? null;
+                    if (!$pid) continue;
+                    
+                    // Fetch FULL detail per person — has card/pwd/face/fingerprint/photo
+                    $detail = DahuaHelper::getPersonDetail($target_machine, $pid);
+                    $u = $detail ?: $person_stub; // fallback to list stub if detail fails
+                    
+                    // --- Biometrics ---
+                    $cardNo    = trim($u['cardList'][0]['cardNo'] ?? '') ?: '';
+                    $faceCount = count($u['faceList'] ?? []);
+                    $fpCount   = count($u['fingerprintList'] ?? []);
+                    // Dahua password is in pwdList[] array — non-empty means password set
+                    $pwdCount  = count($u['pwdList'] ?? []);
+                    if ($pwdCount === 0 && !empty($u['password'])) $pwdCount = 1;
+
+                    // --- Meta ---
+                    $dept     = $u['department'] ?? ($u['deptName'] ?? '');
+                    $schedule = $u['scheduleMode'] ?? '';
+                    $perm     = $u['doorRight'] ?? ($u['permission'] ?? '');
+                    $uType    = $u['personType'] ?? '';
+                    $tUsed    = $u['timesUsed'] ?? '';
+                    $gPlan    = $u['generalPlan'] ?? '';
+                    $hPlan    = $u['holidayPlan'] ?? '';
+
+                    // --- Photo (hosted URL from faceList) ---
+                    $photoPath = null;
+                    if (!empty($u['faceList'])) {
+                        $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['faceList'][0]['imageUrl'] ?? null;
+                    }
+
+                    // --- Validity ---
                     $v_start = null; $v_end = null;
-                    if (strpos($vp, '~') !== false) {
-                        $parts = explode('~', $vp);
-                        $v_start = $parts[0] ?? null;
-                        $v_end = $parts[1] ?? null;
+                    $vp = $u['validityPeriod'] ?? $u['validPeriod'] ?? '';
+                    if ($vp && strpos($vp, '~') !== false) {
+                        [$v_start, $v_end] = explode('~', $vp, 2);
                     }
                     
                     $upsert->execute([
                         $target_machine, 
-                        $u['personId'], 
-                        $u['name'], 
-                        $u['cardList'][0]['cardNo'] ?? '',
-                        count($u['faceList'] ?? []),
-                        count($u['fingerprintList'] ?? []),
-                        (empty($u['password']) && empty($u['pwd'])) ? 0 : 1, // pwd_count
-                        $u['department'] ?? '1-Default',
-                        $u['scheduleMode'] ?? 'Department Schedule',
-                        $u['doorRight'] ?? $u['permission'] ?? 'User',
-                        $u['personType'] ?? 'General User',
-                        $u['timesUsed'] ?? 'Unlimited',
-                        $u['generalPlan'] ?? '255-Default',
-                        $u['holidayPlan'] ?? '255-Default',
-                        $u['faceList'][0]['photoUrl'] ?? $u['photoPath'] ?? null, // photo_path
-                        $v_start,
-                        $v_end,
-                        $reg_time
+                        $pid, 
+                        $u['name'] ?? $person_stub['name'] ?? 'Unknown',
+                        $cardNo, $faceCount, $fpCount, $pwdCount,
+                        $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan,
+                        $photoPath,
+                        $v_start ?: null,
+                        $v_end ?: null,
                     ]);
+                    $synced++;
                 }
-                $_SESSION['app_msg'] = "Sync Successful: " . count($people) . " users updated.";
+                $_SESSION['app_msg'] = "Sync Successful: $synced users updated.";
             } else {
-                $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device. Raw Count: " . (isset($user_data['totalRows']) ? $user_data['totalRows'] : '0');
+                $_SESSION['sync_error'] = "No users returned from Dahua. Debug: " . htmlspecialchars(json_encode(array_slice((array)$list_response, 0, 3)));
             }
         } catch (Exception $e) { 
             $_SESSION['sync_error'] = "Hardware Sync Failed: " . $e->getMessage();
