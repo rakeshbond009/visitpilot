@@ -5,9 +5,8 @@ require_once __DIR__ . '/../../includes/dahua_helper.php';
 header('Content-Type: text/plain');
 
 try {
-    $_SESSION['tenant_key'] = 'siddhi'; // SET TENANT HERE!
+    $_SESSION['tenant_key'] = 'siddhi';
     
-    // recreate PDO for siddhi
     global $master_pdo;
     $stmt = $master_pdo->prepare("SELECT * FROM tenants WHERE tenant_key = ?");
     $stmt->execute(['siddhi']);
@@ -19,7 +18,7 @@ try {
     $config = (new ReflectionMethod('DahuaHelper', 'get_config'))->invoke(null, $pdoSiddhi);
     $deviceId = trim(explode(',', $config['device_sns'] ?? '')[0]);
 
-    echo "Running Endpoint Tests on Live Server for Siddhi ($deviceId with PID: {$config['product_id']})...\n";
+    echo "Running Endpoint Tests on Live Server for getPersonInfo...\n";
 
     function test_endpoint($path, $payload, $pdo = null) {
         global $config, $token;
@@ -44,26 +43,10 @@ try {
         echo "Response: $response\n";
     }
 
-    test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
+    test_endpoint('/open-api/api-iot/v2/device/accessControl/getPersonInfo', [
         'productId' => (string)$config['product_id'],
         'deviceId'  => $deviceId,
-        'pageSize'  => 10,
-        'pageNum'   => 1
-    ], $pdoSiddhi);
-
-    // Also try without deviceId
-    test_endpoint('/open-api/api-iot/v2/device/accessControl/getUsers', [
-        'productId' => (string)$config['product_id'],
-        'pageSize'  => 10,
-        'pageNum'   => 1
-    ], $pdoSiddhi);
-
-    // And try the old DSS style one just in case
-    test_endpoint('/open-api/api-device/person/pageGetPerson', [
-        'productId' => (string)$config['product_id'],
-        'deviceId' => $deviceId,
-        'pageSize' => 10,
-        'pageNum' => 1
+        'userIds'   => ["1", "sagar"]
     ], $pdoSiddhi);
 
 } catch (Exception $e) {
