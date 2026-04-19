@@ -11,6 +11,7 @@ class DahuaManagementHelper {
         return [
             'client_id' => $settings['dahua_app_id'] ?? null,
             'client_secret' => $settings['dahua_app_secret'] ?? null,
+            'product_id' => $settings['dahua_product_id'] ?? '',
             'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
         ];
     }
@@ -18,12 +19,13 @@ class DahuaManagementHelper {
     private static function generateHeaders($config, $method, $path, $body, $token = "") {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
+        $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
         $cleanBody = preg_replace('/\s+/', '', $body);
         $bodyHash = hash('sha512', $cleanBody);
         
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-        // Some Singapore V2 endpoints require the path in the signature factor
-        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
+        // Signature factor for Singapore V2
+        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
 
         $headers = [
@@ -33,6 +35,8 @@ class DahuaManagementHelper {
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
+            'ProductID: ' . $config['product_id'],
+            'X-TraceId-Header: ' . $traceId,
             'Accept-Language: en-US'
         ];
         if ($token) $headers[] = 'AppAccessToken: ' . $token;
@@ -46,8 +50,9 @@ class DahuaManagementHelper {
         $token = DahuaHelper::getAccessToken($pdo);
         if (!$token) return ['error' => 'Auth Token Failed'];
 
+
         // Correct V2 Path for Singapore Region
-        $path = '/open-api/api-iot/v1/person/pageGetPerson';
+        $path = '/open-api/api-iot/v2/person/pageGetPerson';
         $url = $config['base_url'] . $path;
         
         $body = json_encode([
