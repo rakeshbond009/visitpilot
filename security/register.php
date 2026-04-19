@@ -252,6 +252,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $waResponse = false;
         }
 
+        // --- DAHUA SYNC (For Auto-Approved Walk-ins & Invitations) ---
+        if ($auto_approve_visit === true || $invited_visit_id) {
+            try {
+                require_once '../includes/dahua_helper.php';
+                DahuaHelper::syncVisitor($visit_id, $pdo);
+            } catch (Exception $e) {
+                error_log("Dahua Sync Error in security/register: " . $e->getMessage());
+            }
+        }
+
         // Redirect directly to dashboard
         $waStatusParam = "";
         if ($waResponse === 'skipped_disabled') {
