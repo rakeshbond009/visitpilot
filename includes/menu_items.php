@@ -26,12 +26,12 @@ if (!function_exists('menuPath')) {
 
 <!-- Management Dropdown -->
 <?php if (
-    canView('admin_employees') || canView('admin_reports') || canView('admin_audit') || canView('admin_users') ||
+    canView('admin_employees') || canView('admin_reports') || canView('admin_audit') || canView('admin_users') || canView('view_hardware_logs') ||
     canView('settings_profile') || canView('settings_company') || canView('settings_general') || canView('settings_departments') || canView('settings_access') || canView('settings_email') || canView('settings_tenant') ||
     canView('settings_ai') || canView('settings_dahua') || canView('settings_whatsapp')
 ): ?>
     <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle <?php echo (in_array($current_page, ['employees.php', 'departments.php', 'reports.php', 'audit_logs.php', 'permissions.php', 'settings.php', 'tenants.php', 'cloud_deployment.php'])) ? 'active' : ''; ?>"
+        <a class="nav-link dropdown-toggle <?php echo (in_array($current_page, ['employees.php', 'departments.php', 'reports.php', 'audit_logs.php', 'permissions.php', 'settings.php', 'tenants.php', 'cloud_deployment.php', 'machine_logs.php'])) ? 'active' : ''; ?>"
             href="#" id="mgmtDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i
                 class="bi bi-grid-3x3-gap-fill me-1"></i> Management</a>
         <ul class="dropdown-menu shadow" aria-labelledby="mgmtDropdown">
