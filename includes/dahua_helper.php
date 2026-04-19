@@ -526,8 +526,9 @@ class DahuaHelper
             // IoT v2 endpoint — used for reading person info back from the device
             $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
             $body = json_encode([
-                'deviceId' => $deviceId,
-                'userIds'  => [$personId]
+                'productId' => $config['product_id'],
+                'deviceId'  => $deviceId,
+                'userIds'   => [$personId]
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
@@ -613,9 +614,10 @@ class DahuaHelper
             $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
             $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
             $body = json_encode([
-                'deviceId' => $targetDeviceId,
-                'pageSize' => $pageSize,
-                'pageNum'  => $page
+                'productId' => $config['product_id'],
+                'deviceId'  => $targetDeviceId,
+                'pageSize'  => $pageSize,
+                'pageNum'   => $page
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
