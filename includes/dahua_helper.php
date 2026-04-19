@@ -571,15 +571,33 @@ class DahuaHelper
                 $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
                 $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
+                $pwdCount = (empty($detail['password']) && empty($detail['pwd'])) ? 0 : 1;
+                $dept = $detail['department'] ?? '1-Default';
+                $schedule = $detail['scheduleMode'] ?? 'Department Schedule';
+                $perm = $detail['doorRight'] ?? $detail['permission'] ?? 'User';
+                $uType = $detail['personType'] ?? 'General User';
+                $tUsed = $detail['timesUsed'] ?? 'Unlimited';
+                $gPlan = $detail['generalPlan'] ?? '255-Default';
+                $hPlan = $detail['holidayPlan'] ?? '255-Default';
+                $photoPath = $detail['faceList'][0]['photoUrl'] ?? $detail['photoPath'] ?? null;
 
                 $pdo->prepare("UPDATE machine_users SET 
                     name = ?, 
                     card_no = ?,
                     face_count = ?,
                     fp_count = ?,
+                    pwd_count = ?,
+                    department = ?,
+                    schedule_mode = ?,
+                    permission_level = ?,
+                    user_type = ?,
+                    times_used = ?,
+                    general_plan = ?,
+                    holiday_plan = ?,
+                    photo_path = ?,
                     updated_at = NOW()
                     WHERE person_id = ? AND device_id = ?")
-                ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pid, $deviceId]);
+                ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pwdCount, $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan, $photoPath, $pid, $deviceId]);
             }
         }
         return true;

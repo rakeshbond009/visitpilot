@@ -109,7 +109,7 @@ if ($active_tab === 'logs') {
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
             // Test: call without deviceId first to check if deviceId format is the issue
-            $raw_response = DahuaHelper::getPeopleList(null, $pdo);
+            $raw_response = DahuaHelper::getPeopleList($pdo, null);
             $user_data = $raw_response;
             $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
             
@@ -117,13 +117,14 @@ if ($active_tab === 'logs') {
             $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
             if (!empty($people)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
-                    (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, validity_start, validity_end, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
+                    (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, photo_path, validity_start, validity_end, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name), card_no = VALUES(card_no), 
                         face_count = VALUES(face_count), fp_count = VALUES(fp_count), pwd_count = VALUES(pwd_count),
                         department = VALUES(department), schedule_mode = VALUES(schedule_mode), permission_level = VALUES(permission_level),
                         user_type = VALUES(user_type), times_used = VALUES(times_used), general_plan = VALUES(general_plan), holiday_plan = VALUES(holiday_plan),
+                        photo_path = VALUES(photo_path),
                         validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
                         updated_at = NOW()");
                 
@@ -141,10 +142,10 @@ if ($active_tab === 'logs') {
                         $target_machine, 
                         $u['personId'], 
                         $u['name'], 
-                        $u['card_no'] ?? '',
+                        $u['cardList'][0]['cardNo'] ?? '',
                         count($u['faceList'] ?? []),
                         count($u['fingerprintList'] ?? []),
-                        empty($u['password']) ? 0 : 1, // pwd_count
+                        (empty($u['password']) && empty($u['pwd'])) ? 0 : 1, // pwd_count
                         $u['department'] ?? '1-Default',
                         $u['scheduleMode'] ?? 'Department Schedule',
                         $u['doorRight'] ?? $u['permission'] ?? 'User',
@@ -152,6 +153,7 @@ if ($active_tab === 'logs') {
                         $u['timesUsed'] ?? 'Unlimited',
                         $u['generalPlan'] ?? '255-Default',
                         $u['holidayPlan'] ?? '255-Default',
+                        $u['faceList'][0]['photoUrl'] ?? $u['photoPath'] ?? null, // photo_path
                         $v_start,
                         $v_end,
                         $reg_time
@@ -299,10 +301,23 @@ include 'header.php';
                             <tr>
                                 <td class="ps-4 fw-bold">#<?php echo htmlspecialchars($user['person_id']); ?></td>
                                 <td>
-                                    <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?></div>
-                                    <div class="small text-muted mt-1">
-                                        <i class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
-                                        <i class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
+                                    <div class="d-flex align-items-center">
+                                        <div class="me-3">
+                                            <?php if (!empty($user['photo_path'])): ?>
+                                                <img src="<?php echo htmlspecialchars($user['photo_path']); ?>" alt="Photo" class="rounded-circle shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
+                                            <?php else: ?>
+                                                <div class="rounded-circle border border-2 border-secondary border-opacity-25 d-flex justify-content-center align-items-center bg-light text-secondary" style="width: 50px; height: 50px;">
+                                                    <i class="bi bi-person fs-3"></i>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?></div>
+                                            <div class="small text-muted mt-1">
+                                                <i class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
+                                                <i class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                                 <td>
@@ -324,9 +339,9 @@ include 'header.php';
                                             <span class="small fw-bold text-secondary"><i class="bi bi-key-fill me-2"></i>Password</span>
                                             <span class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['card_no']) ? 'border-info border-opacity-25' : ''; ?>">
+                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty(trim($user['card_no'])) ? 'border-info border-opacity-25' : ''; ?>">
                                             <span class="small fw-bold text-secondary"><i class="bi bi-credit-card-2-front-fill me-2"></i>Card</span>
-                                            <span class="badge <?php echo !empty($user['card_no']) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['card_no']) ? 'Added' : 'Not Added'; ?></span>
+                                            <span class="badge <?php echo !empty(trim($user['card_no'])) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty(trim($user['card_no'])) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['fp_count'] ? 'border-success border-opacity-25' : ''; ?>">
                                             <span class="small fw-bold text-secondary"><i class="bi bi-fingerprint me-2"></i>Fingerprint</span>
