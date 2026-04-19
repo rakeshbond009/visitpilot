@@ -23,9 +23,10 @@ class DahuaManagementHelper {
         $cleanBody = preg_replace('/\s+/', '', $body);
         $bodyHash = hash('sha512', $cleanBody);
         
+
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-        // Signature factor for Singapore V2 - include path for query endpoints
-        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
+        // Match DahuaHelper.php signature factory exactly
+        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
 
         $headers = [
@@ -49,6 +50,8 @@ class DahuaManagementHelper {
         require_once 'dahua_helper.php'; 
         $token = DahuaHelper::getAccessToken($pdo);
         if (!$token) return ['error' => 'Auth Token Failed'];
+
+
 
 
         // Correct V2 Path for Singapore Region Access Control User List
