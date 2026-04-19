@@ -31,6 +31,11 @@ try {
         'card_no' => 'VARCHAR(100)',
         'face_count' => 'INT DEFAULT 0',
         'fp_count' => 'INT DEFAULT 0',
+        'pwd_count' => 'INT DEFAULT 0',
+        'department' => 'VARCHAR(100)',
+        'user_type' => 'VARCHAR(50)',
+        'permission_level' => 'VARCHAR(50)',
+        'photo_path' => 'VARCHAR(255)',
         'validity_start' => 'DATETIME NULL',
         'validity_end' => 'DATETIME NULL',
         'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP',
@@ -282,23 +287,33 @@ include 'header.php';
                                 <td class="ps-4 fw-bold">#<?php echo htmlspecialchars($user['person_id']); ?></td>
                                 <td>
                                     <div class="fw-bold text-dark"><?php echo htmlspecialchars($user['name']); ?></div>
-                                    <div class="small text-muted"><?php echo htmlspecialchars($user['device_id']); ?></div>
+                                    <div class="small text-muted">
+                                        <?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?> &bull; 
+                                        <?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?> &bull; 
+                                        <?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="mb-1">
                                         <i class="bi bi-clock-history me-1 text-muted"></i>
-                                        <small><?php echo ($user['validity_end']) ? date('d/m/Y', strtotime($user['validity_end'])) : 'Permanent Access'; ?></small>
+                                        <small><?php echo ($user['validity_end']) ? date('d/m/Y H:i', strtotime($user['validity_end'])) : 'Permanent Access'; ?></small>
                                     </div>
-                                    <div class="d-flex gap-2">
-                                        <span class="badge <?php echo $user['face_count'] ? 'bg-primary-subtle text-primary' : 'bg-light text-muted'; ?> border-0">
+                                    <div class="d-flex flex-wrap gap-2 mt-2">
+                                        <span class="badge <?php echo $user['face_count'] ? 'bg-primary-subtle text-primary border border-primary border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
                                             <i class="bi bi-person-bounding-box me-1"></i>Face: <?php echo $user['face_count']; ?>
                                         </span>
-                                        <span class="badge <?php echo $user['fp_count'] ? 'bg-success-subtle text-success' : 'bg-light text-muted'; ?> border-0">
+                                        <span class="badge <?php echo $user['fp_count'] ? 'bg-success-subtle text-success border border-success border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
                                             <i class="bi bi-fingerprint me-1"></i>FP: <?php echo $user['fp_count']; ?>
+                                        </span>
+                                        <span class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning-subtle text-dark border border-warning border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
+                                            <i class="bi bi-key-fill me-1"></i>PWD: <?php echo !empty($user['pwd_count']) ? 'Added' : 'No'; ?>
+                                        </span>
+                                        <span class="badge <?php echo !empty($user['card_no']) ? 'bg-info-subtle text-info border border-info border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
+                                            <i class="bi bi-credit-card-2-front-fill me-1"></i>Card: <?php echo !empty($user['card_no']) ? 'Added' : 'No'; ?>
                                         </span>
                                     </div>
                                 </td>
-                                <td><code class="text-dark bg-light px-2 rounded"><?php echo htmlspecialchars($user['card_no'] ?: 'N/A'); ?></code></td>
+                                <td><code class="text-dark bg-light px-2 py-1 rounded"><?php echo htmlspecialchars($user['card_no'] ?: 'N/A'); ?></code></td>
                                 <td><?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></td>
                                 <td class="text-end pe-4"><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold">Active On Device</span></td>
                             </tr>
