@@ -1,21 +1,18 @@
 <?php
-ob_start();
 require_once '../includes/db.php';
-require_once 'header.php'; // Header handles login and enforcePageSecurity
+require_once '../includes/dahua_helper.php';
+requireLogin();
 
-// Permission Check (Same pattern as reports.php)
-$is_admin = (($_SESSION['role'] ?? '') === 'admin');
-$can_view_machine_logs = ($is_admin || canView('view_hardware_logs'));
-
-if (!$can_view_machine_logs) {
-    ob_end_clean();
-    echo "<div class='alert alert-danger m-4'>You do not have permission to view machine logs.</div>";
-    require_once 'footer.php';
+// Permission Check
+if (!canView('view_hardware_logs')) {
+    $_SESSION['app_msg'] = "Access Denied: You do not have permission to view hardware logs.";
+    $home = getHomeUrl($_SESSION['role'] ?? '');
+    header("Location: $home");
     exit;
 }
 
-require_once '../includes/dahua_helper.php';
-$dahua = new DahuaHelper($pdo);
+$page_title = "Hardware Management";
+include 'header.php';
 
 // Pagination for Logs
 $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
@@ -35,275 +32,367 @@ if ($machine_id) {
     $params[] = $machine_id;
 }
 if ($date_from) {
-    $where[] = "DATE(localTime) >= ?";
-    $params[] = $date_from;
+    $where[] = "event_time >= ?";
+    $params[] = $date_from . ' 00:00:00';
 }
 if ($date_to) {
-    $where[] = "DATE(localTime) <= ?";
-    $params[] = $date_to;
+    $where[] = "event_time <= ?";
+    $params[] = $date_to . ' 23:59:59';
 }
 
 $whereClause = implode(" AND ", $where);
 
-// Total Logs for Pagination
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM machine_logs WHERE $whereClause");
+// Count total logs
+$countQuery = $pdo->prepare("SELECT COUNT(*) FROM machine_logs WHERE $whereClause");
+$countQuery->execute($params);
+$total_records = $countQuery->fetchColumn();
+$total_pages = ceil($total_records / $limit);
+
+// Fetch logs
+$sql = "SELECT * FROM machine_logs WHERE $whereClause ORDER BY event_time DESC LIMIT $limit OFFSET $offset";
+$stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$totalLogs = $stmt->fetchColumn();
-$totalPages = ceil($totalLogs / $limit);
+$logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch Logs
-$stmt = $pdo->prepare("SELECT * FROM machine_logs WHERE $whereClause ORDER BY localTime DESC LIMIT $limit OFFSET $offset");
-$stmt->execute($params);
-$logs = $stmt->fetchAll();
 
-// Fetch Machines for Filter
-$machines = $pdo->query("SELECT DISTINCT machine_id, deviceName FROM machine_logs")->fetchAll();
+// 1. EMERGENCY DATABASE CHECK (Prevents Blank Page)
+try {
+    // Create machine_users table if missing
+    $pdo->exec("CREATE TABLE IF NOT EXISTS machine_users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        device_id VARCHAR(100),
+        person_id VARCHAR(100),
+        name VARCHAR(255),
+        card_no VARCHAR(100),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY (device_id, person_id)
+    )");
+    
+    $table_check = $pdo->query("DESCRIBE machine_logs");
+} catch (Exception $e) {
+}
 
-$page_title = "Hardware Access Logs";
+// Get unique machine IDs for filter
+$machines = $pdo->query("SELECT DISTINCT machine_id FROM machine_logs WHERE machine_id IS NOT NULL")->fetchAll(PDO::FETCH_COLUMN);
+
+$active_tab = $_GET['tab'] ?? 'logs';
+$machine_users = [];
+if ($active_tab === 'users') {
+    $target_machine = $machine_id ?: ($machines[0] ?? null);
+    if ($target_machine) {
+        // 1. SYNC: Fetch from hardware and SAVE to our database
+        try {
+            $user_data = DahuaHelper::getPeopleList($target_machine);
+            if (!empty($user_data['pageData'])) {
+                $upsert = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, created_at) 
+                                        VALUES (?, ?, ?, ?) 
+                                        ON DUPLICATE KEY UPDATE name = VALUES(name), updated_at = NOW()");
+                foreach ($user_data['pageData'] as $u) {
+                    $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime']/1000) : date('Y-m-d H:i:s');
+                    $upsert->execute([$target_machine, $u['personId'], $u['name'], $reg_time]);
+                }
+            }
+        } catch (Exception $e) {
+            log_db_msg("Hardware sync failed: " . $e->getMessage());
+        }
+
+        // 2. FETCH: Now load from OUR database with Date Filters
+        $u_where = ["device_id = ?"];
+        $u_params = [$target_machine];
+        
+        if ($date_from) {
+            $u_where[] = "created_at >= ?";
+            $u_params[] = $date_from . ' 00:00:00';
+        }
+        if ($date_to) {
+            $u_where[] = "created_at <= ?";
+            $u_params[] = $date_to . ' 23:59:59';
+        }
+
+        $u_sql = "SELECT * FROM machine_users WHERE " . implode(" AND ", $u_where) . " ORDER BY created_at DESC";
+        $u_stmt = $pdo->prepare($u_sql);
+        $u_stmt->execute($u_params);
+        $machine_users = $u_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
 ?>
-<div class="container-fluid py-4">
+
+<div class="container-fluid py-3 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h4 mb-0"><i class="bi bi-cpu-fill me-2 text-primary"></i>Hardware Access Logs</h2>
-        <div class="btn-group">
-            <button type="button" class="btn btn-outline-primary active" id="tab-logs">Access Logs</button>
-            <button type="button" class="btn btn-outline-primary" id="tab-users">Machine Users</button>
+        <div>
+            <h4 class="mb-1 fw-bold text-dark"><i class="bi bi-cpu-fill text-primary me-2"></i>Hardware Management</h4>
+            <p class="text-muted small mb-0">Monitor logs and users across all Dahua devices.</p>
+        </div>
+        <div class="btn-group shadow-sm rounded-3 overflow-hidden">
+            <a href="?tab=logs&machine_id=<?php echo urlencode($machine_id); ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>" 
+               class="btn <?php echo $active_tab === 'logs' ? 'btn-primary' : 'btn-white border'; ?> px-4">
+               <i class="bi bi-list-check me-2"></i>Access Logs
+            </a>
+            <a href="?tab=users&machine_id=<?php echo urlencode($machine_id); ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>" 
+               class="btn <?php echo $active_tab === 'users' ? 'btn-primary' : 'btn-white border'; ?> px-4">
+               <i class="bi bi-people-fill me-2"></i>Machine Users
+            </a>
         </div>
     </div>
 
-    <!-- LOGS TAB -->
-    <div id="logs-section">
-        <!-- Filters -->
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-body">
-                <form method="GET" class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Device</label>
-                        <select name="machine_id" class="form-select">
-                            <option value="">All Devices</option>
+    <!-- Unified Filter Bar -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
+        <div class="card-body p-3 bg-white">
+            <form method="GET" class="row g-3 align-items-end">
+                <input type="hidden" name="tab" value="<?php echo $active_tab; ?>">
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold text-muted">Select Device</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-cpu"></i></span>
+                        <select name="machine_id" class="form-select border-start-0">
+                            <option value="">All Devices (Master)</option>
                             <?php foreach ($machines as $m): ?>
-                                <option value="<?php echo $m['machine_id']; ?>" <?php echo ($machine_id == $m['machine_id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($m['deviceName'] ?: $m['machine_id']); ?>
+                                <option value="<?php echo htmlspecialchars($m); ?>" <?php echo $machine_id == $m ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($m); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">From Date</label>
-                        <input type="date" name="date_from" class="form-control" value="<?php echo $date_from; ?>">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">To Date</label>
-                        <input type="date" name="date_to" class="form-control" value="<?php echo $date_to; ?>">
-                    </div>
-                    <div class="col-md-3 d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100">Filter</button>
-                        <a href="machine_logs.php" class="btn btn-light border">Reset</a>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Logs Table -->
-        <div class="card shadow-sm border-0">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light">
-                            <tr>
-                                <th class="ps-4">Time</th>
-                                <th>Device</th>
-                                <th>Person</th>
-                                <th>Access Method</th>
-                                <th>Raw Event</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($logs as $log): 
-                                $details = json_decode($log['event_details'], true);
-                                $eventColor = 'secondary';
-                                if (strpos($log['event_type'], 'Access') !== false) $eventColor = 'success';
-                                if (strpos($log['event_type'], 'Alarm') !== false) $eventColor = 'danger';
-                            ?>
-                                <tr>
-                                    <td class="ps-4">
-                                        <div class="fw-bold"><?php echo date('d M Y', strtotime($log['localTime'])); ?></div>
-                                        <small class="text-muted"><?php echo date('h:i:s A', strtotime($log['localTime'])); ?></small>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($log['deviceName']); ?></span>
-                                        <div class="small text-muted"><?php echo $log['machine_id']; ?></div>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar-sm bg-primary-soft text-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width:32px; height:32px; background: #e7f0ff;">
-                                                <i class="bi bi-person"></i>
-                                            </div>
-                                            <div>
-                                                <div class="fw-bold"><?php echo htmlspecialchars($log['personName'] ?: 'Unknown'); ?></div>
-                                                <small class="text-muted">ID: <?php echo $log['personId'] ?: 'N/A'; ?></small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-<?php echo $eventColor; ?>-soft text-<?php echo $eventColor; ?> rounded-pill" style="background-color: rgba(var(--bs-<?php echo $eventColor; ?>-rgb), 0.1);">
-                                            <?php echo htmlspecialchars($log['event_type']); ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick='viewJson(<?php echo json_encode($details); ?>)'>
-                                            <i class="bi bi-code-slash me-1"></i> JSON
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                            <?php if (empty($logs)): ?>
-                                <tr>
-                                    <td colspan="5" class="text-center py-5 text-muted">
-                                        <i class="bi bi-info-circle mb-2 d-block h1"></i>
-                                        No logs found matching filters.
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
                 </div>
-            </div>
-            <!-- Pagination -->
-            <?php if ($totalPages > 1): ?>
-                <div class="card-footer bg-white">
-                    <nav>
-                        <ul class="pagination pagination-sm justify-content-center mb-0">
-                            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                                <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
-                                    <a class="page-item" href="?page=<?php echo $i; ?>&machine_id=<?php echo $machine_id; ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>" class="page-link"><?php echo $i; ?></a>
-                                </li>
-                            <?php endfor; ?>
-                        </ul>
-                    </nav>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Date From</label>
+                    <input type="date" name="date_from" class="form-control" value="<?php echo $date_from; ?>">
                 </div>
-            <?php endif; ?>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Date To</label>
+                    <input type="date" name="date_to" class="form-control" value="<?php echo $date_to; ?>">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100 shadow-sm">
+                        <i class="bi bi-funnel-fill me-2"></i>Filter
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- USERS TAB (Hidden by default) -->
-    <div id="users-section" style="display:none;">
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <div id="users-container">
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Fetching live user list from hardware...</p>
+    <?php if ($active_tab === 'logs'): ?>
+                                <?php endif; ?>
+                                <?php foreach ($logs as $log): ?>
+                                        <tr>
+                                            <td class="ps-4">
+                                                <div class="fw-bold"><?php echo date('d-m-Y H:i:s', strtotime($log['event_time'])); ?></div>
+                                                <span class="badge bg-secondary-subtle text-secondary border small" style="font-size: 10px;">
+                                                    <?php echo htmlspecialchars($log['machine_id']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="fw-bold text-primary"><?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?></div>
+                                                <div class="small text-muted">User ID: <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?></div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-info-subtle text-info border border-info-subtle px-2">
+                                                    <?php echo htmlspecialchars($log['event_type']); ?>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <?php if ($log['image_path']): ?>
+                                                        <img src="<?php echo (strpos($log['image_path'], 'http') === 0) ? htmlspecialchars($log['image_path']) : 'data:image/jpeg;base64,' . $log['image_path']; ?>" 
+                                                             class="rounded border hover-zoom cursor-pointer" style="width: 40px; height: 40px; object-fit: cover;"
+                                                             onclick="viewLogImage(this.src)">
+                                                <?php else: ?>
+                                                        <span class="text-muted small">No Image</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <button class="btn btn-sm btn-light border" onclick='viewRawPayload(<?php echo json_encode($log['raw_payload']); ?>)'>
+                                                    <i class="fas fa-code text-primary"></i> JSON
+                                                </button>
+                                            </td>
+                                        </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                <?php if ($total_pages > 1): ?>
+                        <div class="card-footer bg-white py-3">
+                            <nav>
+                                <ul class="pagination pagination-sm justify-content-center mb-0">
+                                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                            <li class="page-item <?php echo $page == $i ? 'active' : ''; ?>">
+                                                <a class="page-link" href="?tab=logs&page=<?php echo $i; ?>&machine_id=<?php echo $machine_id; ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>"><?php echo $i; ?></a>
+                                            </li>
+                                    <?php endfor; ?>
+                                </ul>
+                            </nav>
+                        </div>
+                <?php endif; ?>
+            </div>
+
+    <?php elseif ($active_tab === 'users'): ?>
+            <!-- MACHINE USERS TAB -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body bg-light border-bottom p-3">
+                    <form method="GET" class="row g-2 align-items-center">
+                        <input type="hidden" name="tab" value="users">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Select Machine to Query</label>
+                            <select name="machine_id" class="form-select form-select-sm">
+                                <?php foreach ($machines as $m): ?>
+                                        <option value="<?php echo htmlspecialchars($m); ?>" <?php echo $machine_id == $m ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($m); ?>
+                                        </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3 pt-4">
+                            <button type="submit" class="btn btn-success btn-sm shadow-sm px-4">
+                                <i class="fas fa-sync-alt me-2"></i>Fetch User List
+                            </button>
+                        </div>
+                        <div class="col-md-5 text-end pt-4">
+                            <span class="badge bg-warning text-dark"><i class="fas fa-info-circle me-1"></i> Live query from hardware</span>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">No.</th>
+                                    <th>Name</th>
+                                    <th>User ID</th>
+                                    <th>Validity Period</th>
+                                    <th>Credentials</th>
+                                    <th class="text-end pe-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($machine_users)): ?>
+                                        <tr>
+                                            <td colspan="6" class="text-center py-5">
+                                                <div class="text-muted mb-2">No users found or hardware not responding.</div>
+                                                <div class="small">Click "Fetch User List" to query the selected device.</div>
+                                            </td>
+                                        </tr>
+                                <?php endif; ?>
+                                <?php foreach ($machine_users as $idx => $user): ?>
+                                        <tr>
+                                            <td class="ps-4 text-muted"><?php echo str_pad($idx + 1, 2, '0', STR_PAD_LEFT); ?></td>
+                                            <td><strong class="text-primary"><?php echo htmlspecialchars($user['name'] ?? 'N/A'); ?></strong></td>
+                                            <td><code class="text-dark bg-light px-2 rounded"><?php echo htmlspecialchars($user['personId'] ?? ''); ?></code></td>
+                                            <td>
+                                                <div class="small">
+                                                    <i class="far fa-calendar-check me-1 text-success"></i>
+                                                    <?php echo !empty($user['validityPeriod']) ? date('d-m-Y', strtotime($user['validityPeriod'])) : 'Permanent'; ?>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex gap-2">
+                                                    <?php if (!empty($user['faceList'])): ?>
+                                                            <i class="fas fa-smile text-primary" title="Face Profile"></i>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($user['fingerprintList'])): ?>
+                                                            <i class="fas fa-fingerprint text-success" title="Fingerprint"></i>
+                                                    <?php endif; ?>
+                                                    <?php if (!empty($user['cardNo'])): ?>
+                                                            <i class="fas fa-id-card text-warning" title="ID Card"></i>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </td>
+                                            <td class="text-end pe-4">
+                                                <span class="badge bg-success shadow-none">Active</span>
+                                            </td>
+                                        </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+    <?php endif; ?>
+</div>
+
+<!-- Raw Payload Modal with Smart Time Formatter -->
+<div class="modal fade" id="payloadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0">
+                <h6 class="modal-title mb-0 fw-bold">Raw Hardware Event JSON</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-dark text-light border-0">
+                <div id="timeSummary" class="mb-3 p-2 rounded bg-primary bg-opacity-10 text-primary small d-none border border-primary border-opacity-25"></div>
+                <pre id="payloadContent" class="mb-0 p-3 bg-black rounded" style="max-height: 500px; overflow-y: auto; font-size: 13px; color: #00ff00;"></pre>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Raw Event Modal -->
-<div class="modal fade" id="jsonModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content border-0">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title">Raw Event Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <pre id="jsonViewer" class="bg-dark text-success p-3 rounded" style="max-height: 500px; overflow-y: auto;"></pre>
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-transparent border-0">
+            <div class="modal-body text-center p-0">
+                <img id="modalImage" src="" class="img-fluid rounded shadow-lg border border-light border-opacity-25">
             </div>
         </div>
     </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const tabLogs = document.getElementById('tab-logs');
-    const tabUsers = document.getElementById('tab-users');
-    const logsSection = document.getElementById('logs-section');
-    const usersSection = document.getElementById('users-section');
-
-    tabLogs.addEventListener('click', function() {
-        tabLogs.classList.add('active');
-        tabUsers.classList.remove('active');
-        logsSection.style.display = 'block';
-        usersSection.style.display = 'none';
-    });
-
-    tabUsers.addEventListener('click', function() {
-        tabUsers.classList.add('active');
-        tabLogs.classList.remove('active');
-        logsSection.style.display = 'none';
-        usersSection.style.display = 'block';
-        fetchUsers();
-    });
-
-    window.viewJson = function(data) {
-        // Deep clone data to avoid modifying original
-        const cleanData = JSON.parse(JSON.stringify(data));
-        
-        // Smart Timestamp Converter
-        const formatTime = (ts) => {
-            if (!ts) return null;
-            const date = new Date(ts.toString().length === 13 ? ts : ts * 1000);
-            return isNaN(date.getTime()) ? ts : date.toLocaleString();
-        };
-
-        if (cleanData.localTime) cleanData.localTime_formatted = formatTime(cleanData.localTime);
-        if (cleanData.utcTime) cleanData.utcTime_formatted = formatTime(cleanData.utcTime);
-
-        document.getElementById('jsonViewer').innerText = JSON.stringify(cleanData, null, 4);
-        new bootstrap.Modal(document.getElementById('jsonModal')).show();
-    };
-
-    function fetchUsers() {
-        const container = document.getElementById('users-container');
-        fetch('api/dahua_proxy.php?action=get_users')
-            .then(r => r.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    let html = `<table class="table table-hover align-middle">
-                        <thead class="bg-light">
-                            <tr>
-                                <th>Person ID</th>
-                                <th>Name</th>
-                                <th>Access Keys</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-                    
-                    data.users.forEach(u => {
-                        let badges = '';
-                        if (u.faceCount > 0) badges += '<span class="badge bg-success me-1"><i class="bi bi-person-bounding-box"></i> Face</span>';
-                        if (u.cardCount > 0) badges += '<span class="badge bg-info me-1"><i class="bi bi-credit-card"></i> Card</span>';
-                        if (u.fingerprintCount > 0) badges += '<span class="badge bg-warning text-dark me-1"><i class="bi bi-fingerprint"></i> Finger</span>';
-                        if (u.passwordCount > 0) badges += '<span class="badge bg-secondary me-1"><i class="bi bi-key"></i> PIN</span>';
-
-                        html += `<tr>
-                            <td><code>${u.personId}</code></td>
-                            <td><strong>${u.name}</strong></td>
-                            <td>${badges || '<small class="text-muted">No Keys</small>'}</td>
-                            <td><span class="badge bg-success-soft text-success">Synced</span></td>
-                        </tr>`;
-                    });
-                    
-                    html += '</tbody></table>';
-                    container.innerHTML = html;
-                } else {
-                    container.innerHTML = `<div class="alert alert-danger">Error: ${data.message}</div>`;
+    function viewRawPayload(payload) {
+        try {
+            const json = typeof payload === 'string' ? JSON.parse(payload) : payload;
+            
+            // Smart Time Formatting for JSON View
+            const timeSummary = document.getElementById('timeSummary');
+            timeSummary.innerHTML = '';
+            timeSummary.classList.add('d-none');
+            
+            let detectedTimes = [];
+            const timeKeys = ['localTime', 'utcTime', 'time'];
+            
+            timeKeys.forEach(key => {
+                if (json[key]) {
+                    const ts = parseInt(json[key]);
+                    if (ts > 100000000000) { // Milliseconds check
+                        const d = new Date(ts);
+                        const human = d.toLocaleString('en-IN');
+                        detectedTimes.push(`<strong>${key}:</strong> ${human}`);
+                    }
                 }
-            })
-            .catch(e => {
-                container.innerHTML = `<div class="alert alert-danger">Failed to fetch users. Check connection.</div>`;
             });
+            
+            if (detectedTimes.length > 0) {
+                timeSummary.innerHTML = '<i class="fas fa-clock me-2"></i>' + detectedTimes.join(' | ');
+                timeSummary.classList.remove('d-none');
+            }
+
+            document.getElementById('payloadContent').textContent = JSON.stringify(json, null, 4);
+        } catch (e) {
+            document.getElementById('payloadContent').textContent = payload;
+        }
+        new bootstrap.Modal(document.getElementById('payloadModal')).show();
     }
-});
+
+    function viewLogImage(src) {
+        document.getElementById('modalImage').src = src;
+        new bootstrap.Modal(document.getElementById('imageModal')).show();
+    }
 </script>
+
 <style>
-.bg-primary-soft { background-color: rgba(67, 97, 238, 0.1); }
-.bg-success-soft { background-color: rgba(46, 204, 113, 0.1); }
-.avatar-sm { width: 32px; height: 32px; line-height: 32px; text-align: center; display: inline-block; }
+    .cursor-pointer { cursor: pointer; }
+    .hover-zoom:hover { transform: scale(1.1); transition: transform 0.2s ease-in-out; }
+    .nav-tabs .nav-link { font-weight: 700; color: #6c757d; border: none; padding: 10px 20px; }
+    .nav-tabs .nav-link.active { color: #4361ee; border-bottom: 3px solid #4361ee; background: transparent; }
+    pre { scrollbar-width: thin; }
 </style>
-<?php
-require_once 'footer.php';
-?>
+
+
+<script>
+function showRawDetails(payload) {
+    const formatted = JSON.stringify(payload, null, 2);
+    alert("Raw Hardware Response:\n\n" + formatted);
+}
+</script>
+
+<?php include 'footer.php'; ?>
