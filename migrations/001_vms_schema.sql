@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS `employees` (
   `email` varchar(100) NOT NULL,
   `mobile` varchar(20) NOT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
+  `dahua_person_id` varchar(100) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -281,19 +282,9 @@ CREATE TABLE IF NOT EXISTS machine_users (
     person_id VARCHAR(100) NOT NULL,
     name VARCHAR(255),
     card_no VARCHAR(100),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY idx_device_person (device_id, person_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS machine_users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    device_id VARCHAR(100) NOT NULL,
-    person_id VARCHAR(100) NOT NULL,
-    name VARCHAR(255),
-    card_no VARCHAR(100),
     face_count INT DEFAULT 0,
     fp_count INT DEFAULT 0,
+    photo_path VARCHAR(255) DEFAULT NULL,
     validity_start DATETIME NULL,
     validity_end DATETIME NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
