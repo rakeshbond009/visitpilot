@@ -178,34 +178,25 @@
                         <div class="timeline-marker"></div>
                         <div class="timeline-content">
                             <div class="timeline-date">${formatDateTime(v.gate_registered_at)}</div>
-                            <div class="timeline-title">Arrived at Gate</div>
-                            <small class="text-muted">Visitor checked in details at security</small>
+                            <div class="timeline-title">Registered at Security Desk</div>
+                            <small class="text-muted">Visitor arrived and details captured</small>
                         </div>
                     </div>`;
                 }
 
                 if (v.approved_at) {
-                    // For invitations, approval is usually done at the time of sending.
-                    // Only show approval if it's a walk-in OR if it's a rejection.
-                    let showApproval = true;
-                    if (v.is_invited == 1 && v.approval_status === 'approved' && v.approved_at <= v.created_at) {
-                        showApproval = false;
-                    }
+                    let decision = v.approval_status === 'approved' ? 'Approved' : 'Rejected';
+                    let decisionClass = v.approval_status === 'approved' ? 'success' : 'danger';
 
-                    if (showApproval) {
-                        let decision = v.approval_status === 'approved' ? 'Approved' : 'Rejected';
-                        let decisionClass = v.approval_status === 'approved' ? 'success' : 'danger';
-
-                        timelineHtml += `
-                        <div class="timeline-item ${decisionClass}">
-                            <div class="timeline-marker"></div>
-                            <div class="timeline-content">
-                                <div class="timeline-date">${formatDateTime(v.approved_at)}</div>
-                                <div class="timeline-title">${decision}${v.approved_by_name ? ` by ${v.approved_by_name}` : ''}</div>
-                                ${v.rejection_reason ? `<small class="text-danger">Reason: ${v.rejection_reason}</small>` : ''}
-                            </div>
-                        </div>`;
-                    }
+                    timelineHtml += `
+                    <div class="timeline-item ${decisionClass}">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-date">${formatDateTime(v.approved_at)}</div>
+                            <div class="timeline-title">${decision}${v.approved_by_name ? ` by ${v.approved_by_name}` : ''}</div>
+                            ${v.rejection_reason ? `<small class="text-danger">Reason: ${v.rejection_reason}</small>` : ''}
+                        </div>
+                    </div>`;
                 }
 
                 if (v.check_in_time) {
