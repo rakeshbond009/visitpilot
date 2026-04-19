@@ -99,7 +99,7 @@ if ($active_tab === 'logs') {
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
-            $user_data = DahuaManagementHelper::getPeopleList($target_machine, $pdo);
+            $user_data = DahuaHelper::getPeopleList($target_machine, $pdo);
             $_SESSION['raw_debug'] = json_encode($user_data);
             
             if (!empty($user_data['pageData'])) {
