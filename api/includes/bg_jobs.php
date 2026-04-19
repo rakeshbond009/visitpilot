@@ -42,11 +42,6 @@ function runJob_registerVisitor($pdo, $payload)
     try {
         _vms_log("Sending FCM Push to host $employee_id");
         require_once dirname(__DIR__) . '/../includes/push_helper.php';
-
-        $is_preapproved = !empty($payload['sync_dahua']); 
-        $title = $is_preapproved ? "Visitor Arrived" : "New Visitor Arrival";
-        $body = $is_preapproved ? "Your visitor $visitor_name has arrived and is on the way." : "$visitor_name is waiting for your approval.";
-
         $pushData = [
             'visitor_id' => (string) $visitor_id,
             'visit_id' => (string) $visit_id,
@@ -58,8 +53,8 @@ function runJob_registerVisitor($pdo, $payload)
             'type' => 'visitor_arrival',
             'assets_carried' => $assets,
         ];
-        sendPushNotification($pdo, $employee_id, $title, $body, $pushData);
-        _vms_log("FCM Push sent to host $employee_id ($title)");
+        sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
+        _vms_log("FCM Push sent to host $employee_id");
     } catch (Throwable $e) {
         _vms_log("FCM register error: " . $e->getMessage());
     }
