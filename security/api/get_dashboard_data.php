@@ -40,6 +40,7 @@ try {
                OR v.status = 'checked_in' 
                OR v.approval_status = 'pending'
                OR DATE(v.approved_at) = CURDATE()
+               OR DATE(v.gate_registered_at) = CURDATE()
                OR (v.approval_status = 'approved' AND v.status = 'pending' AND (DATE(v.created_at) = CURDATE() OR (v.is_invited=1 AND v.visit_date = CURDATE()))))";
     $params = [];
 
@@ -95,7 +96,7 @@ try {
         $time_saved_fmt = "{$h_saved}h {$m_saved}m";
     }
 
-    $today_sql = "SELECT count(*) FROM visits WHERE (DATE(created_at) = CURDATE() OR (is_invited=1 AND visit_date = CURDATE()))";
+    $today_sql = "SELECT count(*) FROM visits WHERE (DATE(created_at) = CURDATE() OR (is_invited=1 AND visit_date = CURDATE()) OR DATE(gate_registered_at) = CURDATE())";
     if ($limit_employee_id)
         $today_sql .= " AND employee_id = " . $pdo->quote($limit_employee_id);
 

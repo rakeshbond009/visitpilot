@@ -52,7 +52,7 @@ try {
 
     // 2. Create visit record (pre-approved as it's an invitation)
     $visit_code = generateVisitCode();
-    $visit_date = $data['visit_date'] ?? date('Y-m-d');
+    $visit_date = !empty($data['visit_date']) ? $data['visit_date'] : date('Y-m-d');
 
     // Generate QR code path
     $qr_filename = 'uploads/qrcodes/INV_' . $visit_code . '.png';
@@ -78,7 +78,7 @@ try {
         error_log("QR Generation Error: " . $curl_error);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, id_proof_type, id_proof_number, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, ?, ?, NOW())");
+    $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, id_proof_type, id_proof_number, created_by, approved_by, approved_at, created_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, ?, ?, NOW(), NOW())");
     $stmt->execute([
         $visitor_id,
         $host_id,

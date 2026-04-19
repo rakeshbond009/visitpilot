@@ -117,7 +117,7 @@ try {
         $visit_code = $vStmt->fetchColumn();
 
         $new_approval = $auto_approve ? 'approved' : 'pending';
-        $stmt = $pdo->prepare("UPDATE visits SET visitor_id=?, employee_id=?, purpose=?, status='approved', approval_status=?, check_in_time=NULL, visit_date=CURDATE(), assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, gate_registered_at=?, validity_number=?, validity_unit=? WHERE id=?");
+        $stmt = $pdo->prepare("UPDATE visits SET visitor_id=?, employee_id=?, purpose=?, status='approved', approval_status=?, check_in_time=NULL, assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, total_visitors=?, gate_registered_at=?, validity_number=?, validity_unit=?, checked_in_by=? WHERE id=?");
         $stmt->execute([
             $visitor_id,
             $data['employee_id'],
@@ -132,13 +132,15 @@ try {
             $current_time,
             $validity_number,
             $validity_unit,
+            $user_id,
             $visit_id
         ]);
     } else {
         $visit_status = $auto_approve ? 'approved' : 'pending';
         $approval_status = $auto_approve ? 'approved' : 'pending';
         $visit_code = generateVisitCode();
-        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $current_v_date = date('Y-m-d');
+        $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by, validity_number, validity_unit, visit_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $visitor_id,
             $photo_path,
@@ -155,7 +157,8 @@ try {
             $current_time,
             $user_id,
             $validity_number,
-            $validity_unit
+            $validity_unit,
+            $current_v_date
         ]);
         $visit_id = $pdo->lastInsertId();
     }

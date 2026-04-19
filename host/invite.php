@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $v_mobile = sanitize($_POST['mobile']);
     $v_email = sanitize($_POST['email'] ?? '');
     $v_purpose = sanitize($_POST['purpose']);
-    $v_date = sanitize($_POST['visit_date'] ?? date('Y-m-d'));
+    $v_date = !empty($_POST['visit_date']) ? sanitize($_POST['visit_date']) : date('Y-m-d');
 
     if (!$host_employee_id) {
         $error = "System Error: Your user account is not linked to an Employee record. Please contact Admin.";
@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 file_put_contents('../' . $qr_filename, $qr_image);
             }
 
-            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, created_by, approved_by, approved_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, NOW())");
+            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, employee_id, purpose, visit_date, visit_code, status, approval_status, is_invited, qr_code_path, access_area, created_by, approved_by, approved_at, created_at) VALUES (?, ?, ?, ?, ?, 'pending', 'approved', 1, ?, 'Not Assigned', ?, ?, NOW(), NOW())");
             $stmt->execute([$visitor_id, $host_employee_id, $v_purpose, $v_date, $visit_code, $qr_filename, $_SESSION['user_id'], $_SESSION['user_id']]);
             $visit_id = $pdo->lastInsertId();
 

@@ -50,7 +50,7 @@ $sql_today = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as host_n
               JOIN visitors vis ON v.visitor_id = vis.id 
               LEFT JOIN employees e ON v.employee_id = e.id
               WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " 
-              AND ((DATE(v.created_at) = CURDATE() OR v.visit_date = CURDATE()))
+              AND (DATE(v.created_at) = CURDATE() OR v.visit_date = CURDATE() OR DATE(v.gate_registered_at) = CURDATE())
               AND v.status IN ('approved', 'checked_in', 'checked_out')
               ORDER BY v.created_at DESC";
 $stmt = $pdo->prepare($sql_today);
@@ -107,7 +107,7 @@ $sql_scheduled = "SELECT v.*, vis.name as visitor_name, vis.mobile, e.name as ho
                   JOIN visitors vis ON v.visitor_id = vis.id 
                   LEFT JOIN employees e ON v.employee_id = e.id
                   WHERE " . ($is_admin ? "1=1" : "v.employee_id = ?") . " AND v.status IN ('pending', 'approved') 
-                  AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()))
+                  AND (DATE(v.created_at) = CURDATE() OR (v.is_invited = 1 AND v.visit_date = CURDATE()) OR DATE(v.gate_registered_at) = CURDATE())
                   ORDER BY v.created_at DESC";
 $stmt_scheduled = $pdo->prepare($sql_scheduled);
 if ($is_admin) {

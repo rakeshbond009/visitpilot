@@ -134,8 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $current_time = current_datetime();
             $new_approval = $auto_approve_visit ? 'approved' : 'pending';
             
-            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status=?, assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, gate_registered_at=?, validity_number=?, validity_unit=? WHERE id=?");
-            $stmt->execute([$new_approval, $assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $validity_number, $validity_unit, $visit_id]);
+            $stmt = $pdo->prepare("UPDATE visits SET status='approved', approval_status=?, assets_carried=?, id_proof_type=?, id_proof_number=?, access_area=?, visit_photo=?, gate_registered_at=?, validity_number=?, validity_unit=?, checked_in_by=? WHERE id=?");
+            $stmt->execute([$new_approval, $assets_carried, $id_proof_type, $id_proof_number, $access_area, $photo_path, $current_time, $validity_number, $validity_unit, $_SESSION['user_id'], $visit_id]);
             logAction($pdo, $_SESSION['user_id'], "Invited visitor arrived at gate" . ($auto_approve_visit ? " (Auto-Approved)" : ", awaiting host acknowledgement") . ". (Visit ID: $visit_id)");
         } else {
             // Create New Visit with pending status (requires host approval)
@@ -154,8 +154,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Explicitly set created_at from PHP to ensure correct timezone (overriding DB default)
             $new_status     = $auto_approve_visit ? 'approved' : 'pending';
             $new_approval   = $auto_approve_visit ? 'approved' : 'pending';
-            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $new_status, $new_approval, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id'], $validity_number, $validity_unit]);
+            $current_date = date('Y-m-d');
+            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by, validity_number, validity_unit, visit_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $new_status, $new_approval, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id'], $validity_number, $validity_unit, $current_date]);
             $visit_id = $pdo->lastInsertId();
             logAction($pdo, $_SESSION['user_id'], "Registered new visitor visit (Pending Approval) ID: $visitor_id (Visit ID: $visit_id)");
         }

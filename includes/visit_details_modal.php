@@ -365,6 +365,24 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start">
+                                            <i class="bi bi-calendar-check text-primary fs-5 me-2 mt-1"></i>
+                                            <div>
+                                                <small class="text-muted d-block mb-1" style="font-size: 0.7rem;">Visit Timing</small>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold text-dark">${v.visit_date ? new Date(v.visit_date).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'}) : 'Walk-in'}</span>
+                                                    ${v.gate_registered_at && v.visit_date && new Date(v.visit_date).toDateString() !== new Date(v.gate_registered_at).toDateString() ? 
+                                                        `<span class="badge bg-warning text-dark" style="font-size: 0.6rem;">
+                                                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                                            Arrived on ${new Date(v.gate_registered_at).toLocaleDateString('en-GB', {day: '2-digit', month: 'short'})}
+                                                        </span>` : ''
+                                                    }
+                                                </div>
+                                                <small class="text-muted" style="font-size: 0.65rem;">Scheduled Target Date</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="col-12 mt-3 p-3 bg-light rounded-3 d-flex align-items-start border border-dashed">
                                         <i class="bi bi-laptop text-dark fs-5 me-3 mt-1"></i>
                                         <div class="flex-grow-1">
