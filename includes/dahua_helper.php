@@ -513,6 +513,66 @@ class DahuaHelper
         }
         return true;
     }
+
+    public static function getPersonDetail($deviceId, $personId) {
+        try {
+            $config = self::getConfig();
+            $token = self::getAuthToken();
+            if (!$token) return null;
+
+            $path = "/open-api/api-device/person/getPerson";
+            $body = json_encode([
+                'deviceId' => $deviceId,
+                'personId' => (string)$personId
+            ]);
+
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers[] = "Authorization: $token";
+
+            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $data = json_decode($response, true);
+
+            return $data['data'] ?? null;
+        } catch (Exception $e) {
+            self::log("Error in getPersonDetail: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    public static function syncAllUsers($deviceId) {
+        $pdo = self::getPDO();
+        // First try the bulk list
+        $allUsers = self::getPeopleList($deviceId, 1, 100);
+        
+        $userList = $allUsers['data']['list'] ?? [];
+        
+        // If bulk failed or is empty, we can't do much without IDs.
+        // But we can update existing "Unknown" users by personId.
+        $stmtUnknown = $pdo->prepare("SELECT DISTINCT person_id FROM machine_users WHERE name = 'Unknown' AND device_id = ?");
+        $stmtUnknown->execute([$deviceId]);
+        $ids = $stmtUnknown->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($ids as $pid) {
+            $detail = self::getPersonDetail($deviceId, $pid);
+            if ($detail) {
+                // Count biometrics
+                $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
+                $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
+                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
+
+                $pdo->prepare("UPDATE machine_users SET 
+                    name = ?, 
+                    card_no = ?,
+                    face_count = ?,
+                    fp_count = ?,
+                    updated_at = NOW()
+                    WHERE person_id = ? AND device_id = ?")
+                ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pid, $deviceId]);
+            }
+        }
+        return true;
+    }
+
     public static function getPeopleList($deviceId = null, $pdo = null)
     {
         if (!$pdo)
