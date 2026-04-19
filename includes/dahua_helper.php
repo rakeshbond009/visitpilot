@@ -440,6 +440,30 @@ class DahuaHelper
         }
 
         foreach ($events as $event) {
+            // ✅ LOG EVERY ENTRY TO machine_logs
+            try {
+                $timeMs = $event['utcTime'] ?? $event['localTime'] ?? $event['time'] ?? (time() * 1000);
+                $scanTime = date('Y-m-d H:i:s', $timeMs / 1000);
+                $deviceId = $event['deviceId'] ?? 'Dahua';
+                $personId = $event['userId'] ?? $event['personId'] ?? null;
+                $personName = $event['userName'] ?? $event['name'] ?? 'Unknown';
+                $image = $event['capturedImage'] ?? null;
+                $eventType = $event['details'] ?? $event['type'] ?? 'Verification';
+
+                $stmtLog = $pdo->prepare("INSERT INTO machine_logs (machine_id, person_id, person_name, event_type, event_time, image_path, raw_payload) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtLog->execute([
+                    $deviceId,
+                    $personId,
+                    $personName,
+                    $eventType,
+                    $scanTime,
+                    $image,
+                    json_encode($event)
+                ]);
+            } catch (Exception $e) {
+                self::log("Error writing to machine_logs: " . $e->getMessage());
+            }
+
             $personId = $event['userId'] ?? $event['personId'] ?? null;
             if (!$personId)
                 continue;

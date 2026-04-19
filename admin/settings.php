@@ -39,6 +39,23 @@ try {
     if (!$check_column) {
         $pdo->exec("ALTER TABLE visits ADD COLUMN access_area VARCHAR(100) NULL AFTER purpose");
     }
+
+    // Ensure Machine Logs Table Exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS machine_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        machine_id VARCHAR(100),
+        person_id VARCHAR(100),
+        person_name VARCHAR(100),
+        event_type VARCHAR(50),
+        event_time DATETIME,
+        image_path LONGTEXT,
+        person_type VARCHAR(50),
+        raw_payload LONGTEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_machine (machine_id),
+        KEY idx_person (person_id),
+        KEY idx_time (event_time)
+    )");
 } catch (PDOException $e) { /* Ignore */
 }
 
