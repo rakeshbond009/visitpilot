@@ -36,9 +36,9 @@ class DahuaManagementHelper {
 
             'Sign: ' . $sign,
             'AccessKey: ' . $config['client_id'],
-            'Version: V1',
+            'Version: v1',
             'X-TraceId-Header: ' . $traceId,
-            'ProductID: ' . ($config['product_id'] ?: '1'),
+            'ProductId: ' . ($config['product_id'] ?: '1'),
             'Accept-Language: en-US'
         ];
         return $headers;
@@ -55,9 +55,7 @@ class DahuaManagementHelper {
         $url = $config['base_url'] . $path;
         
         $body = json_encode([
-            'deviceId' => $deviceId,
-            'pageSize' => 100,
-            'pageNo' => 1
+            'deviceId' => $deviceId
         ]);
 
         $headers = self::generateHeaders($config, "POST", $path, $body, $token);
