@@ -99,10 +99,14 @@ if ($active_tab === 'logs') {
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
-            $user_data = DahuaManagementHelper::getPeopleList($target_machine, $pdo);
-            $_SESSION['raw_debug'] = json_encode($user_data);
+            // Use DahuaHelper::getPeopleList — same class that successfully runs addUsers
+            $raw_response = DahuaHelper::getPeopleList($target_machine, $pdo);
+            $user_data = $raw_response; // already returns data array or null
+            $_SESSION['raw_debug'] = json_encode($raw_response);
             
-            if (!empty($user_data['pageData'])) {
+            // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
+            $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
+            if (!empty($people)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, validity_start, validity_end, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
@@ -112,7 +116,7 @@ if ($active_tab === 'logs') {
                         validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
                         updated_at = NOW()");
                 
-                foreach ($user_data['pageData'] as $u) {
+                foreach ($people as $u) {
                     $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime']/1000) : date('Y-m-d H:i:s');
                     $vp = $u['validityPeriod'] ?? '';
                     $v_start = null; $v_end = null;
@@ -134,7 +138,7 @@ if ($active_tab === 'logs') {
                         $reg_time
                     ]);
                 }
-                $_SESSION['app_msg'] = "Sync Successful: " . count($user_data['pageData']) . " users updated.";
+                $_SESSION['app_msg'] = "Sync Successful: " . count($people) . " users updated.";
             } else {
                 $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device. Raw Count: " . (isset($user_data['totalRows']) ? $user_data['totalRows'] : '0');
             }
