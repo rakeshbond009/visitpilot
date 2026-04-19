@@ -480,6 +480,16 @@ class DahuaHelper
                     $image,
                     json_encode($event)
                 ]);
+
+                // ✅ AUTO-POPULATE machine_users table
+                if ($personId && $deviceId) {
+                    $stmtUser = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, created_at) 
+                        VALUES (?, ?, ?, NOW()) 
+                        ON DUPLICATE KEY UPDATE 
+                            name = COALESCE(NULLIF(VALUES(name), 'Unknown'), name),
+                            updated_at = NOW()");
+                    $stmtUser->execute([$deviceId, $personId, $personName ?: 'Unknown']);
+                }
             } catch (Exception $e) {
                 self::log("Error writing to machine_logs: " . $e->getMessage());
             }
