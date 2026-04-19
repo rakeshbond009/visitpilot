@@ -49,6 +49,13 @@ function isFieldMandatory($field) {
 $def_val_num = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'default_validity_number'")->fetchColumn() ?: '8';
 $def_val_unit = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'default_validity_unit'")->fetchColumn() ?: 'hours';
 
+// Fetch Approval Matrix setting
+$am_stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix'");
+$am_stmt->execute();
+$approval_matrix_on = $am_stmt->fetchColumn();
+$approval_matrix_on = ($approval_matrix_on === false) ? '1' : $approval_matrix_on; // default ON
+$auto_approve_visit  = ($approval_matrix_on !== '1');
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = sanitize($_POST['name']);
     $mobile = sanitize($_POST['mobile']);
@@ -144,8 +151,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             $current_time = current_datetime();
             // Explicitly set created_at from PHP to ensure correct timezone (overriding DB default)
-            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id'], $validity_number, $validity_unit]);
+            $new_status     = $auto_approve_visit ? 'approved' : 'pending';
+            $new_approval   = $auto_approve_visit ? 'approved' : 'pending';
+            $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, assets_carried, id_proof_type, id_proof_number, qr_code_path, created_at, access_area, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$visitor_id, $photo_path, $employee_id, $purpose, $visit_code, $new_status, $new_approval, $assets_carried, $id_proof_type, $id_proof_number, $qr_code_path, $current_time, $access_area, $_SESSION['user_id'], $validity_number, $validity_unit]);
             $visit_id = $pdo->lastInsertId();
             logAction($pdo, $_SESSION['user_id'], "Registered new visitor visit (Pending Approval) ID: $visitor_id (Visit ID: $visit_id)");
         }
@@ -171,7 +180,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         $pdo->commit();
 
-        // --- MOBILE PUSH NOTIFICATIONS ---
+        // --- MOBILE PUSH NOTIFICATIONS (only when approval matrix is ON) ---
+        if ($auto_approve_visit === false) {
         try {
             require_once '../includes/push_helper.php';
             // Fetch visitor name if not available
@@ -210,6 +220,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             error_log("Push Error: " . $e->getMessage());
         }
+        } // end approval matrix check
 
         // --- WHATSAPP NOTIFICATIONS (NEW) ---
         $waResponse = true; // default
@@ -1269,7 +1280,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (response.redirected) {
                         window.location.href = response.url;
                     } else {
-                        window.location.href = 'dashboard.php';
+                        window.location.href = typeof HOME_URL !== 'undefined' ? HOME_URL : 'dashboard.php';
                     }
                 }, 2000);
             } else {

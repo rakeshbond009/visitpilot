@@ -22,6 +22,13 @@ $traceMsg = date('[H:i:s] ') . "Register Request: " . json_encode($data) . "\n";
 file_put_contents(__DIR__ . '/register_push_trace.log', $traceMsg, FILE_APPEND);
 
 try {
+    // Fetch Approval Matrix setting BEFORE transaction
+    $stmtAM = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix'");
+    $stmtAM->execute();
+    $matrix_on = $stmtAM->fetchColumn();
+    $matrix_on = ($matrix_on === false) ? '1' : $matrix_on; // default ON
+    $auto_approve = ($matrix_on !== '1');
+
     $pdo->beginTransaction();
 
     // 1. Handle Photo Save if provided
@@ -102,16 +109,6 @@ try {
     $validity_number = intval($data['validity_number'] ?? 8);
     $validity_unit = $data['validity_unit'] ?? 'hours';
 
-    // Fetch Approval Matrix setting
-    $stmtAM = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'approval_matrix'");
-    $stmtAM->execute();
-    $matrix_on = $stmtAM->fetchColumn();
-    $matrix_on = ($matrix_on === false) ? '1' : $matrix_on; // default ON
-
-    $auto_approve = ($matrix_on !== '1'); // true when matrix is OFF
-    $visit_status    = $auto_approve ? 'approved' : 'pending';
-    $approval_status = $auto_approve ? 'approved' : 'pending';
-
     if ($invitation_id) {
         $visit_id = $invitation_id;
 
@@ -137,6 +134,8 @@ try {
             $visit_id
         ]);
     } else {
+        $visit_status = $auto_approve ? 'approved' : 'pending';
+        $approval_status = $auto_approve ? 'approved' : 'pending';
         $visit_code = generateVisitCode();
         $stmt = $pdo->prepare("INSERT INTO visits (visitor_id, visit_photo, employee_id, purpose, visit_code, status, approval_status, access_area, assets_carried, id_proof_type, id_proof_number, total_visitors, created_at, created_by, validity_number, validity_unit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
@@ -188,18 +187,18 @@ try {
     $pdo->commit();
 
     $bgPayload = [
-        'visit_id'        => $visit_id,
-        'visitor_id'      => $visitor_id,
-        'visit_code'      => $visit_code,
-        'photo_path'      => $photo_path,
-        'employee_id'     => $data['employee_id'],
-        'purpose'         => $data['purpose'],
-        'visitor_name'    => $visitorRow['name']   ?? $data['name'],
-        'visitor_mobile'  => $visitorRow['mobile'] ?? $data['mobile'],
+        'visit_id' => $visit_id,
+        'visitor_id' => $visitor_id,
+        'visit_code' => $visit_code,
+        'photo_path' => $photo_path,
+        'employee_id' => $data['employee_id'],
+        'purpose' => $data['purpose'],
+        'visitor_name' => $visitorRow['name'] ?? $data['name'],
+        'visitor_mobile' => $visitorRow['mobile'] ?? $data['mobile'],
         'visitor_address' => $visitorRow['address'] ?? '',
-        'assets'          => $assets,
-        'sync_dahua'      => $needsDahuaSync,
-        'matrix_on'       => $matrix_on,     // '1' = notifications active, '0' = silent
+        'assets' => $assets,
+        'sync_dahua' => $needsDahuaSync,
+        'matrix_on' => $matrix_on, // For background job FCM toggle
     ];
 
     // ⚡ STEP 1: No-op job writing
@@ -216,9 +215,9 @@ try {
 
     // ⚡ STEP 2: Respond IMMEDIATELY (flush / fastcgi_finish_request)
     sendInstantResponse('success', 'Visitor registered successfully', [
-        'visit_id'        => $visit_id,
-        'visit_code'      => $visit_code,
-        'status'          => ($invitation_id || $auto_approve) ? 'approved' : 'pending',
+        'visit_id' => $visit_id,
+        'visit_code' => $visit_code,
+        'status' => ($invitation_id || $auto_approve) ? 'approved' : 'pending',
         'approval_status' => ($invitation_id || $auto_approve) ? 'approved' : 'pending'
     ]);
 

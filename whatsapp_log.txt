@@ -785,3 +785,14 @@
 [2026-04-18 17:52:23] CALL: Template visitor_otp_verification to 919873028739
 [2026-04-18 17:52:23] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"962057"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"962057"}]}]}}
 [2026-04-18 17:52:24] SUCCESS (200): Template visitor_otp_verification sent to 919873028739 (Lang: en)
+[2026-04-19 15:44:16] CALL: Template visitor_otp_verification to 919873028739
+[2026-04-19 15:44:16] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_otp_verification","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"520308"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"520308"}]}]}}
+[2026-04-19 15:44:17] SUCCESS (200): Template visitor_otp_verification sent to 919873028739 (Lang: en)
+[2026-04-19 15:44:29] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-04-19 15:44:29] CALL: Template visitor_arrival_host_alert to 919873028739
+[2026-04-19 15:44:29] TRACE (Payload): To: 919873028739 | Language: en | JSON: {"messaging_product":"whatsapp","to":"919873028739","type":"template","template":{"name":"visitor_arrival_host_alert","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","text":"*John Doe*"},{"type":"text","text":"*Rakesh Verma*"},{"type":"text","text":"*Interview*"}]}]}}
+[2026-04-19 15:44:30] SUCCESS (200): Template visitor_arrival_host_alert sent to 919873028739 (Lang: en)
+[2026-04-19 15:54:46] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-04-19 15:54:46] SKIP: Template visitor_arrival_host_alert to 919873028739 (Process disabled in admin settings)
+[2026-04-19 16:17:38] TRACE (security/register): Attempting WA to John Doe (9873028739) using visitor_arrival_host_alert
+[2026-04-19 16:17:38] SKIP: Template visitor_arrival_host_alert to 919873028739 (Process disabled in admin settings)

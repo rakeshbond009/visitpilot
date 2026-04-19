@@ -19,49 +19,44 @@ require_once __DIR__ . '/../../includes/dahua_helper.php';
 
 function runJob_registerVisitor($pdo, $payload)
 {
-    $visit_id       = $payload['visit_id']       ?? 0;
-    $visitor_id     = $payload['visitor_id']     ?? 0;
-    $visit_code     = $payload['visit_code']     ?? '';
-    $photo_path     = $payload['photo_path']     ?? '';
-    $employee_id    = $payload['employee_id']    ?? 0;
-    $purpose        = $payload['purpose']        ?? '';
-    $visitor_name   = $payload['visitor_name']   ?? '';
+    $visit_id = $payload['visit_id'] ?? 0;
+    $visitor_id = $payload['visitor_id'] ?? 0;
+    $visit_code = $payload['visit_code'] ?? '';
+    $photo_path = $payload['photo_path'] ?? '';
+    $employee_id = $payload['employee_id'] ?? 0;
+    $purpose = $payload['purpose'] ?? '';
+    $visitor_name = $payload['visitor_name'] ?? '';
     $visitor_mobile = $payload['visitor_mobile'] ?? '';
-    $visitor_address= $payload['visitor_address']?? '';
-    $assets         = $payload['assets']         ?? 'None';
-    $matrix_on      = $payload['matrix_on']      ?? '1'; // default: approval required
+    $visitor_address = $payload['visitor_address'] ?? '';
+    $assets = $payload['assets'] ?? 'None';
 
-    _vms_log("Job registerVisitor starting: visit_id $visit_id (matrix_on=$matrix_on)");
+    _vms_log("Job registerVisitor starting: visit_id $visit_id");
 
-    // 1. QR Code (always generate)
+    // 1. QR Code
     if ($visit_code) {
         _vms_log("Generating QR for $visit_code");
         bgHelper_generateQrCode($visit_code, $visit_id, $pdo);
     }
 
-    // 2. FCM Push to host — only when approval matrix is ON
-    if ($matrix_on === '1') {
-        try {
-            _vms_log("Sending FCM Push to host $employee_id");
-            require_once dirname(__DIR__) . '/../includes/push_helper.php';
-            $pushData = [
-                'visitor_id'    => (string) $visitor_id,
-                'visit_id'      => (string) $visit_id,
-                'visitor_name'  => $visitor_name,
-                'visitor_mobile'=> $visitor_mobile,
-                'purpose'       => $purpose,
-                'company'       => $visitor_address ?: 'General Visitor',
-                'photo_url'     => $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '',
-                'type'          => 'visitor_arrival',
-                'assets_carried'=> $assets,
-            ];
-            sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
-            _vms_log("FCM Push sent to host $employee_id");
-        } catch (Throwable $e) {
-            _vms_log("FCM register error: " . $e->getMessage());
-        }
-    } else {
-        _vms_log("Approval Matrix OFF — skipping FCM Push to host");
+    // 2. FCM Push to host
+    try {
+        _vms_log("Sending FCM Push to host $employee_id");
+        require_once dirname(__DIR__) . '/../includes/push_helper.php';
+        $pushData = [
+            'visitor_id' => (string) $visitor_id,
+            'visit_id' => (string) $visit_id,
+            'visitor_name' => $visitor_name,
+            'visitor_mobile' => $visitor_mobile,
+            'purpose' => $purpose,
+            'company' => $visitor_address ?: 'General Visitor',
+            'photo_url' => $photo_path ? (defined('BASE_URL') ? BASE_URL : '') . $photo_path : '',
+            'type' => 'visitor_arrival',
+            'assets_carried' => $assets,
+        ];
+        sendPushNotification($pdo, $employee_id, "New Visitor Arrival", "$visitor_name is waiting for your approval.", $pushData);
+        _vms_log("FCM Push sent to host $employee_id");
+    } catch (Throwable $e) {
+        _vms_log("FCM register error: " . $e->getMessage());
     }
 
     // 3. WhatsApp to host
