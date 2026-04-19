@@ -40,6 +40,11 @@ if (!function_exists('menuPath')) {
                             class="bi bi-people me-2"></i> Employees</a></li>
             <?php endif; ?>
 
+            <?php if (canView('view_hardware_logs')): ?>
+                <li><a class="dropdown-item" href="<?php echo menuPath('admin', 'machine_logs.php'); ?>"><i
+                            class="bi bi-cpu-fill me-2"></i> Machine Logs</a></li>
+            <?php endif; ?>
+
             <?php if (isset($_SESSION['is_super']) && $_SESSION['is_super']): ?>
                 <li><a class="dropdown-item" href="<?php echo menuPath('admin', 'audit_logs.php'); ?>"><i
                             class="bi bi-journal-text me-2"></i> Logs</a></li>
