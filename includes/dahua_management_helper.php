@@ -25,7 +25,7 @@ class DahuaManagementHelper {
         
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
         // Match Dahua Singapore V2 signing factor
-        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $path . $stringToSign;
+        $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
 
         $headers = [
@@ -36,9 +36,9 @@ class DahuaManagementHelper {
 
             'Sign: ' . $sign,
             'AccessKey: ' . $config['client_id'],
-            'Version: v1',
+            'Version: V1',
             'X-TraceId-Header: ' . $traceId,
-            'ProductId: ' . ($config['product_id'] ?: '1'),
+            'ProductID: ' . ($config['product_id'] ?: '1'),
             'Accept-Language: en-US'
         ];
         return $headers;
