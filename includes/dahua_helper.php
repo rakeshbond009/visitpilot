@@ -518,7 +518,8 @@ class DahuaHelper
             'pageNum' => 1
         ]);
 
-        $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+
+        $headers = self::generateSignV2($config, "POST", $body, $token);
         
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
