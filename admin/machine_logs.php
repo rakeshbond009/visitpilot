@@ -1,8 +1,6 @@
 <?php
-
 require_once '../includes/db.php';
 require_once '../includes/dahua_helper.php';
-require_once '../includes/dahua_management_helper.php';
 requireLogin();
 
 // Permission Check
@@ -13,38 +11,20 @@ if (!canView('view_hardware_logs')) {
     exit;
 }
 
-
-
 // 1. EMERGENCY DATABASE & TABLE READY
 try {
-    // Create base table if missing
     $pdo->exec("CREATE TABLE IF NOT EXISTS machine_users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         device_id VARCHAR(100),
         person_id VARCHAR(100),
+        name VARCHAR(255),
+        card_no VARCHAR(100),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY (device_id, person_id)
     )");
-
-    // Force add missing columns to existing table
-    $columns = [
-        'name' => 'VARCHAR(255)',
-        'card_no' => 'VARCHAR(100)',
-        'face_count' => 'INT DEFAULT 0',
-        'fp_count' => 'INT DEFAULT 0',
-        'validity_start' => 'DATETIME NULL',
-        'validity_end' => 'DATETIME NULL',
-        'created_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP',
-        'updated_at' => 'DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'
-    ];
-
-    foreach ($columns as $col => $type) {
-        $check = $pdo->query("SHOW COLUMNS FROM machine_users LIKE '$col'");
-        if ($check->rowCount() == 0) {
-            $pdo->exec("ALTER TABLE machine_users ADD COLUMN $col $type");
-        }
-    }
 } catch (Exception $e) {
-    log_db_msg("Auto-Migrate Fail: " . $e->getMessage());
+    log_db_msg("Table Check Fail: " . $e->getMessage());
 }
 
 // 2. FILTERS & PAGINATION
@@ -62,7 +42,6 @@ $machines = $pdo->query("SELECT DISTINCT machine_id FROM machine_logs WHERE mach
 $logs = [];
 $total_pages = 0;
 $machine_users = [];
-
 
 if ($active_tab === 'logs') {
     // --- LOAD ACCESS LOGS ---
@@ -86,104 +65,39 @@ if ($active_tab === 'logs') {
 } else {
     // --- LOAD MACHINE USERS ---
     $target_machine = $machine_id ?: ($machines[0] ?? null);
-    
-    // Check if we should sync (clicked "Sync" or DB is empty for this machine)
-    $db_count = $pdo->prepare("SELECT COUNT(*) FROM machine_users WHERE device_id = ?");
-    $db_count->execute([$target_machine]);
-    $is_empty = ($db_count->fetchColumn() == 0);
-
-
-
-
-
-
-    if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
+    if ($target_machine) {
+        // Sync check: Occasionally fetch from hardware if requested or sync triggered
         try {
-            // Test: call without deviceId first to check if deviceId format is the issue
-            $raw_response = DahuaHelper::getPeopleList(null, $pdo);
-            $user_data = $raw_response;
-            $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
-            
-            // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
-            $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
-            if (!empty($people)) {
-                $upsert = $pdo->prepare("INSERT INTO machine_users 
-                    (device_id, person_id, name, card_no, face_count, fp_count, validity_start, validity_end, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
-                    ON DUPLICATE KEY UPDATE 
-                        name = VALUES(name), card_no = VALUES(card_no), 
-                        face_count = VALUES(face_count), fp_count = VALUES(fp_count),
-                        validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
-                        updated_at = NOW()");
-                
-                foreach ($people as $u) {
+            $user_data = DahuaHelper::getPeopleList($target_machine);
+            if (!empty($user_data['pageData'])) {
+                $upsert = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, created_at) 
+                                        VALUES (?, ?, ?, ?) 
+                                        ON DUPLICATE KEY UPDATE name = VALUES(name), updated_at = NOW()");
+                foreach ($user_data['pageData'] as $u) {
                     $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime']/1000) : date('Y-m-d H:i:s');
-                    $vp = $u['validityPeriod'] ?? '';
-                    $v_start = null; $v_end = null;
-                    if (strpos($vp, '~') !== false) {
-                        $parts = explode('~', $vp);
-                        $v_start = $parts[0] ?? null;
-                        $v_end = $parts[1] ?? null;
-                    }
-                    
-                    $upsert->execute([
-                        $target_machine, 
-                        $u['personId'], 
-                        $u['name'], 
-                        $u['card_no'] ?? '',
-                        count($u['faceList'] ?? []),
-                        count($u['fingerprintList'] ?? []),
-                        $v_start,
-                        $v_end,
-                        $reg_time
-                    ]);
+                    $upsert->execute([$target_machine, $u['personId'], $u['name'], $reg_time]);
                 }
-                $_SESSION['app_msg'] = "Sync Successful: " . count($people) . " users updated.";
-            } else {
-                $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device. Raw Count: " . (isset($user_data['totalRows']) ? $user_data['totalRows'] : '0');
             }
-        } catch (Exception $e) { 
-            $_SESSION['sync_error'] = "Hardware Sync Failed: " . $e->getMessage();
-        }
+        } catch (Exception $e) { }
+
+        // Fetch from OUR database with our filters
+        $u_where = ["device_id = ?"];
+        $u_params = [$target_machine];
+        if ($date_from) { $u_where[] = "created_at >= ?"; $u_params[] = $date_from . ' 00:00:00'; }
+        if ($date_to) { $u_where[] = "created_at <= ?"; $u_params[] = $date_to . ' 23:59:59'; }
+
+        $u_sql = "SELECT * FROM machine_users WHERE " . implode(" AND ", $u_where) . " ORDER BY created_at DESC";
+        $u_stmt = $pdo->prepare($u_sql);
+        $u_stmt->execute($u_params);
+        $machine_users = $u_stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-    // Always fetch from OUR database (Instant)
-    $u_where = ["device_id = ?"];
-    $u_params = [$target_machine];
-    if ($date_from) { $u_where[] = "created_at >= ?"; $u_params[] = $date_from . ' 00:00:00'; }
-    if ($date_to) { $u_where[] = "created_at <= ?"; $u_params[] = $date_to . ' 23:59:59'; }
-
-    $u_sql = "SELECT * FROM machine_users WHERE " . implode(" AND ", $u_where) . " ORDER BY created_at DESC";
-    $u_stmt = $pdo->prepare($u_sql);
-    $u_stmt->execute($u_params);
-    $machine_users = $u_stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 $page_title = "Hardware Management";
 include 'header.php';
 ?>
 
-
-
 <div class="container-fluid py-3 px-4">
-    <?php if (isset($_SESSION['sync_error'])): ?>
-        <div class="alert alert-warning shadow-sm border-0 rounded-4 mb-4">
-            <div class="d-flex align-items-center">
-                <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
-                <div class="flex-grow-1">
-                    <div class="fw-bold">Hardware Sync Warning</div>
-                    <div class="small"><?php echo $_SESSION['sync_error']; ?></div>
-                    <?php if (isset($_SESSION['raw_debug'])): ?>
-                        <div class="mt-2 p-2 bg-dark text-warning rounded-3 font-monospace" style="font-size: 10px; max-height: 100px; overflow: auto;">
-                            RAW: <?php echo htmlspecialchars($_SESSION['raw_debug']); ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-        <?php unset($_SESSION['sync_error'], $_SESSION['raw_debug']); ?>
-    <?php endif; ?>
-
     <!-- Header with Tabs -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -198,13 +112,12 @@ include 'header.php';
         </div>
     </div>
 
-
     <!-- Filter Bar -->
     <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden">
         <div class="card-body p-3 bg-white">
             <form method="GET" class="row g-3 align-items-end">
                 <input type="hidden" name="tab" value="<?php echo $active_tab; ?>">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-bold text-muted">Device</label>
                     <select name="machine_id" class="form-select">
                         <option value="">All Devices (Master Config)</option>
@@ -215,14 +128,7 @@ include 'header.php';
                 </div>
                 <div class="col-md-3"><label class="form-label small fw-bold text-muted">From</label><input type="date" name="date_from" class="form-control" value="<?php echo $date_from; ?>"></div>
                 <div class="col-md-3"><label class="form-label small fw-bold text-muted">To</label><input type="date" name="date_to" class="form-control" value="<?php echo $date_to; ?>"></div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-dark fw-bold shadow-sm flex-grow-1">Filter</button>
-                    <?php if ($active_tab === 'users'): ?>
-                        <button type="submit" name="sync" value="1" class="btn btn-success fw-bold shadow-sm">
-                            <i class="bi bi-arrow-repeat me-1"></i>Sync
-                        </button>
-                    <?php endif; ?>
-                </div>
+                <div class="col-md-2"><button type="submit" class="btn btn-dark w-100 fw-bold shadow-sm">Filter</button></div>
             </form>
         </div>
     </div>
@@ -244,9 +150,8 @@ include 'header.php';
                         <tr class="text-uppercase small fw-bold text-muted">
                             <th class="ps-4">Person ID</th>
                             <th>Full Name</th>
-                            <th>Validity / Biometrics</th>
-                            <th>Card</th>
                             <th>Sync Date</th>
+                            <th>Device Serial</th>
                             <th class="text-end pe-4">Status</th>
                         </tr>
                     <?php endif; ?>
@@ -275,32 +180,15 @@ include 'header.php';
                         <?php endforeach; ?>
                     <?php else: ?>
                         <?php if (empty($machine_users)): ?>
-                            <tr><td colspan="6" class="text-center py-5 text-muted">No users found on this machine in our database. Click "Sync" to fetch from hardware.</td></tr>
+                            <tr><td colspan="5" class="text-center py-5 text-muted">No users found on this machine in our database.</td></tr>
                         <?php endif; ?>
                         <?php foreach ($machine_users as $user): ?>
                             <tr>
                                 <td class="ps-4 fw-bold">#<?php echo htmlspecialchars($user['person_id']); ?></td>
-                                <td>
-                                    <div class="fw-bold text-dark"><?php echo htmlspecialchars($user['name']); ?></div>
-                                    <div class="small text-muted"><?php echo htmlspecialchars($user['device_id']); ?></div>
-                                </td>
-                                <td>
-                                    <div class="mb-1">
-                                        <i class="bi bi-clock-history me-1 text-muted"></i>
-                                        <small><?php echo ($user['validity_end']) ? date('d/m/Y', strtotime($user['validity_end'])) : 'Permanent Access'; ?></small>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <span class="badge <?php echo $user['face_count'] ? 'bg-primary-subtle text-primary' : 'bg-light text-muted'; ?> border-0">
-                                            <i class="bi bi-person-bounding-box me-1"></i>Face: <?php echo $user['face_count']; ?>
-                                        </span>
-                                        <span class="badge <?php echo $user['fp_count'] ? 'bg-success-subtle text-success' : 'bg-light text-muted'; ?> border-0">
-                                            <i class="bi bi-fingerprint me-1"></i>FP: <?php echo $user['fp_count']; ?>
-                                        </span>
-                                    </div>
-                                </td>
-                                <td><code class="text-dark bg-light px-2 rounded"><?php echo htmlspecialchars($user['card_no'] ?: 'N/A'); ?></code></td>
-                                <td><?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></td>
-                                <td class="text-end pe-4"><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold">Active On Device</span></td>
+                                <td><div class="fw-bold text-dark"><?php echo htmlspecialchars($user['name']); ?></div></td>
+                                <td><?php echo date('d-M-Y H:i', strtotime($user['created_at'])); ?></td>
+                                <td><span class="badge bg-light text-muted border"><?php echo htmlspecialchars($user['device_id']); ?></span></td>
+                                <td class="text-end pe-4"><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold">Active</span></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
