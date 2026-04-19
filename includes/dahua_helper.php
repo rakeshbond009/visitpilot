@@ -508,7 +508,8 @@ class DahuaHelper
         $token = self::getAccessToken($pdo);
         if (!$token) return ['error' => 'Failed to obtain Access Token. Check Client ID/Secret.'];
 
-        $path = '/open-api/api-device/person/pageGetPerson';
+
+        $path = '/open-api/api-base/person/pageGetPerson';
         $url = $config['base_url'] . $path;
         
         $body = json_encode([
