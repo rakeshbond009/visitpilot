@@ -33,8 +33,12 @@ try {
         'fp_count' => 'INT DEFAULT 0',
         'pwd_count' => 'INT DEFAULT 0',
         'department' => 'VARCHAR(100)',
-        'user_type' => 'VARCHAR(50)',
+        'schedule_mode' => 'VARCHAR(100)',
         'permission_level' => 'VARCHAR(50)',
+        'user_type' => 'VARCHAR(50)',
+        'times_used' => 'VARCHAR(100)',
+        'general_plan' => 'VARCHAR(100)',
+        'holiday_plan' => 'VARCHAR(100)',
         'photo_path' => 'VARCHAR(255)',
         'validity_start' => 'DATETIME NULL',
         'validity_end' => 'DATETIME NULL',
@@ -113,11 +117,13 @@ if ($active_tab === 'logs') {
             $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
             if (!empty($people)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
-                    (device_id, person_id, name, card_no, face_count, fp_count, validity_start, validity_end, created_at) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
+                    (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, validity_start, validity_end, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) 
                     ON DUPLICATE KEY UPDATE 
                         name = VALUES(name), card_no = VALUES(card_no), 
-                        face_count = VALUES(face_count), fp_count = VALUES(fp_count),
+                        face_count = VALUES(face_count), fp_count = VALUES(fp_count), pwd_count = VALUES(pwd_count),
+                        department = VALUES(department), schedule_mode = VALUES(schedule_mode), permission_level = VALUES(permission_level),
+                        user_type = VALUES(user_type), times_used = VALUES(times_used), general_plan = VALUES(general_plan), holiday_plan = VALUES(holiday_plan),
                         validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
                         updated_at = NOW()");
                 
@@ -138,6 +144,14 @@ if ($active_tab === 'logs') {
                         $u['card_no'] ?? '',
                         count($u['faceList'] ?? []),
                         count($u['fingerprintList'] ?? []),
+                        empty($u['password']) ? 0 : 1, // pwd_count
+                        $u['department'] ?? '1-Default',
+                        $u['scheduleMode'] ?? 'Department Schedule',
+                        $u['doorRight'] ?? $u['permission'] ?? 'User',
+                        $u['personType'] ?? 'General User',
+                        $u['timesUsed'] ?? 'Unlimited',
+                        $u['generalPlan'] ?? '255-Default',
+                        $u['holidayPlan'] ?? '255-Default',
                         $v_start,
                         $v_end,
                         $reg_time
@@ -247,12 +261,11 @@ include 'header.php';
                         </tr>
                     <?php else: ?>
                         <tr class="text-uppercase small fw-bold text-muted">
-                            <th class="ps-4">Person ID</th>
-                            <th>Full Name</th>
-                            <th>Validity / Biometrics</th>
-                            <th>Card</th>
-                            <th>Sync Date</th>
-                            <th class="text-end pe-4">Status</th>
+                            <th class="ps-4">No.</th>
+                            <th>Identity & Type</th>
+                            <th>Plans & Config</th>
+                            <th>Verification Modes</th>
+                            <th>Validity Period</th>
                         </tr>
                     <?php endif; ?>
                 </thead>
@@ -286,36 +299,49 @@ include 'header.php';
                             <tr>
                                 <td class="ps-4 fw-bold">#<?php echo htmlspecialchars($user['person_id']); ?></td>
                                 <td>
-                                    <div class="fw-bold text-dark"><?php echo htmlspecialchars($user['name']); ?></div>
-                                    <div class="small text-muted">
-                                        <?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?> &bull; 
-                                        <?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?> &bull; 
-                                        <?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
+                                    <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?></div>
+                                    <div class="small text-muted mt-1">
+                                        <i class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
+                                        <i class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="mb-1">
-                                        <i class="bi bi-clock-history me-1 text-muted"></i>
-                                        <small><?php echo ($user['validity_end']) ? date('d/m/Y H:i', strtotime($user['validity_end'])) : 'Permanent Access'; ?></small>
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2 mt-2">
-                                        <span class="badge <?php echo $user['face_count'] ? 'bg-primary-subtle text-primary border border-primary border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
-                                            <i class="bi bi-person-bounding-box me-1"></i>Face: <?php echo $user['face_count']; ?>
-                                        </span>
-                                        <span class="badge <?php echo $user['fp_count'] ? 'bg-success-subtle text-success border border-success border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
-                                            <i class="bi bi-fingerprint me-1"></i>FP: <?php echo $user['fp_count']; ?>
-                                        </span>
-                                        <span class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning-subtle text-dark border border-warning border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
-                                            <i class="bi bi-key-fill me-1"></i>PWD: <?php echo !empty($user['pwd_count']) ? 'Added' : 'No'; ?>
-                                        </span>
-                                        <span class="badge <?php echo !empty($user['card_no']) ? 'bg-info-subtle text-info border border-info border-opacity-25' : 'bg-light text-muted border border-light'; ?>">
-                                            <i class="bi bi-credit-card-2-front-fill me-1"></i>Card: <?php echo !empty($user['card_no']) ? 'Added' : 'No'; ?>
-                                        </span>
+                                    <div class="small">
+                                        <div class="mb-1"><span class="text-muted fw-bold">Dept:</span> <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?></span></div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">Schedule:</span> <?php echo htmlspecialchars($user['schedule_mode'] ?: 'Department Schedule'); ?></div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">General:</span> <?php echo htmlspecialchars($user['general_plan'] ?: '255-Default'); ?></div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">Holiday:</span> <?php echo htmlspecialchars($user['holiday_plan'] ?: '255-Default'); ?></div>
+                                        <div><span class="text-muted fw-bold">Times Used:</span> <?php echo htmlspecialchars($user['times_used'] ?: 'Unlimited'); ?></div>
                                     </div>
                                 </td>
-                                <td><code class="text-dark bg-light px-2 py-1 rounded"><?php echo htmlspecialchars($user['card_no'] ?: 'N/A'); ?></code></td>
-                                <td><?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></td>
-                                <td class="text-end pe-4"><span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-bold">Active On Device</span></td>
+                                <td>
+                                    <div class="d-flex flex-column gap-2">
+                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['face_count'] ? 'border-primary border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i class="bi bi-person-bounding-box me-2"></i>Face</span>
+                                            <span class="badge <?php echo $user['face_count'] ? 'bg-primary' : 'bg-secondary bg-opacity-25 text-dark'; ?>">Added: <?php echo $user['face_count']; ?></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['pwd_count']) ? 'border-warning border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i class="bi bi-key-fill me-2"></i>Password</span>
+                                            <span class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['card_no']) ? 'border-info border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i class="bi bi-credit-card-2-front-fill me-2"></i>Card</span>
+                                            <span class="badge <?php echo !empty($user['card_no']) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['card_no']) ? 'Added' : 'Not Added'; ?></span>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['fp_count'] ? 'border-success border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i class="bi bi-fingerprint me-2"></i>Fingerprint</span>
+                                            <span class="badge <?php echo $user['fp_count'] ? 'bg-success' : 'bg-secondary bg-opacity-25 text-dark'; ?>">Added: <?php echo $user['fp_count']; ?></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="pe-4">
+                                    <div class="mb-2">
+                                        <i class="bi bi-calendar-event me-1 text-muted"></i>
+                                        <span class="fw-bold small"><?php echo ($user['validity_end']) ? date('d-m-Y H:i:s', strtotime($user['validity_end'])) : '31-12-2037 23:59:59'; ?></span>
+                                    </div>
+                                    <div class="small text-muted mb-2">Sync: <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></div>
+                                    <span class="badge bg-success px-3 py-1 rounded-pill">Active On Device</span>
+                                </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
