@@ -520,14 +520,14 @@ class DahuaHelper
             $token = self::getAccessToken();
             if (!$token) return null;
 
-            $path = "/open-api/api-device/person/getPerson";
+            // IoT v2 endpoint — used for reading person info back from the device
+            $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
             $body = json_encode([
                 'deviceId' => $deviceId,
-                'personId' => (string)$personId
+                'userIds'  => [$personId]
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
-
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -539,8 +539,10 @@ class DahuaHelper
             $response = curl_exec($ch);
             curl_close($ch);
             $data = json_decode($response, true);
+            self::log("getPersonDetail($personId): " . substr($response, 0, 200));
 
-            return $data['data'] ?? null;
+            // IoT v2 returns data.list[0]
+            return $data['data']['list'][0] ?? $data['data'] ?? null;
         } catch (Exception $e) {
             self::log("Error in getPersonDetail: " . $e->getMessage());
             return null;
@@ -604,16 +606,16 @@ class DahuaHelper
             $token = self::getAccessToken($pdo);
             if (!$token) return ['error' => 'No Token'];
 
-            $path = "/open-api/api-device/person/pageGetPerson";
-            $targetDeviceId = $deviceId ?: explode(',', $config['device_sns'] ?? '')[0];
+            // IoT v2 endpoint — same server that addUsers works on
+            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
+            $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
             $body = json_encode([
                 'deviceId' => $targetDeviceId,
                 'pageSize' => $pageSize,
-                'pageNum' => $page
+                'pageNum'  => $page
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
-
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -624,7 +626,7 @@ class DahuaHelper
             ]);
             $response = curl_exec($ch);
             curl_close($ch);
-            
+            self::log("getPeopleList raw: " . substr($response, 0, 300));
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
