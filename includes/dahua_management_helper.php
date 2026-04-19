@@ -23,36 +23,31 @@ class DahuaManagementHelper {
         $cleanBody = preg_replace('/\s+/', '', $body);
         $bodyHash = hash('sha512', $cleanBody);
         
-
         $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-        // Match DahuaHelper.php signature factory exactly
+        // Match Dahua Singapore V2 signing factor
         $strAuthFactor = $config['client_id'] . $token . $timestamp . $nonce . $stringToSign;
         $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $config['client_secret']));
 
         $headers = [
             'Content-Type: application/json',
-            'Version: V1',
-            'AccessKey: ' . $config['client_id'],
+            'AppAccessToken: ' . $token,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductID: ' . $config['product_id'],
+            'AppId: ' . $config['client_id'],
+            'Version: V2',
             'X-TraceId-Header: ' . $traceId,
+            'ProductID: ' . ($config['product_id'] ?: '1'),
             'Accept-Language: en-US'
         ];
-        if ($token) $headers[] = 'AppAccessToken: ' . $token;
         return $headers;
     }
 
     public static function getPeopleList($deviceId, $pdo) {
         $config = self::get_config($pdo);
-        // We reuse the existing token from the original helper to avoid double-fetching
         require_once 'dahua_helper.php'; 
         $token = DahuaHelper::getAccessToken($pdo);
         if (!$token) return ['error' => 'Auth Token Failed'];
-
-
-
 
         // Correct V2 Path for Singapore Region Access Control User List
         $path = '/open-api/api-iot/v2/device/accessControl/user/pageGet';
@@ -75,12 +70,9 @@ class DahuaManagementHelper {
             CURLOPT_HTTPHEADER => $headers
         ]);
         
-
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-
-        file_put_contents(dirname(__DIR__) . '/dahua_mgmt_debug.txt', "[" . date('Y-m-d H:i:s') . "] Path: $path Response: $response\n", FILE_APPEND);
 
         $data = json_decode($response, true);
         if ($http_code !== 200) return ['error' => "HTTP $http_code", 'raw' => $response];
