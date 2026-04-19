@@ -109,12 +109,17 @@ if ($active_tab === 'logs') {
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
             $list_response = DahuaHelper::getPeopleList($pdo, $target_machine);
-            // Dahua wraps in data.pageData
-            $list_data   = $list_response['data'] ?? $list_response;
-            $people_list = $list_data['pageData'] ?? (is_array($list_data) ? $list_data : []);
-            $_SESSION['raw_debug'] = 'List returned ' . count($people_list) . ' people | raw keys: ' . implode(',', array_keys($list_response ?? []));
             
-            if (!empty($people_list)) {
+            // Protect against API Failure strings or API 500
+            if (isset($list_response['success']) && $list_response['success'] === false) {
+                $_SESSION['sync_error'] = "Dahua Error: " . ($list_response['msg'] ?? 'Server Exception');
+            } else {
+                // Dahua wraps in data.pageData
+                $list_data   = $list_response['data'] ?? $list_response;
+                $people_list = $list_data['pageData'] ?? (is_array($list_data) ? $list_data : []);
+                $_SESSION['raw_debug'] = 'List returned ' . (is_array($people_list) ? count($people_list) : 0) . ' people | raw msg: ' . ($list_response['msg'] ?? 'OK');
+                
+                if (is_array($people_list) && !empty($people_list)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, photo_path, validity_start, validity_end, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
@@ -179,10 +184,11 @@ if ($active_tab === 'logs') {
                     $synced++;
                 }
                 $_SESSION['app_msg'] = "Sync Successful: $synced users updated.";
-            } else {
-                $_SESSION['sync_error'] = "No users returned from Dahua. Debug: " . htmlspecialchars(json_encode(array_slice((array)$list_response, 0, 3)));
+            } else if (!isset($_SESSION['sync_error'])) {
+                $_SESSION['sync_error'] = "No users returned from Dahua or invalid list format.";
             }
-        } catch (Exception $e) { 
+            } // end success check
+        } catch (Throwable $e) { 
             $_SESSION['sync_error'] = "Hardware Sync Failed: " . $e->getMessage();
         }
     }
