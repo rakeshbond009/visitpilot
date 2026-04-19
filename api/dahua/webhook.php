@@ -24,6 +24,36 @@ if (!$data) {
 // Get tenant from URL (?tenant=siddhi)
 $tenant_key = $_GET['tenant'] ?? 'default';
 
+// ── Auto-populate machine_users from webhook event ──────────────────────────
+// Since Dahua's management API returns 500 for this device, we build
+// machine_users incrementally from the events Dahua already pushes to us.
+try {
+    $msgBody = $data['msgBody'] ?? [];
+    $events  = $msgBody['data'] ?? (isset($msgBody['personId']) ? [$msgBody] : 
+               (isset($data['personId']) ? [$data] : []));
+
+    foreach ($events as $event) {
+        $personId   = $event['userId'] ?? $event['personId'] ?? null;
+        $personName = $event['userName'] ?? $event['name'] ?? null;
+        $deviceId   = $event['deviceId'] ?? null;
+        $cardNo     = $event['cardNo'] ?? '';
+
+        if ($personId && $deviceId) {
+            $pdo->prepare(
+                "INSERT INTO machine_users (device_id, person_id, name, card_no, created_at)
+                 VALUES (?, ?, ?, ?, NOW())
+                 ON DUPLICATE KEY UPDATE
+                     name    = COALESCE(NULLIF(VALUES(name), ''), name),
+                     card_no = COALESCE(NULLIF(VALUES(card_no), ''), card_no),
+                     updated_at = NOW()"
+            )->execute([$deviceId, $personId, $personName ?: 'Unknown', $cardNo]);
+        }
+    }
+} catch (Exception $e) {
+    error_log("machine_users upsert error: " . $e->getMessage());
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // Process the event
 try {
     $result = DahuaHelper::processEvent($data, $pdo);
