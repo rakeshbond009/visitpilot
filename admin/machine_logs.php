@@ -6,7 +6,8 @@ requireLogin();
 // Permission Check
 if (!canView('view_hardware_logs')) {
     $_SESSION['app_msg'] = "Access Denied: You do not have permission to view hardware logs.";
-    header("Location: dashboard.php");
+    $home = getHomeUrl($_SESSION['role'] ?? '');
+    header("Location: $home");
     exit;
 }
 
