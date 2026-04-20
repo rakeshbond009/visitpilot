@@ -514,15 +514,42 @@ class DahuaHelper
         return true;
     }
 
-    public static function getConfig($pdo = null) {
-        if (!$pdo) {
-            global $pdo;
-        }
-        $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+    public static function getConfig($tenant_pdo = null) {
+        global $pdo, $master_pdo;
+        $db = $tenant_pdo ?: $pdo;
         $config = [];
-        while ($row = $stmt->fetch()) {
-            $config[$row['setting_key']] = $row['setting_value'];
+        
+        // Try searching in the provided DB first
+        try {
+            $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $config[$row['setting_key']] = $row['setting_value'];
+            }
+        } catch (Exception $e) {
+            // If not found in tenant or error, try fallback to Master
+            if (isset($master_pdo) && $db !== $master_pdo) {
+                try {
+                    $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $config[$row['setting_key']] = $row['setting_value'];
+                    }
+                } catch (Exception $e2) {
+                    // Fail silently or log
+                }
+            }
         }
+        
+        // Final check: if still empty, check 'system_settings' table which some versions use
+        if (empty($config)) {
+            $check_db = $master_pdo ?? $db;
+            try {
+                $stmt = $check_db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $config[$row['setting_key']] = $row['setting_value'];
+                }
+            } catch (Exception $fallback) {}
+        }
+
         return $config;
     }
 
