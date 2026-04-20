@@ -57,9 +57,8 @@ class DahuaHelper
             $sign = strtoupper(md5($factor));
             $version = 'v1'; // Trying lowercase v1 again for Singapore
         } else {
-            $cleanBody = self::deleteWhitespace($body);
-            $bodyHash = hash('sha512', $cleanBody);
-            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+            $bodyHash = hash('sha512', $body);
+            $stringToSign = $method . "\n" . $bodyHash;
             // Include path if provided (Singapore requirement for SOME endpoints)
             $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
