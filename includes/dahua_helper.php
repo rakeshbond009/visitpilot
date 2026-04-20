@@ -18,13 +18,13 @@ class DahuaHelper
             return [];
 
         try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'product_id'");
             $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
             return [
-                'client_id' => $settings['dahua_app_id'] ?? null,
-                'client_secret' => $settings['dahua_app_secret'] ?? null,
-                'product_id' => $settings['dahua_product_id'] ?? '',
+                'client_id' => $settings['dahua_app_id'] ?? $settings['client_id'] ?? null,
+                'client_secret' => $settings['dahua_app_secret'] ?? $settings['client_secret'] ?? null,
+                'product_id' => $settings['dahua_product_id'] ?? $settings['product_id'] ?? '',
                 'device_sns' => $settings['dahua_device_sns'] ?? '',
                 'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
             ];
