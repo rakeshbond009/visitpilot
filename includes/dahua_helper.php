@@ -543,10 +543,31 @@ class DahuaHelper
             $response = curl_exec($ch);
             curl_close($ch);
             $data = json_decode($response, true);
-            self::log("getPersonDetail($personId): " . substr($response, 0, 200));
+            self::log("getPersonDetail($personId) V2: " . substr($response, 0, 200));
+            $person = $data['data']['list'][0] ?? $data['data'] ?? null;
 
-            // IoT v2 returns data.list[0]
-            return $data['data']['list'][0] ?? $data['data'] ?? null;
+            // --- FAIL-SAFE: Fallback to V1 if V2 returns limited fields ---
+            if (!$person || (!isset($person['faceList']) && !isset($person['cardNo']) && !isset($person['cardNumber']))) {
+                $pathV1 = '/open-api/api-iot/v1/device/user/getUsers';
+                $headersV1 = self::generateSignV2($config, "POST", $body, $token);
+                $chV1 = curl_init($config['base_url'] . $pathV1);
+                curl_setopt_array($chV1, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $body,
+                    CURLOPT_HTTPHEADER => $headersV1
+                ]);
+                $responseV1 = curl_exec($chV1);
+                curl_close($chV1);
+                $dataV1 = json_decode($responseV1, true);
+                if (isset($dataV1['data']['list'][0])) {
+                    $person = $dataV1['data']['list'][0];
+                    self::log("Detail V2 stubby, V1 full profile found.");
+                }
+            }
+
+            return $person;
         } catch (Exception $e) {
             self::log("Error in getPersonDetail: " . $e->getMessage());
             return null;
@@ -617,12 +638,13 @@ class DahuaHelper
             // IoT v2 endpoint — same server that addUsers works on
             $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
             $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
-            $body = json_encode([
+            $bodyArr = [
                 'productId' => $config['product_id'],
                 'deviceId'  => $targetDeviceId,
                 'pageSize'  => $pageSize,
                 'pageNum'   => $page
-            ]);
+            ];
+            $body = json_encode($bodyArr);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
             $ch = curl_init($config['base_url'] . $path);
@@ -635,8 +657,31 @@ class DahuaHelper
             ]);
             $response = curl_exec($ch);
             curl_close($ch);
-            self::log("getPeopleList raw: " . substr($response, 0, 300));
-            return json_decode($response, true);
+            $resData = json_decode($response, true);
+            
+            // --- Fallback to V1 if V2 fails with 500 ---
+            if (isset($resData['code']) && $resData['code'] == '500') {
+                $pathV1 = '/open-api/api-iot/v1/device/user/getUsers';
+                $headersV1 = self::generateSignV2($config, "POST", $body, $token);
+                $chV1 = curl_init($config['base_url'] . $pathV1);
+                curl_setopt_array($chV1, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $body,
+                    CURLOPT_HTTPHEADER => $headersV1
+                ]);
+                $responseV1 = curl_exec($chV1);
+                curl_close($chV1);
+                $resDataV1 = json_decode($responseV1, true);
+                if (isset($resDataV1['code']) && $resDataV1['code'] != '500') {
+                    $resData = $resDataV1;
+                    self::log("V2 Failed, V1 list succeeded.");
+                }
+            }
+
+            self::log("getPeopleList raw: " . substr(isset($responseV1) ? $responseV1 : $response, 0, 300));
+            return $resData;
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
             return ['error' => $e->getMessage()];
