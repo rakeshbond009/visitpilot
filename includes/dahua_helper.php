@@ -45,9 +45,9 @@ class DahuaHelper
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $appId = $config['client_id'];
-        $secret = $config['client_secret'];
-        $productId = $config['product_id'] ?? '';
+        $appId = $config['client_id'] ?? $config['dahua_app_id'] ?? '';
+        $secret = $config['client_secret'] ?? $config['dahua_app_secret'] ?? '';
+        $productId = $config['product_id'] ?? $config['dahua_product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
         if ($isV1) {
@@ -563,7 +563,7 @@ class DahuaHelper
     public static function getPersonDetail($deviceId, $personId)
     {
         try {
-            $config = self::getConfig();
+            $config = self::get_config();
             $token = self::getAuthToken();
             if (!$token)
                 return null;
@@ -631,7 +631,7 @@ class DahuaHelper
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
     {
         try {
-            $config = self::getConfig($pdo);
+            $config = self::get_config($pdo);
             $token = self::getAuthToken();
             if (!$token)
                 return ['error' => 'No Token'];
