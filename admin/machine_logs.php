@@ -128,7 +128,7 @@ if ($active_tab === 'logs') {
 
             // --- FAIL-SAFE FALLBACK: If API list fails with 500, use local logs to find IDs ---
             if (empty($people_list) || ($list_response['code'] ?? '') == '500') {
-                $stmtLogs = $pdo->prepare("SELECT DISTINCT person_id as personId, person_name as name FROM machine_logs WHERE machine_id = ? AND person_id IS NOT NULL");
+                $stmtLogs = $pdo->prepare("SELECT person_id as personId, MAX(person_name) as name FROM machine_logs WHERE machine_id = ? AND person_id IS NOT NULL GROUP BY person_id");
                 $stmtLogs->execute([$target_machine]);
                 $people_list = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
                 $_SESSION['raw_debug'] = 'API Failed (500). Falling back to local logs. Found ' . count($people_list) . ' users.';
