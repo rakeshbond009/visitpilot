@@ -9,7 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    public static function get_config($pdo = null)
+    private static function get_config($pdo = null)
     {
         if (!$pdo) {
             global $pdo;
@@ -59,24 +59,27 @@ class DahuaHelper
         } else {
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
-            // README Pattern: AccessKey + Token + Timestamp + Nonce + Method + "\n" + BodyHash
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $method . "\n" . $bodyHash;
+            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+            // Include path if provided (Singapore requirement for SOME endpoints)
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+            $version = 'V1';
         }
 
         $headers = [
             'Content-Type: application/json',
-            'Version: v1',
+            'Version: ' . $version,
             'AccessKey: ' . $appId,
-            'ProductId: ' . $productId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'Traceid: ' . $traceId
+            'ProductID: ' . $productId,
+            'X-TraceId-Header: ' . $traceId,
+            'Accept-Language: en-US'
         ];
 
         if ($appAccessToken) {
-            $headers[] = 'Appaccesstoken: ' . $appAccessToken;
+            $headers[] = 'AppAccessToken: ' . $appAccessToken;
         }
 
         return $headers;
@@ -108,46 +111,26 @@ class DahuaHelper
     public static function getAccessToken($pdo = null)
     {
         $config = self::get_config($pdo);
-        if (empty($config['client_id']) || empty($config['client_secret'])) return null;
-        
+        if (empty($config['client_id']) || empty($config['client_secret']))
+            return null;
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
-            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) return $tokenData['access_token'];
+            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time())
+                return $tokenData['access_token'];
         }
-
-        $appId = $config['client_id'];
-        $secret = $config['client_secret'];
-        $prodId = $config['product_id'];
-        $timestamp = (string) round(microtime(true) * 1000);
-        $nonce = bin2hex(random_bytes(16));
-        
-        $factor = $appId . $prodId . $timestamp . $nonce . "v1" . $secret;
-        $sign = strtoupper(md5($factor));
-        
-        $url = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
-        $headers = [
-            'Content-Type: application/json',
-            'Version: v1',
-            'AccessKey: ' . $appId,
-            'Timestamp: ' . $timestamp,
-            'Nonce: ' . $nonce,
-            'Sign: ' . $sign,
-            'ProductId: ' . $prodId
-        ];
-
+        $path = '/open-api/api-base/auth/getAppAccessToken';
+        $url = $config['base_url'] . $path;
+        $headers = self::generateSignV2($config, "POST", "{}");
         $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => "{}",
-            CURLOPT_HTTPHEADER => $headers
-        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, "{}");
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         $response = curl_exec($ch);
         $data = json_decode($response, true);
         curl_close($ch);
-
         if (isset($data['data']['appAccessToken'])) {
             $token = $data['data']['appAccessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
@@ -531,54 +514,50 @@ class DahuaHelper
         return true;
     }
 
-    public static function getPersonDetail($deviceId, $personId, $pdo = null)
-    {
+    public static function getConfig($pdo = null) {
+        if (!$pdo) {
+            global $pdo;
+        }
+        $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+        $config = [];
+        while ($row = $stmt->fetch()) {
+            $config[$row['setting_key']] = $row['setting_value'];
+        }
+        return $config;
+    }
+
+    public static function getPersonDetail($deviceId, $personId) {
         try {
-            $config = self::get_config($pdo);
-            $token = self::getAccessToken($pdo);
-            if (!$token) {
-                self::log("getPersonDetail: No token for pid=$personId");
-                return null;
-            }
+            $config = self::getConfig();
+            $token = self::getAuthToken();
+            if (!$token) return null;
 
-            // IoT v2 endpoint — used for reading person info back from the device
-            $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
+            $path = "/open-api/api-device/person/getPerson";
             $body = json_encode([
-                'productId' => $config['product_id'],
                 'deviceId' => $deviceId,
-                'userIds' => [$personId]
+                'personId' => (string)$personId
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token);
-            $ch = curl_init($config['base_url'] . $path);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $body,
-                CURLOPT_HTTPHEADER => $headers
-            ]);
-            $response = curl_exec($ch);
-            curl_close($ch);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers[] = "Authorization: $token";
+
+            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
             $data = json_decode($response, true);
-            self::log("getPersonDetail($personId): " . substr($response, 0, 200));
 
-            // IoT v2 returns data.list[0]
-            return $data['data']['list'][0] ?? $data['data'] ?? null;
+            return $data['data'] ?? null;
         } catch (Exception $e) {
             self::log("Error in getPersonDetail: " . $e->getMessage());
             return null;
         }
     }
 
-    public static function syncAllUsers($deviceId)
-    {
+    public static function syncAllUsers($deviceId) {
         $pdo = self::getPDO();
         // First try the bulk list
         $allUsers = self::getPeopleList($deviceId, 1, 100);
-
+        
         $userList = $allUsers['data']['list'] ?? [];
-
+        
         // If bulk failed or is empty, we can't do much without IDs.
         // But we can update existing "Unknown" users by personId.
         $stmtUnknown = $pdo->prepare("SELECT DISTINCT person_id FROM machine_users WHERE name = 'Unknown' AND device_id = ?");
@@ -592,67 +571,36 @@ class DahuaHelper
                 $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
                 $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
-                $pwdCount = (empty($detail['password']) && empty($detail['pwd'])) ? 0 : 1;
-                $dept = $detail['department'] ?? '1-Default';
-                $schedule = $detail['scheduleMode'] ?? 'Department Schedule';
-                $perm = $detail['doorRight'] ?? $detail['permission'] ?? 'User';
-                $uType = $detail['personType'] ?? 'General User';
-                $tUsed = $detail['timesUsed'] ?? 'Unlimited';
-                $gPlan = $detail['generalPlan'] ?? '255-Default';
-                $hPlan = $detail['holidayPlan'] ?? '255-Default';
-                $photoPath = $detail['faceList'][0]['photoUrl'] ?? $detail['photoPath'] ?? null;
 
                 $pdo->prepare("UPDATE machine_users SET 
                     name = ?, 
                     card_no = ?,
                     face_count = ?,
                     fp_count = ?,
-                    pwd_count = ?,
-                    department = ?,
-                    schedule_mode = ?,
-                    permission_level = ?,
-                    user_type = ?,
-                    times_used = ?,
-                    general_plan = ?,
-                    holiday_plan = ?,
-                    photo_path = ?,
                     updated_at = NOW()
                     WHERE person_id = ? AND device_id = ?")
-                    ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pwdCount, $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan, $photoPath, $pid, $deviceId]);
+                ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pid, $deviceId]);
             }
         }
         return true;
     }
-    public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
-    {
+    public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100) {
         try {
-            $config = self::get_config($pdo);
-            $token = self::getAccessToken($pdo);
-            if (!$token)
-                return ['error' => 'No Token'];
+            $config = self::getConfig($pdo);
+            $token = self::getAuthToken();
+            if (!$token) return ['error' => 'No Token'];
 
-            // IoT v2 endpoint — same server that addUsers works on
-            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
-            $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
+            $path = "/open-api/api-device/person/pageGetPerson";
             $body = json_encode([
-                'productId' => $config['product_id'],
-                'deviceId' => $targetDeviceId,
+                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
                 'pageSize' => $pageSize,
                 'pageNum' => $page
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token);
-            $ch = curl_init($config['base_url'] . $path);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => $body,
-                CURLOPT_HTTPHEADER => $headers
-            ]);
-            $response = curl_exec($ch);
-            curl_close($ch);
-            self::log("getPeopleList raw: " . substr($response, 0, 300));
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers[] = "Authorization: $token";
+
+            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
