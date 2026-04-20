@@ -77,9 +77,18 @@ if ($active_tab === 'logs') {
     // --- LOAD ACCESS LOGS ---
     $where = ["1=1"];
     $params = [];
-    if ($machine_id) { $where[] = "machine_id = ?"; $params[] = $machine_id; }
-    if ($date_from) { $where[] = "event_time >= ?"; $params[] = $date_from . ' 00:00:00'; }
-    if ($date_to) { $where[] = "event_time <= ?"; $params[] = $date_to . ' 23:59:59'; }
+    if ($machine_id) {
+        $where[] = "machine_id = ?";
+        $params[] = $machine_id;
+    }
+    if ($date_from) {
+        $where[] = "event_time >= ?";
+        $params[] = $date_from . ' 00:00:00';
+    }
+    if ($date_to) {
+        $where[] = "event_time <= ?";
+        $params[] = $date_to . ' 23:59:59';
+    }
 
     $whereClause = implode(" AND ", $where);
     $countQuery = $pdo->prepare("SELECT COUNT(*) FROM machine_logs WHERE $whereClause");
@@ -95,7 +104,7 @@ if ($active_tab === 'logs') {
 } else {
     // --- LOAD MACHINE USERS ---
     $target_machine = $machine_id ?: ($machines[0] ?? null);
-    
+
     // Check if we should sync (clicked "Sync" or DB is empty for this machine)
     $db_count = $pdo->prepare("SELECT COUNT(*) FROM machine_users WHERE device_id = ?");
     $db_count->execute([$target_machine]);
@@ -107,23 +116,14 @@ if ($active_tab === 'logs') {
 
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
-        set_time_limit(180); // 3 minutes max
-        ignore_user_abort(true);
         try {
-            // Fix: pass $pdo as first arg, and $target_machine as second
-            $raw_response = DahuaHelper::getPeopleList($pdo, $target_machine);
-            
-            // Check for API errors
-            if (isset($raw_response['error'])) {
-                throw new Exception("API Error: " . $raw_response['error']);
-            }
-            
-            // Navigate to actual list data in Dahua Cloud response
-            $user_data = $raw_response['data'] ?? [];
-            $people = $user_data['list'] ?? [];
-            
-            $_SESSION['sync_debug'] = 'Machine:' . $target_machine . ' | Count:' . count($people);
-            
+            // Test: call without deviceId first to check if deviceId format is the issue
+            $raw_response = DahuaHelper::getPeopleList(null, $pdo);
+            $user_data = $raw_response;
+            $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
+
+            // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
+            $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
             if (!empty($people)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, validity_start, validity_end, created_at) 
@@ -135,23 +135,23 @@ if ($active_tab === 'logs') {
                         user_type = VALUES(user_type), times_used = VALUES(times_used), general_plan = VALUES(general_plan), holiday_plan = VALUES(holiday_plan),
                         validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
                         updated_at = NOW()");
-                
-                $pdo->beginTransaction();
+
                 foreach ($people as $u) {
-                    $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime']/1000) : date('Y-m-d H:i:s');
+                    $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime'] / 1000) : date('Y-m-d H:i:s');
                     $vp = $u['validityPeriod'] ?? '';
-                    $v_start = null; $v_end = null;
+                    $v_start = null;
+                    $v_end = null;
                     if (strpos($vp, '~') !== false) {
                         $parts = explode('~', $vp);
                         $v_start = $parts[0] ?? null;
                         $v_end = $parts[1] ?? null;
                     }
-                    
+
                     $upsert->execute([
-                        $target_machine, 
-                        $u['personId'], 
-                        $u['name'], 
-                        $u['cardNo'] ?? $u['cardList'][0]['cardNo'] ?? '',
+                        $target_machine,
+                        $u['personId'],
+                        $u['name'],
+                        $u['card_no'] ?? '',
                         count($u['faceList'] ?? []),
                         count($u['fingerprintList'] ?? []),
                         empty($u['password']) ? 0 : 1, // pwd_count
@@ -167,18 +167,11 @@ if ($active_tab === 'logs') {
                         $reg_time
                     ]);
                 }
-                $pdo->commit();
                 $_SESSION['app_msg'] = "Sync Successful: " . count($people) . " users updated.";
-                
-                // Clear the sync parameter and redirect to avoid timeout loops
-                $redirect = "machine_logs.php?tab=users&machine_id=" . urlencode($target_machine);
-                header("Location: $redirect");
-                exit;
             } else {
                 $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device. Raw Count: " . (isset($user_data['totalRows']) ? $user_data['totalRows'] : '0');
             }
-        } catch (Exception $e) { 
-            if ($pdo->inTransaction()) $pdo->rollBack();
+        } catch (Exception $e) {
             $_SESSION['sync_error'] = "Hardware Sync Failed: " . $e->getMessage();
         }
     }
@@ -186,8 +179,14 @@ if ($active_tab === 'logs') {
     // Always fetch from OUR database (Instant)
     $u_where = ["device_id = ?"];
     $u_params = [$target_machine];
-    if ($date_from) { $u_where[] = "created_at >= ?"; $u_params[] = $date_from . ' 00:00:00'; }
-    if ($date_to) { $u_where[] = "created_at <= ?"; $u_params[] = $date_to . ' 23:59:59'; }
+    if ($date_from) {
+        $u_where[] = "created_at >= ?";
+        $u_params[] = $date_from . ' 00:00:00';
+    }
+    if ($date_to) {
+        $u_where[] = "created_at <= ?";
+        $u_params[] = $date_to . ' 23:59:59';
+    }
 
     $u_sql = "SELECT * FROM machine_users WHERE " . implode(" AND ", $u_where) . " ORDER BY created_at DESC";
     $u_stmt = $pdo->prepare($u_sql);
@@ -210,7 +209,8 @@ include 'header.php';
                     <div class="fw-bold">Hardware Sync Warning</div>
                     <div class="small"><?php echo $_SESSION['sync_error']; ?></div>
                     <?php if (isset($_SESSION['raw_debug'])): ?>
-                        <div class="mt-2 p-2 bg-dark text-warning rounded-3 font-monospace" style="font-size: 10px; max-height: 100px; overflow: auto;">
+                        <div class="mt-2 p-2 bg-dark text-warning rounded-3 font-monospace"
+                            style="font-size: 10px; max-height: 100px; overflow: auto;">
                             RAW: <?php echo htmlspecialchars($_SESSION['raw_debug']); ?>
                         </div>
                     <?php endif; ?>
@@ -227,10 +227,12 @@ include 'header.php';
             <p class="text-muted small mb-0">Logs and user identities stored for all devices.</p>
         </div>
         <div class="btn-group shadow-sm rounded-3 overflow-hidden">
-            <a href="?tab=logs&machine_id=<?php echo urlencode($machine_id); ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>" 
-               class="btn <?php echo $active_tab === 'logs' ? 'btn-primary' : 'btn-white border'; ?> px-4">Access Logs</a>
-            <a href="?tab=users&machine_id=<?php echo urlencode($machine_id); ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>" 
-               class="btn <?php echo $active_tab === 'users' ? 'btn-primary' : 'btn-white border'; ?> px-4">Machine Users</a>
+            <a href="?tab=logs&machine_id=<?php echo urlencode($machine_id); ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>"
+                class="btn <?php echo $active_tab === 'logs' ? 'btn-primary' : 'btn-white border'; ?> px-4">Access
+                Logs</a>
+            <a href="?tab=users&machine_id=<?php echo urlencode($machine_id); ?>&date_from=<?php echo $date_from; ?>&date_to=<?php echo $date_to; ?>"
+                class="btn <?php echo $active_tab === 'users' ? 'btn-primary' : 'btn-white border'; ?> px-4">Machine
+                Users</a>
         </div>
     </div>
 
@@ -249,8 +251,10 @@ include 'header.php';
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3"><label class="form-label small fw-bold text-muted">From</label><input type="date" name="date_from" class="form-control" value="<?php echo $date_from; ?>"></div>
-                <div class="col-md-3"><label class="form-label small fw-bold text-muted">To</label><input type="date" name="date_to" class="form-control" value="<?php echo $date_to; ?>"></div>
+                <div class="col-md-3"><label class="form-label small fw-bold text-muted">From</label><input type="date"
+                        name="date_from" class="form-control" value="<?php echo $date_from; ?>"></div>
+                <div class="col-md-3"><label class="form-label small fw-bold text-muted">To</label><input type="date"
+                        name="date_to" class="form-control" value="<?php echo $date_to; ?>"></div>
                 <div class="col-md-3 d-flex gap-2">
                     <button type="submit" class="btn btn-dark fw-bold shadow-sm flex-grow-1">Filter</button>
                     <?php if ($active_tab === 'users'): ?>
@@ -289,28 +293,41 @@ include 'header.php';
                 <tbody>
                     <?php if ($active_tab === 'logs'): ?>
                         <?php if (empty($logs)): ?>
-                            <tr><td colspan="5" class="text-center py-5 text-muted">No logs recorded for this period.</td></tr>
+                            <tr>
+                                <td colspan="5" class="text-center py-5 text-muted">No logs recorded for this period.</td>
+                            </tr>
                         <?php endif; ?>
                         <?php foreach ($logs as $log): ?>
                             <tr>
                                 <td class="ps-4">
                                     <div class="fw-bold"><?php echo date('d-M-Y', strtotime($log['event_time'])); ?></div>
-                                    <div class="small text-muted"><?php echo date('H:i:s', strtotime($log['event_time'])); ?></div>
+                                    <div class="small text-muted"><?php echo date('H:i:s', strtotime($log['event_time'])); ?>
+                                    </div>
                                 </td>
                                 <td>
-                                    <div class="text-primary fw-bold"><?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?></div>
-                                    <div class="small text-muted">ID: <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?></div>
+                                    <div class="text-primary fw-bold">
+                                        <?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?></div>
+                                    <div class="small text-muted">ID:
+                                        <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?></div>
                                 </td>
-                                <td><span class="badge bg-light text-dark border"><?php echo htmlspecialchars($log['machine_id']); ?></span></td>
-                                <td><span class="badge bg-info-subtle text-info border"><?php echo htmlspecialchars($log['event_type']); ?></span></td>
+                                <td><span
+                                        class="badge bg-light text-dark border"><?php echo htmlspecialchars($log['machine_id']); ?></span>
+                                </td>
+                                <td><span
+                                        class="badge bg-info-subtle text-info border"><?php echo htmlspecialchars($log['event_type']); ?></span>
+                                </td>
                                 <td class="text-end pe-4">
-                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick='viewRawPayload(<?php echo $log['raw_payload']; ?>)'>JSON</button>
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                                        onclick='viewRawPayload(<?php echo $log['raw_payload']; ?>)'>JSON</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <?php if (empty($machine_users)): ?>
-                            <tr><td colspan="6" class="text-center py-5 text-muted">No users found on this machine in our database. Click "Sync" to fetch from hardware.</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">No users found on this machine in our
+                                    database. Click "Sync" to fetch from hardware.</td>
+                            </tr>
                         <?php endif; ?>
                         <?php foreach ($machine_users as $user): ?>
                             <tr>
@@ -318,45 +335,70 @@ include 'header.php';
                                 <td>
                                     <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?></div>
                                     <div class="small text-muted mt-1">
-                                        <i class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
-                                        <i class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
+                                        <i
+                                            class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
+                                        <i
+                                            class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="small">
-                                        <div class="mb-1"><span class="text-muted fw-bold">Dept:</span> <span class="badge bg-light text-dark border"><?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?></span></div>
-                                        <div class="mb-1"><span class="text-muted fw-bold">Schedule:</span> <?php echo htmlspecialchars($user['schedule_mode'] ?: 'Department Schedule'); ?></div>
-                                        <div class="mb-1"><span class="text-muted fw-bold">General:</span> <?php echo htmlspecialchars($user['general_plan'] ?: '255-Default'); ?></div>
-                                        <div class="mb-1"><span class="text-muted fw-bold">Holiday:</span> <?php echo htmlspecialchars($user['holiday_plan'] ?: '255-Default'); ?></div>
-                                        <div><span class="text-muted fw-bold">Times Used:</span> <?php echo htmlspecialchars($user['times_used'] ?: 'Unlimited'); ?></div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">Dept:</span> <span
+                                                class="badge bg-light text-dark border"><?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?></span>
+                                        </div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">Schedule:</span>
+                                            <?php echo htmlspecialchars($user['schedule_mode'] ?: 'Department Schedule'); ?>
+                                        </div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">General:</span>
+                                            <?php echo htmlspecialchars($user['general_plan'] ?: '255-Default'); ?></div>
+                                        <div class="mb-1"><span class="text-muted fw-bold">Holiday:</span>
+                                            <?php echo htmlspecialchars($user['holiday_plan'] ?: '255-Default'); ?></div>
+                                        <div><span class="text-muted fw-bold">Times Used:</span>
+                                            <?php echo htmlspecialchars($user['times_used'] ?: 'Unlimited'); ?></div>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-column gap-2">
-                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['face_count'] ? 'border-primary border-opacity-25' : ''; ?>">
-                                            <span class="small fw-bold text-secondary"><i class="bi bi-person-bounding-box me-2"></i>Face</span>
-                                            <span class="badge <?php echo $user['face_count'] ? 'bg-primary' : 'bg-secondary bg-opacity-25 text-dark'; ?>">Added: <?php echo $user['face_count']; ?></span>
+                                        <div
+                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['face_count'] ? 'border-primary border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i
+                                                    class="bi bi-person-bounding-box me-2"></i>Face</span>
+                                            <span
+                                                class="badge <?php echo $user['face_count'] ? 'bg-primary' : 'bg-secondary bg-opacity-25 text-dark'; ?>">Added:
+                                                <?php echo $user['face_count']; ?></span>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['pwd_count']) ? 'border-warning border-opacity-25' : ''; ?>">
-                                            <span class="small fw-bold text-secondary"><i class="bi bi-key-fill me-2"></i>Password</span>
-                                            <span class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
+                                        <div
+                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['pwd_count']) ? 'border-warning border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i
+                                                    class="bi bi-key-fill me-2"></i>Password</span>
+                                            <span
+                                                class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['card_no']) ? 'border-info border-opacity-25' : ''; ?>">
-                                            <span class="small fw-bold text-secondary"><i class="bi bi-credit-card-2-front-fill me-2"></i>Card</span>
-                                            <span class="badge <?php echo !empty($user['card_no']) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['card_no']) ? 'Added' : 'Not Added'; ?></span>
+                                        <div
+                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty($user['card_no']) ? 'border-info border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i
+                                                    class="bi bi-credit-card-2-front-fill me-2"></i>Card</span>
+                                            <span
+                                                class="badge <?php echo !empty($user['card_no']) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['card_no']) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['fp_count'] ? 'border-success border-opacity-25' : ''; ?>">
-                                            <span class="small fw-bold text-secondary"><i class="bi bi-fingerprint me-2"></i>Fingerprint</span>
-                                            <span class="badge <?php echo $user['fp_count'] ? 'bg-success' : 'bg-secondary bg-opacity-25 text-dark'; ?>">Added: <?php echo $user['fp_count']; ?></span>
+                                        <div
+                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['fp_count'] ? 'border-success border-opacity-25' : ''; ?>">
+                                            <span class="small fw-bold text-secondary"><i
+                                                    class="bi bi-fingerprint me-2"></i>Fingerprint</span>
+                                            <span
+                                                class="badge <?php echo $user['fp_count'] ? 'bg-success' : 'bg-secondary bg-opacity-25 text-dark'; ?>">Added:
+                                                <?php echo $user['fp_count']; ?></span>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="pe-4">
                                     <div class="mb-2">
                                         <i class="bi bi-calendar-event me-1 text-muted"></i>
-                                        <span class="fw-bold small"><?php echo ($user['validity_end']) ? date('d-m-Y H:i:s', strtotime($user['validity_end'])) : '31-12-2037 23:59:59'; ?></span>
+                                        <span
+                                            class="fw-bold small"><?php echo ($user['validity_end']) ? date('d-m-Y H:i:s', strtotime($user['validity_end'])) : '31-12-2037 23:59:59'; ?></span>
                                     </div>
-                                    <div class="small text-muted mb-2">Sync: <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></div>
+                                    <div class="small text-muted mb-2">Sync:
+                                        <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></div>
                                     <span class="badge bg-success px-3 py-1 rounded-pill">Active On Device</span>
                                 </td>
                             </tr>
@@ -376,48 +418,51 @@ include 'header.php';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body bg-dark text-light border-0">
-                <div id="timeSummary" class="mb-3 p-2 rounded bg-primary bg-opacity-10 text-primary small d-none border border-primary border-opacity-25"></div>
-                <pre id="payloadContent" class="mb-0 p-3 bg-black rounded" style="max-height: 500px; overflow-y: auto; font-size: 13px; color: #00ff00;"></pre>
+                <div id="timeSummary"
+                    class="mb-3 p-2 rounded bg-primary bg-opacity-10 text-primary small d-none border border-primary border-opacity-25">
+                </div>
+                <pre id="payloadContent" class="mb-0 p-3 bg-black rounded"
+                    style="max-height: 500px; overflow-y: auto; font-size: 13px; color: #00ff00;"></pre>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function viewRawPayload(payload) {
-    try {
-        const json = typeof payload === 'string' ? JSON.parse(payload) : payload;
-        
-        // Smart Time Formatting for JSON View
-        const timeSummary = document.getElementById('timeSummary');
-        timeSummary.innerHTML = '';
-        timeSummary.classList.add('d-none');
-        
-        let detectedTimes = [];
-        const timeKeys = ['localTime', 'utcTime', 'time'];
-        
-        timeKeys.forEach(key => {
-            if (json[key]) {
-                const ts = parseInt(json[key]);
-                if (ts > 100000000000) { // Milliseconds check
-                    const d = new Date(ts);
-                    const human = d.toLocaleString('en-IN');
-                    detectedTimes.push(`<strong>${key}:</strong> ${human}`);
-                }
-            }
-        });
-        
-        if (detectedTimes.length > 0) {
-            timeSummary.innerHTML = '<i class="bi bi-clock me-2"></i>' + detectedTimes.join(' | ');
-            timeSummary.classList.remove('d-none');
-        }
+    function viewRawPayload(payload) {
+        try {
+            const json = typeof payload === 'string' ? JSON.parse(payload) : payload;
 
-        document.getElementById('payloadContent').textContent = JSON.stringify(json, null, 4);
-    } catch (e) {
-        document.getElementById('payloadContent').textContent = payload;
+            // Smart Time Formatting for JSON View
+            const timeSummary = document.getElementById('timeSummary');
+            timeSummary.innerHTML = '';
+            timeSummary.classList.add('d-none');
+
+            let detectedTimes = [];
+            const timeKeys = ['localTime', 'utcTime', 'time'];
+
+            timeKeys.forEach(key => {
+                if (json[key]) {
+                    const ts = parseInt(json[key]);
+                    if (ts > 100000000000) { // Milliseconds check
+                        const d = new Date(ts);
+                        const human = d.toLocaleString('en-IN');
+                        detectedTimes.push(`<strong>${key}:</strong> ${human}`);
+                    }
+                }
+            });
+
+            if (detectedTimes.length > 0) {
+                timeSummary.innerHTML = '<i class="bi bi-clock me-2"></i>' + detectedTimes.join(' | ');
+                timeSummary.classList.remove('d-none');
+            }
+
+            document.getElementById('payloadContent').textContent = JSON.stringify(json, null, 4);
+        } catch (e) {
+            document.getElementById('payloadContent').textContent = payload;
+        }
+        new bootstrap.Modal(document.getElementById('payloadModal')).show();
     }
-    new bootstrap.Modal(document.getElementById('payloadModal')).show();
-}
 </script>
 
 <?php include 'footer.php'; ?>
