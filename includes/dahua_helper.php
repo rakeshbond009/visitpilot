@@ -97,22 +97,33 @@ class DahuaHelper
                 return $tokenData['access_token'];
         }
         $path = '/open-api/api-base/auth/getAppAccessToken';
-        $url = $config['base_url'] . $path;
+        $url = ($config['base_url'] ?? "https://open-api-sg.dolynkcloud.com") . $path;
         $headers = self::generateSignV2($config, "POST", "{}");
+        
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "{}");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => "{}",
+            CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => 30
+        ]);
         $response = curl_exec($ch);
-        $data = json_decode($response, true);
+        $err = curl_error($ch);
         curl_close($ch);
+        
+        if (!$response) {
+            self::log("Token Request FAIL (CURL): $err");
+            return null;
+        }
+
+        $data = json_decode($response, true);
         if (isset($data['data']['appAccessToken'])) {
             $token = $data['data']['appAccessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
             file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
+            self::log("Token Refreshed Successfully.");
             return $token;
+        } else {
+            self::log("Token Request FAIL (API): $response | URL: $url");
         }
         return null;
     }
@@ -634,7 +645,10 @@ class DahuaHelper
         try {
             $config = self::getConfig($pdo);
             $token = self::getAuthToken($pdo);
-            if (!$token) return ['error' => 'No Token'];
+            if (!$token) {
+                self::log("Sync Warning: No Token. Config Keys: " . implode(',', array_keys($config)));
+                return ['error' => 'No Token'];
+            }
 
             $path = "/open-api/api-device/person/pageGetPerson";
             $body = json_encode([
