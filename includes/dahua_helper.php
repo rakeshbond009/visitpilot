@@ -45,9 +45,9 @@ class DahuaHelper
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $appId = $config['client_id'] ?? $config['dahua_app_id'] ?? '';
-        $secret = $config['client_secret'] ?? $config['dahua_app_secret'] ?? '';
-        $productId = $config['product_id'] ?? $config['dahua_product_id'] ?? '';
+        $appId = $config['client_id'];
+        $secret = $config['client_secret'];
+        $productId = $config['product_id'] ?? '';
         $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
 
         if ($isV1) {
@@ -532,10 +532,10 @@ class DahuaHelper
         return self::getAccessToken($pdo);
     }
 
-    public static function generateV2Headers($path, $body, $appId, $appSecret)
+    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
     {
         $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
-        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
+        return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
     }
 
     public static function makeRequest($url, $body, $headers)
@@ -563,7 +563,7 @@ class DahuaHelper
     public static function getPersonDetail($deviceId, $personId)
     {
         try {
-            $config = self::get_config();
+            $config = self::getConfig();
             $token = self::getAuthToken();
             if (!$token)
                 return null;
@@ -575,8 +575,7 @@ class DahuaHelper
                 'personId' => (string) $personId
             ]);
 
-            // Call sign generator directly with token to avoid changing global header methods
-            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
             $headers[] = "Authorization: $token";
 
             $response = self::makeRequest(($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com') . $path, $body, $headers);
@@ -606,13 +605,21 @@ class DahuaHelper
         foreach ($ids as $pid) {
             $detail = self::getPersonDetail($deviceId, $pid);
             if ($detail) {
-                // Combined name check for V1/V2 Cloud responses
+                // Count biometrics
+                $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
+                $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
+                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
+
+                // Improved mapping for name and biometrics
                 $name = $detail['userName'] ?? $detail['name'] ?? 'Unknown';
                 $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
                 $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
                 $userType = $detail['userType'] ?? null;
                 $permission = $detail['permissionLevel'] ?? null;
+
+                $updateTimeMs = $detail['updateTime'] ?? $detail['createTime'] ?? (time() * 1000);
+                $updatedAt = date('Y-m-d H:i:s', $updateTimeMs / 1000);
 
                 $pdo->prepare("UPDATE machine_users SET 
                     name = ?, 
@@ -621,9 +628,9 @@ class DahuaHelper
                     fp_count = ?,
                     user_type = ?,
                     permission_level = ?,
-                    updated_at = NOW()
+                    updated_at = ?
                     WHERE person_id = ? AND device_id = ?")
-                    ->execute([$name, $cardNo, $faceCount, $fpCount, $userType, $permission, $pid, $deviceId]);
+                    ->execute([$name, $cardNo, $faceCount, $fpCount, $userType, $permission, $updatedAt, $pid, $deviceId]);
             }
         }
         return true;
@@ -631,7 +638,7 @@ class DahuaHelper
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
     {
         try {
-            $config = self::get_config($pdo);
+            $config = self::getConfig($pdo);
             $token = self::getAuthToken();
             if (!$token)
                 return ['error' => 'No Token'];
@@ -644,8 +651,7 @@ class DahuaHelper
                 'pageNum' => (int) $page
             ]);
 
-            // Call sign generator directly with token to avoid changing global header methods
-            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
             $headers[] = "Authorization: $token";
 
             $response = self::makeRequest(($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com') . $path, $body, $headers);
