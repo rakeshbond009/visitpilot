@@ -545,7 +545,7 @@ class DahuaHelper
         // Map common keys
         if (isset($config['dahua_app_id'])) $config['client_id'] = $config['dahua_app_id'];
         if (isset($config['dahua_app_secret'])) $config['client_secret'] = $config['dahua_app_secret'];
-        if (!isset($config['base_url'])) $config['base_url'] = "https://sgp-dcloud.all-over-world.com";
+        if (!isset($config['base_url'])) $config['base_url'] = "https://open-api-sg.dolynkcloud.com";
 
         return $config;
     }
@@ -566,7 +566,11 @@ class DahuaHelper
             CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => 30
         ]);
         $resp = curl_exec($ch);
+        $err = curl_error($ch);
         curl_close($ch);
+        if (!$resp && $err) {
+            self::log("CURL ERROR ($url): $err");
+        }
         return $resp;
     }
 
