@@ -532,10 +532,10 @@ class DahuaHelper
         return self::getAccessToken($pdo);
     }
 
-    public static function generateV2Headers($path, $body, $appId, $appSecret)
+    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
     {
         $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
-        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
+        return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
     }
 
     public static function makeRequest($url, $body, $headers)
@@ -590,33 +590,46 @@ class DahuaHelper
     public static function syncAllUsers($deviceId)
     {
         $pdo = self::getPDO();
-        // First try the bulk list
-        $allUsers = self::getPeopleList($deviceId, 1, 100);
-
+        $allUsers = self::getPeopleList($pdo, $deviceId, 1, 500);
         $userList = $allUsers['data']['list'] ?? [];
 
-        // If bulk failed or is empty, we can't do much without IDs.
-        // But we can update existing "Unknown" users by personId.
-        $stmtUnknown = $pdo->prepare("SELECT DISTINCT person_id FROM machine_users WHERE name = 'Unknown' AND device_id = ?");
-        $stmtUnknown->execute([$deviceId]);
-        $ids = $stmtUnknown->fetchAll(PDO::FETCH_COLUMN);
+        // Update existing "Unknown" users or users needing metadata refresh
+        $stmtUsers = $pdo->prepare("SELECT DISTINCT person_id FROM machine_users WHERE device_id = ?");
+        $stmtUsers->execute([$deviceId]);
+        $ids = $stmtUsers->fetchAll(PDO::FETCH_COLUMN);
 
         foreach ($ids as $pid) {
             $detail = self::getPersonDetail($deviceId, $pid);
             if ($detail) {
-                // Count biometrics
+                // Map Dahua fields to local DB
+                $name = $detail['userName'] ?? $detail['name'] ?? 'Unknown';
+                $cardNo = $detail['cardList'][0]['cardNo'] ?? null;
                 $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
-                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
+                $userType = $detail['userType'] ?? null;
+                $permission = $detail['permissionLevel'] ?? $detail['permission'] ?? null;
+                $dept = $detail['deptName'] ?? null;
+                $validityStart = $detail['validityStart'] ?? null;
+                $validityEnd = $detail['validityEnd'] ?? null;
 
                 $pdo->prepare("UPDATE machine_users SET 
                     name = ?, 
                     card_no = ?,
                     face_count = ?,
                     fp_count = ?,
+                    user_type = ?,
+                    permission_level = ?,
+                    department = ?,
+                    validity_start = ?,
+                    validity_end = ?,
                     updated_at = NOW()
                     WHERE person_id = ? AND device_id = ?")
-                    ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pid, $deviceId]);
+                    ->execute([
+                        $name, $cardNo, $faceCount, $fpCount, 
+                        $userType, $permission, $dept, 
+                        $validityStart, $validityEnd, 
+                        $pid, $deviceId
+                    ]);
             }
         }
         return true;
@@ -636,7 +649,8 @@ class DahuaHelper
                 'pageNum' => $page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
+            // In some environments, Dahua Cloud also checks the Authorization header
             $headers[] = "Authorization: $token";
 
             $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
