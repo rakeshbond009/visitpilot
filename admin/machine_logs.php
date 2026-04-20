@@ -159,9 +159,23 @@ if ($active_tab === 'logs') {
                     $perm = $u['permission'] ?? $u['doorRight'] ?? 'User';
                     $schedule = $u['scheduleMode'] ?? 'Department Schedule';
 
-                    // Map types
-                    $types = [0 => 'General', 1 => 'VIP', 2 => 'Guest', 3 => 'Patrol', 4 => 'Blacklist'];
-                    if (is_numeric($uType) && isset($types[(int)$uType])) $uType = $types[(int)$uType] . ' User';
+                    // Map types based on Dahua Docs (Lines 7126-7132)
+                    $types = [
+                        0 => 'General', 
+                        1 => 'Blacklist', 
+                        2 => 'Guest', 
+                        3 => 'Patrol', 
+                        4 => 'VIP', 
+                        5 => 'Extended Time'
+                    ];
+                    if (is_numeric($uType) && isset($types[(int)$uType])) {
+                        $uType = $types[(int)$uType] . ' User';
+                    }
+
+                    // Map Permission/Authority (Lines 7142-7143)
+                    $perm = $u['authority'] ?? ($u['permission'] ?? ($u['doorRight'] ?? 'User'));
+                    if ($perm === 1 || $perm === '1') $perm = 'Admin';
+                    if ($perm === 2 || $perm === '2') $perm = 'User';
                     
                     $tUsed = $u['timesUsed'] ?? 'Unlimited';
                     $gPlan = $u['generalPlan'] ?? '255-Default';
