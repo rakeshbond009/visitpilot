@@ -60,7 +60,7 @@ class DahuaHelper
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
             $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $path . $stringToSign;
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
             $version = 'V1';
         }
@@ -556,7 +556,7 @@ class DahuaHelper
                 'userIds' => [(string)$personId]
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+            $headers = self::generateSignV2($config, "POST", $body, $token);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -643,7 +643,7 @@ class DahuaHelper
                 'pageSize' => $pageSize
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+            $headers = self::generateSignV2($config, "POST", $body, $token);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
