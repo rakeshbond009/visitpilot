@@ -514,17 +514,63 @@ class DahuaHelper
         return true;
     }
 
-    public static function getConfig($pdo = null) {
-        if (!$pdo) {
-            global $pdo;
-        }
-        $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+    /**
+     * Dahua Config with Table and Master Fallback
+     */
+    public static function getConfig($tenant_pdo = null) {
+        global $pdo, $master_pdo;
+        $db = $tenant_pdo ?: $pdo;
         $config = [];
-        while ($row = $stmt->fetch()) {
-            $config[$row['setting_key']] = $row['setting_value'];
+        
+        $tables = ['settings', 'system_settings'];
+        foreach ($tables as $table) {
+            try {
+                if (!$db) break;
+                $stmt = $db->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                if (!empty($res)) { $config = array_merge($config, $res); break; }
+            } catch (Exception $e) {}
         }
+        
+        if (empty($config) && isset($master_pdo) && $db !== $master_pdo) {
+            foreach ($tables as $table) {
+                try {
+                    $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                    if (!empty($res)) { $config = array_merge($config, $res); break; }
+                } catch (Exception $e) {}
+            }
+        }
+        
+        // Map common keys
+        if (isset($config['dahua_app_id'])) $config['client_id'] = $config['dahua_app_id'];
+        if (isset($config['dahua_app_secret'])) $config['client_secret'] = $config['dahua_app_secret'];
+        if (!isset($config['base_url'])) $config['base_url'] = "https://sgp-dcloud.all-over-world.com";
+
         return $config;
     }
+
+    public static function getAuthToken($pdo = null) { return self::getAccessToken($pdo); }
+    
+    public static function generateV2Headers($path, $body, $appId, $appSecret) {
+        // Mocking config for sign gen
+        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
+        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
+    }
+
+    private static function makeRequest($url, $body, $headers) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => 30
+        ]);
+        $resp = curl_exec($ch);
+        curl_close($ch);
+        return $resp;
+    }
+
+    private static function getPDO() { global $pdo; return $pdo; }
 
     public static function getPersonDetail($deviceId, $personId) {
         try {
