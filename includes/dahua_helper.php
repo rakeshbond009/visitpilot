@@ -110,10 +110,13 @@ class DahuaHelper
         if (empty($config['client_id']) || empty($config['client_secret'])) return null;
         
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
+        // FORCING REFRESH FOR DEBUGGING - REMOVE CACHE CHECK
+        /*
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) return $tokenData['access_token'];
         }
+        */
 
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
@@ -145,6 +148,7 @@ class DahuaHelper
             CURLOPT_HTTPHEADER => $headers
         ]);
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $data = json_decode($response, true);
         curl_close($ch);
 
@@ -153,6 +157,8 @@ class DahuaHelper
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
             file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
             return $token;
+        } else {
+            self::log("Token Handshake FAILED (HTTP $httpCode): " . ($response ?: "EMPTY RESPONSE"));
         }
         return null;
     }
