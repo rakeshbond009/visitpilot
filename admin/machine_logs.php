@@ -378,14 +378,11 @@ include 'header.php';
                                                 </div>
                                             <?php endif; ?>
                                         </div>
-                                        <div>
                                             <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?>
                                             </div>
                                             <div class="small text-muted mt-1">
-                                                <i
-                                                    class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
-                                                <i
-                                                    class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
+                                                <i class="bi bi-person-badge me-1"></i><?php echo !empty($user['user_type']) ? htmlspecialchars($user['user_type']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?><br>
+                                                <i class="bi bi-shield-lock me-1"></i><?php echo !empty($user['permission_level']) ? htmlspecialchars($user['permission_level']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?>
                                             </div>
                                         </div>
                                     </div>
@@ -393,17 +390,17 @@ include 'header.php';
                                 <td>
                                     <div class="small">
                                         <div class="mb-1"><span class="text-muted fw-bold">Dept:</span> <span
-                                                class="badge bg-light text-dark border"><?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?></span>
+                                                class="badge bg-light text-dark border"><?php echo !empty($user['department']) ? htmlspecialchars($user['department']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></span>
                                         </div>
                                         <div class="mb-1"><span class="text-muted fw-bold">Schedule:</span>
-                                            <?php echo htmlspecialchars($user['schedule_mode'] ?: 'Department Schedule'); ?>
+                                            <?php echo !empty($user['schedule_mode']) ? htmlspecialchars($user['schedule_mode']) : '<span class="fst-italic opacity-50">Pending</span>'; ?>
                                         </div>
                                         <div class="mb-1"><span class="text-muted fw-bold">General:</span>
-                                            <?php echo htmlspecialchars($user['general_plan'] ?: '255-Default'); ?></div>
+                                            <?php echo !empty($user['general_plan']) ? htmlspecialchars($user['general_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
                                         <div class="mb-1"><span class="text-muted fw-bold">Holiday:</span>
-                                            <?php echo htmlspecialchars($user['holiday_plan'] ?: '255-Default'); ?></div>
+                                            <?php echo !empty($user['holiday_plan']) ? htmlspecialchars($user['holiday_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
                                         <div><span class="text-muted fw-bold">Times Used:</span>
-                                            <?php echo htmlspecialchars($user['times_used'] ?: 'Unlimited'); ?></div>
+                                            <?php echo !empty($user['times_used']) ? htmlspecialchars($user['times_used']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
                                     </div>
                                 </td>
                                 <td>
@@ -423,12 +420,13 @@ include 'header.php';
                                             <span
                                                 class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
+                                        <?php $real_card = (!empty(trim($user['card_no'])) && strlen(trim($user['card_no'])) > 1); ?>
                                         <div
-                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty(trim($user['card_no'])) ? 'border-info border-opacity-25' : ''; ?>">
+                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $real_card ? 'border-info border-opacity-25' : ''; ?>">
                                             <span class="small fw-bold text-secondary"><i
                                                     class="bi bi-credit-card-2-front-fill me-2"></i>Card</span>
                                             <span
-                                                class="badge <?php echo !empty(trim($user['card_no'])) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty(trim($user['card_no'])) ? 'Added' : 'Not Added'; ?></span>
+                                                class="badge <?php echo $real_card ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo $real_card ? 'Added' : 'Not Added'; ?></span>
                                         </div>
                                         <div
                                             class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['fp_count'] ? 'border-success border-opacity-25' : ''; ?>">
