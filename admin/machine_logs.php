@@ -137,6 +137,8 @@ if ($active_tab === 'logs') {
                         updated_at = NOW()");
 
                 $synced = 0;
+                $syncedCards = 0;
+                $syncedPwds = 0;
                 foreach ($people_list as $person_stub) {
                     $pid = $person_stub['personId'] ?? null;
                     if (!$pid)
@@ -149,7 +151,8 @@ if ($active_tab === 'logs') {
                     // --- Biometrics (Robust extraction for Detail vs List Stub) ---
                     $cardNo = trim($u['cardNo'] ?? 
                                    $u['cardNumber'] ?? 
-                                   ($u['cardList'][0]['cardNo'] ?? '')) ?: '';
+                                   ($u['card_no'] ?? 
+                                   ($u['cardList'][0]['cardNo'] ?? ''))) ?: '';
 
                     $faceCount = isset($u['faceList']) ? count($u['faceList']) : 
                                  ($u['hasFace'] ?? $u['faceCount'] ?? 0);
@@ -159,6 +162,9 @@ if ($active_tab === 'logs') {
 
                     $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : 
                                 ($u['hasPassword'] ?? ($u['password'] ? 1 : 0));
+                    
+                    if ($cardNo) $syncedCards++;
+                    if ($pwdCount) $syncedPwds++;
 
                     // --- Meta ---
                     $dept = $u['department'] ?? ($u['deptName'] ?? '');
@@ -386,8 +392,8 @@ include 'header.php';
                                             <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?>
                                             </div>
                                             <div class="small text-muted mt-1">
-                                                <i class="bi bi-person-badge me-1"></i><?php echo !empty($user['user_type']) ? htmlspecialchars($user['user_type']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?><br>
-                                                <i class="bi bi-shield-lock me-1"></i><?php echo !empty($user['permission_level']) ? htmlspecialchars($user['permission_level']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?>
+                                                <i class="bi bi-person-badge me-1"></i><?php echo ($user['user_type'] !== null && $user['user_type'] !== '') ? htmlspecialchars($user['user_type']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?><br>
+                                                <i class="bi bi-shield-lock me-1"></i><?php echo ($user['permission_level'] !== null && $user['permission_level'] !== '') ? htmlspecialchars($user['permission_level']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?>
                                             </div>
                                         </div>
                                     </div>
@@ -395,17 +401,17 @@ include 'header.php';
                                 <td>
                                     <div class="small">
                                         <div class="mb-1"><span class="text-muted fw-bold">Dept:</span> <span
-                                                class="badge bg-light text-dark border"><?php echo !empty($user['department']) ? htmlspecialchars($user['department']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></span>
+                                                class="badge bg-light text-dark border"><?php echo ($user['department'] !== null && $user['department'] !== '') ? htmlspecialchars($user['department']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></span>
                                         </div>
                                         <div class="mb-1"><span class="text-muted fw-bold">Schedule:</span>
-                                            <?php echo !empty($user['schedule_mode']) ? htmlspecialchars($user['schedule_mode']) : '<span class="fst-italic opacity-50">Pending</span>'; ?>
+                                            <?php echo ($user['schedule_mode'] !== null && $user['schedule_mode'] !== '') ? htmlspecialchars($user['schedule_mode']) : '<span class="fst-italic opacity-50">Pending</span>'; ?>
                                         </div>
                                         <div class="mb-1"><span class="text-muted fw-bold">General:</span>
-                                            <?php echo !empty($user['general_plan']) ? htmlspecialchars($user['general_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
+                                            <?php echo ($user['general_plan'] !== null && $user['general_plan'] !== '') ? htmlspecialchars($user['general_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
                                         <div class="mb-1"><span class="text-muted fw-bold">Holiday:</span>
-                                            <?php echo !empty($user['holiday_plan']) ? htmlspecialchars($user['holiday_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
+                                            <?php echo ($user['holiday_plan'] !== null && $user['holiday_plan'] !== '') ? htmlspecialchars($user['holiday_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
                                         <div><span class="text-muted fw-bold">Times Used:</span>
-                                            <?php echo !empty($user['times_used']) ? htmlspecialchars($user['times_used']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
+                                            <?php echo ($user['times_used'] !== null && $user['times_used'] !== '') ? htmlspecialchars($user['times_used']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
                                     </div>
                                 </td>
                                 <td>
@@ -425,7 +431,7 @@ include 'header.php';
                                             <span
                                                 class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
-                                        <?php $real_card = (!empty(trim($user['card_no'])) && strlen(trim($user['card_no'])) > 1); ?>
+                                        <?php $real_card = (!empty(trim($user['card_no'])) && $user['card_no'] !== "0"); ?>
                                         <div
                                             class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $real_card ? 'border-info border-opacity-25' : ''; ?>">
                                             <span class="small fw-bold text-secondary"><i
