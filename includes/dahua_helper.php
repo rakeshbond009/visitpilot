@@ -9,7 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
+    public static function get_config($pdo = null)
     {
         if (!$pdo) {
             global $pdo;
