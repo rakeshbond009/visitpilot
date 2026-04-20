@@ -9,17 +9,26 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
+    private static function get_config($db = null)
     {
-        if (!$pdo) {
-            global $pdo;
-        }
-        if (!$pdo)
-            return [];
+        if (!$db) { global $pdo; $db = $pdo; }
+        if (!$db) return [];
 
         try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
+            // Priority: system_settings table
+            $stmt = $db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
             $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+            // Hosted Fallback: If local setting_settings is empty, check master DB (if connection exists and table available)
+            if (empty($settings['dahua_app_id'])) {
+                global $master_pdo;
+                if (isset($master_pdo)) {
+                    try {
+                        $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                        $settings = array_merge($settings, $stmt->fetchAll(PDO::FETCH_KEY_PAIR));
+                    } catch (Exception $e) {}
+                }
+            }
 
             return [
                 'client_id' => $settings['dahua_app_id'] ?? null,
@@ -33,10 +42,6 @@ class DahuaHelper
             return [];
         }
     }
-
-    public static function getConfig($pdo = null) { return self::get_config($pdo); }
-    public static function getAuthToken($pdo = null) { return self::getAccessToken($pdo); }
-    public static function getPDO() { global $pdo; return $pdo; }
 
     private static function deleteWhitespace($str)
     {
@@ -518,6 +523,16 @@ class DahuaHelper
         return true;
     }
 
+    public static function getConfig($pdo = null)
+    {
+        return self::get_config($pdo);
+    }
+
+    public static function getAuthToken($pdo = null)
+    {
+        return self::getAccessToken($pdo);
+    }
+
     public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
     {
         $cfg = ['client_id' => $appId, 'client_secret' => $appSecret, 'product_id' => self::get_config()['product_id']];
@@ -540,6 +555,12 @@ class DahuaHelper
         return $resp;
     }
 
+    public static function getPDO()
+    {
+        global $pdo;
+        return $pdo;
+    }
+
     public static function getPersonDetail($deviceId, $personId)
     {
         try {
@@ -554,10 +575,10 @@ class DahuaHelper
                 'personId' => (string) $personId
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers = self::generateV2Headers($path, $body, $config['client_id'], $config['client_secret'], $token);
             $headers[] = "Authorization: $token";
 
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
             $data = json_decode($response, true);
 
             return $data['data'] ?? null;
@@ -584,7 +605,7 @@ class DahuaHelper
         foreach ($ids as $pid) {
             $detail = self::getPersonDetail($deviceId, $pid);
             if ($detail) {
-                // Use userName from Cloud if available, mapping biometrics properly
+                // Restore full mapping for names and permissions
                 $name = $detail['userName'] ?? $detail['name'] ?? 'Unknown';
                 $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
@@ -610,7 +631,7 @@ class DahuaHelper
     {
         try {
             $config = self::getConfig($pdo);
-            $token = self::getAuthToken();
+            $token = self::getAuthToken($pdo);
             if (!$token)
                 return ['error' => 'No Token'];
 
@@ -621,10 +642,10 @@ class DahuaHelper
                 'pageNum' => $page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers = self::generateV2Headers($path, $body, $config['client_id'], $config['client_secret'], $token);
             $headers[] = "Authorization: $token";
 
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
