@@ -151,7 +151,7 @@ if ($active_tab === 'logs') {
                         $target_machine, 
                         $u['personId'], 
                         $u['name'], 
-                        $u['card_no'] ?? '',
+                        $u['cardNo'] ?? $u['cardList'][0]['cardNo'] ?? '',
                         count($u['faceList'] ?? []),
                         count($u['fingerprintList'] ?? []),
                         empty($u['password']) ? 0 : 1, // pwd_count
@@ -166,6 +166,7 @@ if ($active_tab === 'logs') {
                         $v_end,
                         $reg_time
                     ]);
+                }
                 $pdo->commit();
                 $_SESSION['app_msg'] = "Sync Successful: " . count($people) . " users updated.";
                 
