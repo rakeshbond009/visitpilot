@@ -533,7 +533,7 @@ class DahuaHelper
                         $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
                         if (!empty($res)) { $config = array_merge($config, $res); break; }
                     }
-                } catch (Throwable $e) {}
+                } catch (Exception $e) {}
             }
         }
         
@@ -546,7 +546,7 @@ class DahuaHelper
                         $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
                         if (!empty($res)) { $config = array_merge($config, $res); break; }
                     }
-                } catch (Throwable $e) {}
+                } catch (Exception $e) {}
             }
         }
         
@@ -604,10 +604,8 @@ class DahuaHelper
                 'personId' => (string)$personId
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
-
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $headers = self::generateV2Headers($path, $body, $config['client_id'], $config['client_secret'], $token);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
             $data = json_decode($response, true);
 
             return $data['data'] ?? null;
