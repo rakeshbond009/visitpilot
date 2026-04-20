@@ -121,10 +121,22 @@ if ($active_tab === 'logs') {
             // Dahua wraps in data.pageData
             $list_data = $list_response['data'] ?? $list_response;
             $people_list = $list_data['pageData'] ?? $list_data['list'] ?? (is_array($list_data) ? $list_data : []);
-            $_SESSION['raw_debug'] = 'List returned ' . count($people_list) . ' people | raw keys: ' . implode(',', array_keys($list_response ?? []));
             
             if (isset($_GET['debug_raw'])) {
-                echo "<pre>LIST RESPONSE:\n"; print_r($list_response); echo "</pre>";
+                echo "<pre>Dahua API Response (getUsers):\n"; print_r($list_response); echo "</pre>";
+            }
+
+            // --- FAIL-SAFE FALLBACK: If API list fails with 500, use local logs to find IDs ---
+            if (empty($people_list) || ($list_response['code'] ?? '') == '500') {
+                $stmtLogs = $pdo->prepare("SELECT DISTINCT person_id as personId, person_name as name FROM machine_logs WHERE machine_id = ? AND person_id IS NOT NULL");
+                $stmtLogs->execute([$target_machine]);
+                $people_list = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+                $_SESSION['raw_debug'] = 'API Failed (500). Falling back to local logs. Found ' . count($people_list) . ' users.';
+                if (isset($_GET['debug_raw'])) {
+                    echo "<div class='alert alert-warning'>Dahua API 500 Error. Fallback: Pulled ".count($people_list)." users from local activity logs.</div>";
+                }
+            } else {
+                $_SESSION['raw_debug'] = 'API Success. List returned ' . count($people_list) . ' people.';
             }
 
             if (!empty($people_list)) {
@@ -144,9 +156,8 @@ if ($active_tab === 'logs') {
                 $syncedCards = 0;
                 $syncedPwds = 0;
                 foreach ($people_list as $person_stub) {
-                    $pid = $person_stub['personId'] ?? null;
-                    if (!$pid)
-                        continue;
+                    $pid = $person_stub['personId'] ?? $person_stub['userId'] ?? null;
+                    if (!$pid) continue;
 
                     // Fetch FULL detail per person — has card/pwd/face/fingerprint/photo
                     $detail = DahuaHelper::getPersonDetail($target_machine, $pid, $pdo);
