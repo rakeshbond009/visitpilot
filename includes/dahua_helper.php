@@ -458,6 +458,13 @@ class DahuaHelper
                                                (SELECT full_name FROM users WHERE id = ? LIMIT 1)");
                     $stmtName->execute([$personId, $personId, $personId]);
                     $dbName = $stmtName->fetchColumn();
+                    
+                    if (!$dbName) {
+                        $stmt = $pdo->prepare("SELECT name FROM machine_users WHERE person_id = ? AND name != 'Unknown' LIMIT 1");
+                        $stmt->execute([$personId]);
+                        $dbName = $stmt->fetchColumn();
+                    }
+
                     if ($dbName) {
                         $personName = $dbName;
                     } else {

@@ -146,29 +146,27 @@ if ($active_tab === 'logs') {
                     $detail = DahuaHelper::getPersonDetail($target_machine, $pid, $pdo);
                     $u = $detail ?: $person_stub; // fallback to list stub if detail fails
 
-                    // --- Biometrics ---
-                    $cardNo = trim($u['cardList'][0]['cardNo'] ?? '') ?: '';
-                    $faceCount = count($u['faceList'] ?? []);
-                    $fpCount = count($u['fingerprintList'] ?? []);
-                    // Dahua password is in pwdList[] array — non-empty means password set
-                    $pwdCount = count($u['pwdList'] ?? []);
-                    if ($pwdCount === 0 && !empty($u['password']))
-                        $pwdCount = 1;
+                    // --- Biometrics (Robust extraction for V1/V2) ---
+                    $faceCount = isset($u['faceList']) ? count($u['faceList']) : ($u['hasFace'] ?? $u['faceCount'] ?? 0);
+                    $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : ($u['hasFingerprint'] ?? $u['fpCount'] ?? 0);
+                    $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : ($u['hasPassword'] ?? ($u["password"] ? 1 : 0));
+                    $cardNo = trim($u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? ''));
+                    if ($cardNo == ($u['userId'] ?? $u['personId'] ?? '---')) $cardNo = ''; // Prevent ID as Card
 
-                    // --- Meta ---
-                    $dept = $u['department'] ?? ($u['deptName'] ?? '');
-                    $schedule = $u['scheduleMode'] ?? '';
-                    $perm = $u['doorRight'] ?? ($u['permission'] ?? '');
-                    $uType = $u['personType'] ?? '';
-                    $tUsed = $u['timesUsed'] ?? '';
-                    $gPlan = $u['generalPlan'] ?? '';
-                    $hPlan = $u['holidayPlan'] ?? '';
+                    // --- Meta (V1 vs V2 keys) ---
+                    $dept = $u['deptName'] ?? $u['department'] ?? '1-Default';
+                    $uType = $u['userType'] ?? $u['personType'] ?? 'General User';
+                    $perm = $u['permission'] ?? $u['doorRight'] ?? 'User';
+                    $schedule = $u['scheduleMode'] ?? 'Department Schedule';
 
-                    // --- Photo (hosted URL from faceList) ---
-                    $photoPath = null;
-                    if (!empty($u['faceList'])) {
-                        $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['faceList'][0]['imageUrl'] ?? null;
-                    }
+                    // Map types
+                    $types = [0 => 'General', 1 => 'VIP', 2 => 'Guest', 3 => 'Patrol', 4 => 'Blacklist'];
+                    if (is_numeric($uType) && isset($types[(int)$uType])) $uType = $types[(int)$uType] . ' User';
+                    
+                    $tUsed = $u['timesUsed'] ?? 'Unlimited';
+                    $gPlan = $u['generalPlan'] ?? '255-Default';
+                    $hPlan = $u['holidayPlan'] ?? '255-Default';
+                    $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['photoPath'] ?? null;
 
                     // --- Validity ---
                     $v_start = null;
@@ -181,7 +179,7 @@ if ($active_tab === 'logs') {
                     $upsert->execute([
                         $target_machine,
                         $pid,
-                        $u['name'] ?? $person_stub['name'] ?? 'Unknown',
+                        $u['name'] ?? $u['userName'] ?? $person_stub['name'] ?? 'Unknown',
                         $cardNo,
                         $faceCount,
                         $fpCount,
@@ -189,7 +187,7 @@ if ($active_tab === 'logs') {
                         $dept,
                         $schedule,
                         $perm,
-                        $uType,
+                        $uType ?: 'General User',
                         $tUsed,
                         $gPlan,
                         $hPlan,
@@ -197,9 +195,8 @@ if ($active_tab === 'logs') {
                         $v_start ?: null,
                         $v_end ?: null,
                     ]);
-                    $synced++;
                 }
-                $_SESSION['app_msg'] = "Sync Successful: $synced users updated.";
+                $_SESSION['app_msg'] = "Sync Successful: " . count($people_list) . " users updated.";
             } else {
                 $_SESSION['sync_error'] = "No users returned from Dahua. Debug: " . htmlspecialchars(json_encode(array_slice((array) $list_response, 0, 3)));
             }
