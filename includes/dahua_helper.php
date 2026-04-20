@@ -107,26 +107,47 @@ class DahuaHelper
     public static function getAccessToken($pdo = null)
     {
         $config = self::get_config($pdo);
-        if (empty($config['client_id']) || empty($config['client_secret']))
-            return null;
+        if (empty($config['client_id']) || empty($config['client_secret'])) return null;
+        
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
-            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time())
-                return $tokenData['access_token'];
+            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) return $tokenData['access_token'];
         }
-        $path = '/open-api/api-base/auth/getAppAccessToken';
-        $url = $config['base_url'] . $path;
-        $headers = self::generateSignV2($config, "POST", "{}");
+
+        $appId = $config['client_id'];
+        $secret = $config['client_secret'];
+        $prodId = $config['product_id'];
+        $timestamp = (string) round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        
+        // Login Factor (V1 MD5 style is required for initial AppAccessToken fetch)
+        $factor = $appId . $prodId . $timestamp . $nonce . "v1" . $secret;
+        $sign = strtoupper(md5($factor));
+        
+        $url = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
+        $headers = [
+            'Content-Type: application/json',
+            'Version: v1',
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign,
+            'ProductId: ' . $prodId
+        ];
+
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "{}");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => "{}",
+            CURLOPT_HTTPHEADER => $headers
+        ]);
         $response = curl_exec($ch);
         $data = json_decode($response, true);
         curl_close($ch);
+
         if (isset($data['data']['appAccessToken'])) {
             $token = $data['data']['appAccessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
