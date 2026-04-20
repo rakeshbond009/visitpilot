@@ -568,8 +568,9 @@ class DahuaHelper
             if (!$token)
                 return null;
 
-            $path = "/open-api/api-device/person/getPerson";
+            $path = "/open-api/api-iot/v2/device/accessControl/getUser";
             $body = json_encode([
+                'productId' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
                 'deviceId' => $deviceId,
                 'personId' => (string) $personId
             ]);
@@ -639,11 +640,12 @@ class DahuaHelper
             if (!$token)
                 return ['error' => 'No Token'];
 
-            $path = "/open-api/api-device/person/pageGetPerson";
+            $path = "/open-api/api-iot/v2/device/accessControl/getUsers";
             $body = json_encode([
-                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
-                'pageSize' => $pageSize,
-                'pageNum' => $page
+                'productId' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
+                'deviceId' => $deviceId ?: explode(',', $config['device_sns'] ?? '')[0],
+                'pageSize' => (int) $pageSize,
+                'pageNum' => (int) $page
             ]);
 
             $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
