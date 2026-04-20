@@ -527,6 +527,27 @@ class DahuaHelper
         return $config;
     }
 
+    public static function getAuthToken($pdo = null) { return self::getAccessToken($pdo); }
+    
+    public static function generateV2Headers($path, $body, $appId, $appSecret) {
+        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
+        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
+    }
+
+    public static function makeRequest($url, $body, $headers) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true, CURLOPT_POSTFIELDS => $body,
+            CURLOPT_HTTPHEADER => $headers, CURLOPT_TIMEOUT => 30
+        ]);
+        $resp = curl_exec($ch);
+        curl_close($ch);
+        return $resp;
+    }
+
+    public static function getPDO() { global $pdo; return $pdo; }
+
     public static function getPersonDetail($deviceId, $personId)
     {
         try {
