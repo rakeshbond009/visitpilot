@@ -146,41 +146,29 @@ if ($active_tab === 'logs') {
                     $detail = DahuaHelper::getPersonDetail($target_machine, $pid, $pdo);
                     $u = $detail ?: $person_stub; // fallback to list stub if detail fails
 
-                    // --- Biometrics (Robust extraction for V1/V2) ---
-                    $faceCount = isset($u['faceList']) ? count($u['faceList']) : ($u['hasFace'] ?? $u['faceCount'] ?? 0);
-                    $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : ($u['hasFingerprint'] ?? $u['fpCount'] ?? 0);
-                    $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : ($u['hasPassword'] ?? ($u["password"] ? 1 : 0));
-                    $cardNo = trim($u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? ''));
-                    if ($cardNo == ($u['userId'] ?? $u['personId'] ?? '---')) $cardNo = ''; // Prevent ID as Card
+                    // --- Biometrics ---
+                    $cardNo = trim($u['cardList'][0]['cardNo'] ?? '') ?: '';
+                    $faceCount = count($u['faceList'] ?? []);
+                    $fpCount = count($u['fingerprintList'] ?? []);
+                    // Dahua password is in pwdList[] array — non-empty means password set
+                    $pwdCount = count($u['pwdList'] ?? []);
+                    if ($pwdCount === 0 && !empty($u['password']))
+                        $pwdCount = 1;
 
-                    // --- Meta (V1 vs V2 keys) ---
-                    $dept = $u['deptName'] ?? $u['department'] ?? '1-Default';
-                    $uType = $u['userType'] ?? $u['personType'] ?? 'General User';
-                    $perm = $u['permission'] ?? $u['doorRight'] ?? 'User';
-                    $schedule = $u['scheduleMode'] ?? 'Department Schedule';
+                    // --- Meta ---
+                    $dept = $u['department'] ?? ($u['deptName'] ?? '');
+                    $schedule = $u['scheduleMode'] ?? '';
+                    $perm = $u['doorRight'] ?? ($u['permission'] ?? '');
+                    $uType = $u['personType'] ?? '';
+                    $tUsed = $u['timesUsed'] ?? '';
+                    $gPlan = $u['generalPlan'] ?? '';
+                    $hPlan = $u['holidayPlan'] ?? '';
 
-                    // Map types based on Dahua Docs (Lines 7126-7132)
-                    $types = [
-                        0 => 'General', 
-                        1 => 'Blacklist', 
-                        2 => 'Guest', 
-                        3 => 'Patrol', 
-                        4 => 'VIP', 
-                        5 => 'Extended Time'
-                    ];
-                    if (is_numeric($uType) && isset($types[(int)$uType])) {
-                        $uType = $types[(int)$uType] . ' User';
+                    // --- Photo (hosted URL from faceList) ---
+                    $photoPath = null;
+                    if (!empty($u['faceList'])) {
+                        $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['faceList'][0]['imageUrl'] ?? null;
                     }
-
-                    // Map Permission/Authority (Lines 7142-7143)
-                    $perm = $u['authority'] ?? ($u['permission'] ?? ($u['doorRight'] ?? 'User'));
-                    if ($perm === 1 || $perm === '1') $perm = 'Admin';
-                    if ($perm === 2 || $perm === '2') $perm = 'User';
-                    
-                    $tUsed = $u['timesUsed'] ?? 'Unlimited';
-                    $gPlan = $u['generalPlan'] ?? '255-Default';
-                    $hPlan = $u['holidayPlan'] ?? '255-Default';
-                    $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['photoPath'] ?? null;
 
                     // --- Validity ---
                     $v_start = null;
@@ -193,7 +181,7 @@ if ($active_tab === 'logs') {
                     $upsert->execute([
                         $target_machine,
                         $pid,
-                        $u['name'] ?? $u['userName'] ?? $person_stub['name'] ?? 'Unknown',
+                        $u['name'] ?? $person_stub['name'] ?? 'Unknown',
                         $cardNo,
                         $faceCount,
                         $fpCount,
@@ -201,7 +189,7 @@ if ($active_tab === 'logs') {
                         $dept,
                         $schedule,
                         $perm,
-                        $uType ?: 'General User',
+                        $uType,
                         $tUsed,
                         $gPlan,
                         $hPlan,
@@ -209,8 +197,9 @@ if ($active_tab === 'logs') {
                         $v_start ?: null,
                         $v_end ?: null,
                     ]);
+                    $synced++;
                 }
-                $_SESSION['app_msg'] = "Sync Successful: " . count($people_list) . " users updated.";
+                $_SESSION['app_msg'] = "Sync Successful: $synced users updated.";
             } else {
                 $_SESSION['sync_error'] = "No users returned from Dahua. Debug: " . htmlspecialchars(json_encode(array_slice((array) $list_response, 0, 3)));
             }
@@ -349,9 +338,11 @@ include 'header.php';
                                 </td>
                                 <td>
                                     <div class="text-primary fw-bold">
-                                        <?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?></div>
+                                        <?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?>
+                                    </div>
                                     <div class="small text-muted">ID:
-                                        <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?></div>
+                                        <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?>
+                                    </div>
                                 </td>
                                 <td><span
                                         class="badge bg-light text-dark border"><?php echo htmlspecialchars($log['machine_id']); ?></span>
@@ -458,7 +449,8 @@ include 'header.php';
                                             class="fw-bold small"><?php echo ($user['validity_end']) ? date('d-m-Y H:i:s', strtotime($user['validity_end'])) : '31-12-2037 23:59:59'; ?></span>
                                     </div>
                                     <div class="small text-muted mb-2">Sync:
-                                        <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></div>
+                                        <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?>
+                                    </div>
                                     <span class="badge bg-success px-3 py-1 rounded-pill">Active On Device</span>
                                 </td>
                             </tr>
