@@ -9,29 +9,53 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
+    private static function get_config($tenant_pdo = null)
     {
-        if (!$pdo) {
-            global $pdo;
-        }
-        if (!$pdo)
-            return [];
+        global $pdo, $master_pdo;
+        $db = $tenant_pdo ?: $pdo;
+        $config = [];
+        $tables = ['settings', 'system_settings'];
 
-        try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
-            $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-            return [
-                'client_id' => $settings['dahua_app_id'] ?? null,
-                'client_secret' => $settings['dahua_app_secret'] ?? null,
-                'product_id' => $settings['dahua_product_id'] ?? '',
-                'device_sns' => $settings['dahua_device_sns'] ?? '',
-                'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
-            ];
-        } catch (Exception $e) {
-            self::log("Config ERROR: " . $e->getMessage());
-            return [];
+        // Search in provided DB (Tenant)
+        if ($db) {
+            foreach ($tables as $table) {
+                try {
+                    $stmt = $db->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    if ($stmt) {
+                        $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                        if (!empty($res)) { 
+                            $config = array_merge($config, $res); 
+                            break; 
+                        }
+                    }
+                } catch (Exception $e) {}
+            }
         }
+
+        // Fallback to Master DB
+        if (empty($config) && isset($master_pdo) && $master_pdo) {
+            foreach ($tables as $table) {
+                try {
+                    $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    if ($stmt) {
+                        $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                        if (!empty($res)) { 
+                            $config = array_merge($config, $res); 
+                            break; 
+                        }
+                    }
+                } catch (Exception $e) {}
+            }
+        }
+
+        // Standardize keys for internal use
+        return [
+            'client_id' => $config['dahua_app_id'] ?? $config['client_id'] ?? null,
+            'client_secret' => $config['dahua_app_secret'] ?? $config['client_secret'] ?? null,
+            'product_id' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
+            'device_sns' => $config['dahua_device_sns'] ?? $config['device_sns'] ?? '',
+            'base_url' => rtrim($config['dahua_base_url'] ?? $config['base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
+        ];
     }
 
     private static function deleteWhitespace($str)
@@ -107,26 +131,48 @@ class DahuaHelper
     public static function getAccessToken($pdo = null)
     {
         $config = self::get_config($pdo);
-        if (empty($config['client_id']) || empty($config['client_secret']))
-            return null;
+        if (empty($config['client_id']) || empty($config['client_secret'])) return null;
+        
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
-            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time())
-                return $tokenData['access_token'];
+            if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) return $tokenData['access_token'];
         }
-        $path = '/open-api/api-base/auth/getAppAccessToken';
-        $url = $config['base_url'] . $path;
-        $headers = self::generateSignV2($config, "POST", "{}");
+
+        $appId = $config['client_id'];
+        $secret = $config['client_secret'];
+        $prodId = $config['product_id'];
+        $timestamp = (string) round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        
+        // MD5 v1 handshake signature
+        $factor = $appId . $prodId . $timestamp . $nonce . "v1" . $secret;
+        $sign = strtoupper(md5($factor));
+        
+        $url = $config['base_url'] . '/open-api/api-base/auth/getAppAccessToken';
+        $headers = [
+            'Content-Type: application/json',
+            'Version: v1',
+            'AccessKey: ' . $appId,
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign,
+            'ProductId: ' . $prodId
+        ];
+
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "{}");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => "{}",
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_TIMEOUT => 30
+        ]);
         $response = curl_exec($ch);
         $data = json_decode($response, true);
         curl_close($ch);
+
         if (isset($data['data']['appAccessToken'])) {
             $token = $data['data']['appAccessToken'];
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
