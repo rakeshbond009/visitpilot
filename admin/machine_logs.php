@@ -120,8 +120,12 @@ if ($active_tab === 'logs') {
             $list_response = DahuaHelper::getPeopleList($pdo, $target_machine);
             // Dahua wraps in data.pageData
             $list_data = $list_response['data'] ?? $list_response;
-            $people_list = $list_data['pageData'] ?? (is_array($list_data) ? $list_data : []);
+            $people_list = $list_data['pageData'] ?? $list_data['list'] ?? (is_array($list_data) ? $list_data : []);
             $_SESSION['raw_debug'] = 'List returned ' . count($people_list) . ' people | raw keys: ' . implode(',', array_keys($list_response ?? []));
+            
+            if (isset($_GET['debug_raw'])) {
+                echo "<pre>LIST RESPONSE:\n"; print_r($list_response); echo "</pre>";
+            }
 
             if (!empty($people_list)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
@@ -201,14 +205,18 @@ if ($active_tab === 'logs') {
                         [$v_start, $v_end] = explode('~', $vp, 2);
                     }
 
+                    if (isset($_GET['debug_raw']) && $pid == ($_GET['debug_pid'] ?? $pid)) {
+                        echo "<pre>PID $pid DETAIL:\n"; print_r($u); echo "</pre>";
+                    }
+                    
                     $upsert->execute([
                         $target_machine,
                         $pid,
-                        $u['name'] ?? $person_stub['name'] ?? 'Unknown',
+                        $u['name'] ?? $u['userName'] ?? $person_stub['name'] ?? 'Unknown',
                         $cardNo,
-                        $faceCount,
-                        $fpCount,
-                        $pwdCount,
+                        (int)$faceCount,
+                        (int)$fpCount,
+                        (int)$pwdCount,
                         $dept,
                         $schedule,
                         $perm,
