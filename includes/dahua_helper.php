@@ -532,10 +532,10 @@ class DahuaHelper
         return self::getAccessToken($pdo);
     }
 
-    public static function generateV2Headers($path, $body, $appId, $appSecret)
+    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
     {
-        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
-        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
+        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret, 'product_id' => self::get_config()['product_id'] ?? ''];
+        return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
     }
 
     public static function makeRequest($url, $body, $headers)
@@ -574,10 +574,10 @@ class DahuaHelper
                 'personId' => (string) $personId
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
             $headers[] = "Authorization: $token";
 
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $response = self::makeRequest(($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com') . $path, $body, $headers);
             $data = json_decode($response, true);
 
             return $data['data'] ?? null;
@@ -609,14 +609,24 @@ class DahuaHelper
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
                 $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
 
+                // Improved mapping for name and biometrics
+                $name = $detail['userName'] ?? $detail['name'] ?? 'Unknown';
+                $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
+                $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
+                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
+                $userType = $detail['userType'] ?? null;
+                $permission = $detail['permissionLevel'] ?? null;
+
                 $pdo->prepare("UPDATE machine_users SET 
                     name = ?, 
                     card_no = ?,
                     face_count = ?,
                     fp_count = ?,
+                    user_type = ?,
+                    permission_level = ?,
                     updated_at = NOW()
                     WHERE person_id = ? AND device_id = ?")
-                    ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pid, $deviceId]);
+                    ->execute([$name, $cardNo, $faceCount, $fpCount, $userType, $permission, $pid, $deviceId]);
             }
         }
         return true;
@@ -636,10 +646,10 @@ class DahuaHelper
                 'pageNum' => $page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
             $headers[] = "Authorization: $token";
 
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $response = self::makeRequest(($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com') . $path, $body, $headers);
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
