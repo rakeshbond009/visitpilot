@@ -107,6 +107,8 @@ if ($active_tab === 'logs') {
 
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
+        set_time_limit(180); // 3 minutes max
+        ignore_user_abort(true);
         try {
             // Fix: pass $pdo as first arg, and $target_machine as second
             $raw_response = DahuaHelper::getPeopleList($pdo, $target_machine);
@@ -134,6 +136,7 @@ if ($active_tab === 'logs') {
                         validity_start = VALUES(validity_start), validity_end = VALUES(validity_end),
                         updated_at = NOW()");
                 
+                $pdo->beginTransaction();
                 foreach ($people as $u) {
                     $reg_time = isset($u['createTime']) ? date('Y-m-d H:i:s', $u['createTime']/1000) : date('Y-m-d H:i:s');
                     $vp = $u['validityPeriod'] ?? '';
@@ -163,12 +166,18 @@ if ($active_tab === 'logs') {
                         $v_end,
                         $reg_time
                     ]);
-                }
+                $pdo->commit();
                 $_SESSION['app_msg'] = "Sync Successful: " . count($people) . " users updated.";
+                
+                // Clear the sync parameter and redirect to avoid timeout loops
+                $redirect = "machine_logs.php?tab=users&machine_id=" . urlencode($target_machine);
+                header("Location: $redirect");
+                exit;
             } else {
                 $_SESSION['sync_error'] = "No user data returned from Dahua Cloud for this device. Raw Count: " . (isset($user_data['totalRows']) ? $user_data['totalRows'] : '0');
             }
         } catch (Exception $e) { 
+            if ($pdo->inTransaction()) $pdo->rollBack();
             $_SESSION['sync_error'] = "Hardware Sync Failed: " . $e->getMessage();
         }
     }
