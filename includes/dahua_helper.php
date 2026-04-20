@@ -60,8 +60,7 @@ class DahuaHelper
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
             $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            // Include path if provided (Singapore requirement for SOME endpoints)
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $path . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
             $version = 'V1';
         }
@@ -548,20 +547,16 @@ class DahuaHelper
         try {
             $config = self::get_config($pdo);
             $token = self::getAccessToken($pdo);
-            if (!$token) {
-                self::log("getPersonDetail: No token for pid=$personId");
-                return null;
-            }
+            if (!$token) return null;
 
-            // IoT v2 endpoint — used for reading person info back from the device
-            $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
+            $path = '/open-api/api-iot/v1/device/user/getUsers';
             $body = json_encode([
                 'productId' => $config['product_id'],
                 'deviceId' => $deviceId,
-                'userIds' => [$personId]
+                'userIds' => [(string)$personId]
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token);
+            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -573,12 +568,9 @@ class DahuaHelper
             $response = curl_exec($ch);
             curl_close($ch);
             $data = json_decode($response, true);
-            self::log("getPersonDetail($personId): " . substr($response, 0, 200));
-
-            // IoT v2 returns data.list[0]
-            return $data['data']['list'][0] ?? $data['data'] ?? null;
+            
+            return $data['data']['pageData'][0] ?? $data['data'][0] ?? null;
         } catch (Exception $e) {
-            self::log("Error in getPersonDetail: " . $e->getMessage());
             return null;
         }
     }
@@ -640,20 +632,18 @@ class DahuaHelper
         try {
             $config = self::get_config($pdo);
             $token = self::getAccessToken($pdo);
-            if (!$token)
-                return ['error' => 'No Token'];
+            if (!$token) return ['error' => 'No Token'];
 
-            // IoT v2 endpoint — same server that addUsers works on
-            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
+            $path = '/open-api/api-iot/v1/device/user/getUsers';
             $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
             $body = json_encode([
                 'productId' => $config['product_id'],
                 'deviceId' => $targetDeviceId,
-                'pageSize' => $pageSize,
-                'pageNum' => $page
+                'page' => $page,
+                'pageSize' => $pageSize
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token);
+            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -664,10 +654,8 @@ class DahuaHelper
             ]);
             $response = curl_exec($ch);
             curl_close($ch);
-            self::log("getPeopleList raw: " . substr($response, 0, 300));
             return json_decode($response, true);
         } catch (Exception $e) {
-            self::log("Error in getPeopleList: " . $e->getMessage());
             return ['error' => $e->getMessage()];
         }
     }
