@@ -523,26 +523,39 @@ class DahuaHelper
         $config = [];
         
         $tables = ['settings', 'system_settings'];
-        foreach ($tables as $table) {
-            try {
-                if (!$db) break;
-                $stmt = $db->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
-                $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-                if (!empty($res)) { $config = array_merge($config, $res); break; }
-            } catch (Exception $e) {}
+        
+        // Search in provided DB (Tenant)
+        if ($db) {
+            foreach ($tables as $table) {
+                try {
+                    $stmt = $db->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    if ($stmt) {
+                        $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                        if (!empty($res)) { $config = array_merge($config, $res); break; }
+                    }
+                } catch (Throwable $e) {}
+            }
         }
         
+        // Fallback to Master DB
         if (empty($config) && isset($master_pdo) && $db !== $master_pdo) {
             foreach ($tables as $table) {
                 try {
                     $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
-                    $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-                    if (!empty($res)) { $config = array_merge($config, $res); break; }
-                } catch (Exception $e) {}
+                    if ($stmt) {
+                        $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                        if (!empty($res)) { $config = array_merge($config, $res); break; }
+                    }
+                } catch (Throwable $e) {}
             }
         }
         
-        // Map common keys
+        // Final fallback: Use existing get_config (private) which might have different logic
+        if (empty($config)) {
+            $config = self::get_config($db);
+        }
+
+        // Map keys for V1/V2 compatibility
         if (isset($config['dahua_app_id'])) $config['client_id'] = $config['dahua_app_id'];
         if (isset($config['dahua_app_secret'])) $config['client_secret'] = $config['dahua_app_secret'];
         if (!isset($config['base_url'])) $config['base_url'] = "https://open-api-sg.dolynkcloud.com";
@@ -559,6 +572,7 @@ class DahuaHelper
     }
 
     private static function makeRequest($url, $body, $headers) {
+        self::log("REQ URL: $url");
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true, CURLOPT_SSL_VERIFYPEER => false,
@@ -568,8 +582,10 @@ class DahuaHelper
         $resp = curl_exec($ch);
         $err = curl_error($ch);
         curl_close($ch);
-        if (!$resp && $err) {
-            self::log("CURL ERROR ($url): $err");
+        if (!$resp) {
+            self::log("CURL EMPTY/ERROR ($url): $err");
+        } else {
+            // self::log("RESP: " . substr($resp, 0, 200));
         }
         return $resp;
     }
