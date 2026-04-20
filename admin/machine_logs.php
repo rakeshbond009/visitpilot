@@ -117,11 +117,13 @@ if ($active_tab === 'logs') {
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
-            $raw_response = DahuaHelper::getPeopleList($pdo, $target_machine);
-            $user_data = $raw_response['data'] ?? [];
+            // Test: call without deviceId first to check if deviceId format is the issue
+            $raw_response = DahuaHelper::getPeopleList(null, $pdo);
+            $user_data = $raw_response;
             $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
 
-            $people = $user_data['pageData'] ?? [];
+            // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
+            $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
             if (!empty($people)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, validity_start, validity_end, created_at) 
@@ -304,9 +306,11 @@ include 'header.php';
                                 </td>
                                 <td>
                                     <div class="text-primary fw-bold">
-                                        <?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?></div>
+                                        <?php echo htmlspecialchars($log['person_name'] ?: 'Unknown'); ?>
+                                    </div>
                                     <div class="small text-muted">ID:
-                                        <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?></div>
+                                        <?php echo htmlspecialchars($log['person_id'] ?: 'N/A'); ?>
+                                    </div>
                                 </td>
                                 <td><span
                                         class="badge bg-light text-dark border"><?php echo htmlspecialchars($log['machine_id']); ?></span>
@@ -396,7 +400,8 @@ include 'header.php';
                                             class="fw-bold small"><?php echo ($user['validity_end']) ? date('d-m-Y H:i:s', strtotime($user['validity_end'])) : '31-12-2037 23:59:59'; ?></span>
                                     </div>
                                     <div class="small text-muted mb-2">Sync:
-                                        <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?></div>
+                                        <?php echo date('d-M-Y H:i', strtotime($user['updated_at'])); ?>
+                                    </div>
                                     <span class="badge bg-success px-3 py-1 rounded-pill">Active On Device</span>
                                 </td>
                             </tr>
