@@ -9,29 +9,44 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
+    private static function get_config($tenant_pdo = null)
     {
-        if (!$pdo) {
-            global $pdo;
-        }
-        if (!$pdo)
-            return [];
+        global $pdo, $master_pdo;
+        $db = $tenant_pdo ?: $pdo;
+        $config = [];
+        $tables = ['settings', 'system_settings'];
 
-        try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
-            $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-            return [
-                'client_id' => $settings['dahua_app_id'] ?? null,
-                'client_secret' => $settings['dahua_app_secret'] ?? null,
-                'product_id' => $settings['dahua_product_id'] ?? '',
-                'device_sns' => $settings['dahua_device_sns'] ?? '',
-                'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
-            ];
-        } catch (Exception $e) {
-            self::log("Config ERROR: " . $e->getMessage());
-            return [];
+        if ($db) {
+            foreach ($tables as $table) {
+                try {
+                    $stmt = $db->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    if ($stmt) {
+                        $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                        if (!empty($res)) { $config = array_merge($config, $res); break; }
+                    }
+                } catch (Exception $e) {}
+            }
         }
+
+        if (empty($config['dahua_app_id']) && isset($master_pdo) && $master_pdo) {
+            foreach ($tables as $table) {
+                try {
+                    $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    if ($stmt) {
+                        $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+                        if (!empty($res)) { $config = array_merge($config, $res); break; }
+                    }
+                } catch (Exception $e) {}
+            }
+        }
+
+        return [
+            'client_id' => $config['dahua_app_id'] ?? $config['client_id'] ?? null,
+            'client_secret' => $config['dahua_app_secret'] ?? $config['client_secret'] ?? null,
+            'product_id' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
+            'device_sns' => $config['dahua_device_sns'] ?? $config['device_sns'] ?? '',
+            'base_url' => rtrim($config['dahua_base_url'] ?? $config['base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
+        ];
     }
 
     private static function deleteWhitespace($str)
@@ -68,14 +83,12 @@ class DahuaHelper
 
         $headers = [
             'Content-Type: application/json',
-            'Version: ' . $version,
+            'Version: ' . strtolower($version),
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductID: ' . $productId,
-            'X-TraceId-Header: ' . $traceId,
-            'Accept-Language: en-US'
+            'ProductID: ' . $productId
         ];
 
         if ($appAccessToken) {
@@ -119,15 +132,29 @@ class DahuaHelper
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time())
                 return $tokenData['access_token'];
         }
-        $path = '/open-api/api-base/auth/getAppAccessToken';
-        $url = $config['base_url'] . $path;
-        $headers = self::generateSignV2($config, "POST", "{}");
+        $prodId = $config['product_id'];
+        $timestamp = (string) round(microtime(true) * 1000);
+        $nonce = bin2hex(random_bytes(16));
+        $factor = $config['client_id'] . $prodId . $timestamp . $nonce . "v1" . $config['client_secret'];
+        $sign = strtoupper(md5($factor));
+
+        $headers = [
+            'Content-Type: application/json',
+            'Version: v1',
+            'AccessKey: ' . $config['client_id'],
+            'Timestamp: ' . $timestamp,
+            'Nonce: ' . $nonce,
+            'Sign: ' . $sign,
+            'ProductId: ' . $prodId
+        ];
         $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, "{}");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => "{}",
+            CURLOPT_HTTPHEADER => $headers
+        ]);
         $response = curl_exec($ch);
         $data = json_decode($response, true);
         curl_close($ch);
@@ -563,23 +590,20 @@ class DahuaHelper
     public static function getPersonDetail($deviceId, $personId)
     {
         try {
-            $config = self::getConfig();
-            $token = self::getAuthToken();
-            if (!$token)
-                return null;
+            $config = self::get_config();
+            $token = self::getAccessToken();
+            if (!$token) return null;
 
-            $path = "/open-api/api-device/person/getPerson";
+            $path = '/open-api/api-iot/v2/device/accessControl/getUser';
             $body = json_encode([
+                'productId' => $config['product_id'],
                 'deviceId' => $deviceId,
-                'personId' => (string) $personId
+                'personId' => (string)$personId
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
-
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
             $data = json_decode($response, true);
-
             return $data['data'] ?? null;
         } catch (Exception $e) {
             self::log("Error in getPersonDetail: " . $e->getMessage());
@@ -624,22 +648,21 @@ class DahuaHelper
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
     {
         try {
-            $config = self::getConfig($pdo);
-            $token = self::getAuthToken();
-            if (!$token)
-                return ['error' => 'No Token'];
+            $config = self::get_config($pdo);
+            $token = self::getAccessToken($pdo);
+            if (!$token) return ['error' => 'No Token'];
 
-            $path = "/open-api/api-device/person/pageGetPerson";
+            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
+            $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
             $body = json_encode([
-                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
-                'pageSize' => $pageSize,
-                'pageNum' => $page
+                'productId' => $config['product_id'],
+                'deviceId' => $targetDeviceId,
+                'pageSize' => (int)$pageSize,
+                'pageNum' => (int)$page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
-
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
