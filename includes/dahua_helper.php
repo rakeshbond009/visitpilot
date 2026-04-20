@@ -52,9 +52,10 @@ class DahuaHelper
 
         if ($isV1) {
             $cleanBody = self::deleteWhitespace($body);
-            $bodyHash = ($body === "{}" || $body === "") ? "" : md5($cleanBody);
+            $bodyHash = ($body === "{}" || $body === "") ? "" : hash('sha512', $cleanBody);
             $factor = $appId . $timestamp . $nonce . $bodyHash . $secret;
             $sign = strtoupper(md5($factor));
+            $version = 'v1'; // Trying lowercase v1 again for Singapore
         } else {
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
@@ -110,13 +111,10 @@ class DahuaHelper
         if (empty($config['client_id']) || empty($config['client_secret'])) return null;
         
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';
-        // FORCING REFRESH FOR DEBUGGING - REMOVE CACHE CHECK
-        /*
         if (file_exists($cacheFile)) {
             $tokenData = json_decode(file_get_contents($cacheFile), true);
             if ($tokenData && ($tokenData['expire_time'] ?? 0) > time()) return $tokenData['access_token'];
         }
-        */
 
         $appId = $config['client_id'];
         $secret = $config['client_secret'];
@@ -124,7 +122,6 @@ class DahuaHelper
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
         
-        // Login Factor (V1 MD5 style is required for initial AppAccessToken fetch)
         $factor = $appId . $prodId . $timestamp . $nonce . "v1" . $secret;
         $sign = strtoupper(md5($factor));
         
@@ -148,7 +145,6 @@ class DahuaHelper
             CURLOPT_HTTPHEADER => $headers
         ]);
         $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $data = json_decode($response, true);
         curl_close($ch);
 
@@ -157,8 +153,6 @@ class DahuaHelper
             $expires = time() + ($data['data']['expiresIn'] ?? 3600) - 120;
             file_put_contents($cacheFile, json_encode(['access_token' => $token, 'expire_time' => $expires]));
             return $token;
-        } else {
-            self::log("Token Handshake FAILED (HTTP $httpCode): " . ($response ?: "EMPTY RESPONSE"));
         }
         return null;
     }
@@ -481,13 +475,6 @@ class DahuaHelper
                                                (SELECT full_name FROM users WHERE id = ? LIMIT 1)");
                     $stmtName->execute([$personId, $personId, $personId]);
                     $dbName = $stmtName->fetchColumn();
-                    
-                    if (!$dbName) {
-                        $stmt = $pdo->prepare("SELECT name FROM machine_users WHERE person_id = ? AND name != 'Unknown' LIMIT 1");
-                        $stmt->execute([$personId]);
-                        $dbName = $stmt->fetchColumn();
-                    }
-
                     if ($dbName) {
                         $personName = $dbName;
                     } else {
@@ -511,36 +498,14 @@ class DahuaHelper
                     json_encode($event)
                 ]);
 
-                // ✅ AUTO-POPULATE machine_users table with biometric detection
+                // ✅ AUTO-POPULATE machine_users table
                 if ($personId && $deviceId) {
-                    // Start with basic counts from the event itself
-                    $fCount = ($eventType === 'Face') ? 1 : 0;
-                    $fpCount = ($eventType === 'Fingerprint') ? 1 : 0;
-                    $pCount = ($eventType === 'Password') ? 1 : 0;
-                    $cNo = ($eventType === 'Card' && !empty($event['cardNo'])) ? $event['cardNo'] : '';
-
-                    // If name is unknown, try one-time aggressive fetch
-                    if ($personName === 'Unknown') {
-                        $full = self::getPersonDetail($deviceId, $personId, $pdo);
-                        if ($full) {
-                            $personName = $full['name'] ?? $full['userName'] ?? $personName;
-                            $fCount = isset($full['faceList']) ? count($full['faceList']) : ($full['hasFace'] ?? $fCount);
-                            $fpCount = isset($full['fingerprintList']) ? count($full['fingerprintList']) : ($full['hasFingerprint'] ?? $fpCount);
-                            $pCount = isset($full['pwdList']) ? count($full['pwdList']) : ($full['hasPassword'] ?? $pCount);
-                            $cNo = $full['cardNo'] ?? $full['cardNumber'] ?? ($full['cardList'][0]['cardNo'] ?? $cNo);
-                        }
-                    }
-
-                    $stmtUser = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, face_count, fp_count, pwd_count, card_no, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW()) 
+                    $stmtUser = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, created_at) 
+                        VALUES (?, ?, ?, NOW()) 
                         ON DUPLICATE KEY UPDATE 
                             name = COALESCE(NULLIF(VALUES(name), 'Unknown'), name),
-                            face_count = GREATEST(face_count, VALUES(face_count)),
-                            fp_count = GREATEST(fp_count, VALUES(fp_count)),
-                            pwd_count = GREATEST(pwd_count, VALUES(pwd_count)),
-                            card_no = COALESCE(NULLIF(VALUES(card_no), ''), card_no),
                             updated_at = NOW()");
-                    $stmtUser->execute([$deviceId, $personId, $personName, $fCount, $fpCount, $pCount, $cNo]);
+                    $stmtUser->execute([$deviceId, $personId, $personName ?: 'Unknown']);
                 }
             } catch (Exception $e) {
                 self::log("Error writing to machine_logs: " . $e->getMessage());
@@ -571,13 +536,17 @@ class DahuaHelper
         try {
             $config = self::get_config($pdo);
             $token = self::getAccessToken($pdo);
-            if (!$token) return null;
+            if (!$token) {
+                self::log("getPersonDetail: No token for pid=$personId");
+                return null;
+            }
 
-            $path = '/open-api/api-iot/v1/device/user/getUsers';
+            // IoT v2 endpoint — used for reading person info back from the device
+            $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
             $body = json_encode([
                 'productId' => $config['product_id'],
                 'deviceId' => $deviceId,
-                'userIds' => [(string)$personId]
+                'userIds' => [$personId]
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
@@ -592,9 +561,12 @@ class DahuaHelper
             $response = curl_exec($ch);
             curl_close($ch);
             $data = json_decode($response, true);
-            
-            return $data['data']['pageData'][0] ?? $data['data'][0] ?? null;
+            self::log("getPersonDetail($personId): " . substr($response, 0, 200));
+
+            // IoT v2 returns data.list[0]
+            return $data['data']['list'][0] ?? $data['data'] ?? null;
         } catch (Exception $e) {
+            self::log("Error in getPersonDetail: " . $e->getMessage());
             return null;
         }
     }
@@ -656,15 +628,17 @@ class DahuaHelper
         try {
             $config = self::get_config($pdo);
             $token = self::getAccessToken($pdo);
-            if (!$token) return ['error' => 'No Token'];
+            if (!$token)
+                return ['error' => 'No Token'];
 
-            $path = '/open-api/api-iot/v1/device/user/getUsers';
+            // IoT v2 endpoint — same server that addUsers works on
+            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
             $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
             $body = json_encode([
                 'productId' => $config['product_id'],
                 'deviceId' => $targetDeviceId,
-                'page' => $page,
-                'pageSize' => $pageSize
+                'pageSize' => $pageSize,
+                'pageNum' => $page
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
@@ -678,8 +652,10 @@ class DahuaHelper
             ]);
             $response = curl_exec($ch);
             curl_close($ch);
+            self::log("getPeopleList raw: " . substr($response, 0, 300));
             return json_decode($response, true);
         } catch (Exception $e) {
+            self::log("Error in getPeopleList: " . $e->getMessage());
             return ['error' => $e->getMessage()];
         }
     }
