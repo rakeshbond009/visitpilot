@@ -508,34 +508,39 @@ class DahuaHelper
                     $stmt = $db->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
                     if ($stmt) {
                         $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-                        if (!empty($res)) { $config = array_merge($config, $res); break; }
+                        if (!empty($res)) { 
+                            self::log("Config found in Tenant Table: $table");
+                            $config = array_merge($config, $res); 
+                            break; 
+                        }
                     }
                 } catch (Exception $e) {}
             }
         }
         
         // Fallback to Master DB
-        if (empty($config) && isset($master_pdo) && $db !== $master_pdo) {
+        if (empty($config) && isset($master_pdo) && $master_pdo) {
             foreach ($tables as $table) {
                 try {
                     $stmt = $master_pdo->query("SELECT setting_key, setting_value FROM $table WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
                     if ($stmt) {
                         $res = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-                        if (!empty($res)) { $config = array_merge($config, $res); break; }
+                        if (!empty($res)) { 
+                            self::log("Config found in Master Table: $table");
+                            $config = array_merge($config, $res); 
+                            break; 
+                        }
                     }
                 } catch (Exception $e) {}
             }
         }
         
-        // Final fallback: Use existing get_config (private) which might have different logic
-        if (empty($config)) {
-            $config = self::get_config($db);
-        }
-
         // Map keys for V1/V2 compatibility
         if (isset($config['dahua_app_id'])) $config['client_id'] = $config['dahua_app_id'];
         if (isset($config['dahua_app_secret'])) $config['client_secret'] = $config['dahua_app_secret'];
         if (!isset($config['base_url'])) $config['base_url'] = "https://open-api-sg.dolynkcloud.com";
+
+        if (empty($config['client_id'])) self::log("Config Error: No client_id found in any table.");
 
         return $config;
     }
