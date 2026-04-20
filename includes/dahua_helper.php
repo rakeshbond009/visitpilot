@@ -55,30 +55,27 @@ class DahuaHelper
             $bodyHash = ($body === "{}" || $body === "") ? "" : md5($cleanBody);
             $factor = $appId . $timestamp . $nonce . $bodyHash . $secret;
             $sign = strtoupper(md5($factor));
-            $version = 'v1'; // Trying lowercase v1 again for Singapore
         } else {
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
-            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+            // README Pattern: AccessKey + Token + Timestamp + Nonce + Method + "\n" + BodyHash
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $method . "\n" . $bodyHash;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-            $version = 'V1';
         }
 
         $headers = [
             'Content-Type: application/json',
-            'Version: V1',
+            'Version: v1',
             'AccessKey: ' . $appId,
+            'ProductId: ' . $productId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
             'Sign: ' . $sign,
-            'ProductID: ' . $productId,
-            'X-TraceId-Header: ' . $traceId,
-            'Accept-Language: en-US'
+            'Traceid: ' . $traceId
         ];
 
         if ($appAccessToken) {
-            $headers[] = 'AppAccessToken: ' . $appAccessToken;
+            $headers[] = 'Appaccesstoken: ' . $appAccessToken;
         }
 
         return $headers;
