@@ -4,9 +4,11 @@ class DahuaHelper
 
     private static function log($msg)
     {
-        $logFile = dirname(__DIR__) . '/dahua_debug.txt';
+        $logFile = __DIR__ . '/../dahua_debug.txt';
         $time = date('Y-m-d H:i:s');
-        file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
+        $formatted = "[$time] $msg\n";
+        @file_put_contents($logFile, $formatted, FILE_APPEND);
+        error_log("DahuaHelper: " . $msg);
     }
 
 
