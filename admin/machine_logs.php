@@ -149,10 +149,13 @@ if ($active_tab === 'logs') {
                     $u = $detail ?: $person_stub; // fallback to list stub if detail fails
 
                     // --- Biometrics (Robust extraction for Detail vs List Stub) ---
-                    $cardNo = trim($u['cardNo'] ?? 
-                                   $u['cardNumber'] ?? 
-                                   ($u['card_no'] ?? 
-                                   ($u['cardList'][0]['cardNo'] ?? ''))) ?: '';
+                    // IMPORTANT: Ensure we don't pick up the userId as a cardNo
+                    $rawCard = $u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? '');
+                    if ($rawCard == ($u['userId'] ?? $u['personId'] ?? '---')) {
+                        $rawCard = ''; // Ignore if it's just repeating the ID
+                    }
+                    $cardNo = trim((string)$rawCard);
+                    if ($cardNo === "0" || $cardNo === "1") $cardNo = ''; // Ignore dummy values
 
                     $faceCount = isset($u['faceList']) ? count($u['faceList']) : 
                                  ($u['hasFace'] ?? $u['faceCount'] ?? 0);
@@ -166,11 +169,20 @@ if ($active_tab === 'logs') {
                     if ($cardNo) $syncedCards++;
                     if ($pwdCount) $syncedPwds++;
 
-                    // --- Meta ---
-                    $dept = $u['department'] ?? ($u['deptName'] ?? '');
+                    // --- Meta (V2 uses userType, deptName, etc.) ---
+                    $dept = $u['deptName'] ?? ($u['department'] ?? '');
                     $schedule = $u['scheduleMode'] ?? '';
-                    $perm = $u['doorRight'] ?? ($u['permission'] ?? '');
-                    $uType = $u['personType'] ?? '';
+                    $perm = $u['permission'] ?? ($u['doorRight'] ?? '');
+                    $uType = $u['userType'] ?? ($u['personType'] ?? '');
+                    
+                    // Map numeric types to labels if they are integers
+                    $types = [0 => 'General', 1 => 'VIP', 2 => 'Guest', 3 => 'Patrol', 4 => 'Blacklist'];
+                    if (is_numeric($uType) && isset($types[(int)$uType])) {
+                        $uType = $types[(int)$uType] . ' User';
+                    }
+                    if (is_numeric($perm) && $perm == 0) {
+                        $perm = 'Normal User';
+                    }
                     $tUsed = $u['timesUsed'] ?? '';
                     $gPlan = $u['generalPlan'] ?? '';
                     $hPlan = $u['holidayPlan'] ?? '';

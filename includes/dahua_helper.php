@@ -571,13 +571,24 @@ class DahuaHelper
             // Count biometrics (Robust extraction)
             $faceCount = isset($u['faceList']) ? count($u['faceList']) : ($u['hasFace'] ?? 0);
             $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : ($u['hasFingerprint'] ?? 0);
-            $cardNo = trim($u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? '')) ?: '';
+            
+            // Robust Card Extraction (Ensure we don't pick up ID as Card)
+            $rawCard = $u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? '');
+            if ($rawCard == ($u['userId'] ?? $u['personId'] ?? '---')) $rawCard = '';
+            $cardNo = trim((string)$rawCard);
+            if ($cardNo === "0" || $cardNo === "1") $cardNo = '';
+
             $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : ($u['hasPassword'] ?? ($u['password'] ? 1 : 0));
 
-            $dept = $u['department'] ?? ($u['deptName'] ?? '1-Default');
+            $dept = $u['deptName'] ?? ($u['department'] ?? '1-Default');
             $schedule = $u['scheduleMode'] ?? 'Department Schedule';
-            $perm = $u['doorRight'] ?? $u['permission'] ?? 'User';
-            $uType = $u['personType'] ?? 'General User';
+            $perm = $u['permission'] ?? ($u['doorRight'] ?? 'User');
+            $uType = $u['userType'] ?? ($u['personType'] ?? 'General User');
+            
+            // Map types
+            $types = [0 => 'General', 1 => 'VIP', 2 => 'Guest', 3 => 'Patrol', 4 => 'Blacklist'];
+            if (is_numeric($uType) && isset($types[(int)$uType])) $uType = $types[(int)$uType] . ' User';
+
             $tUsed = $u['timesUsed'] ?? 'Unlimited';
             $gPlan = $u['generalPlan'] ?? '255-Default';
             $hPlan = $u['holidayPlan'] ?? '255-Default';
