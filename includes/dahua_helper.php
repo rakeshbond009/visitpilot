@@ -528,10 +528,10 @@ class DahuaHelper
             $body = json_encode([
                 'productId' => $config['product_id'],
                 'deviceId'  => $deviceId,
-                'personIds' => [(string)$personId] // V2 uses personIds for detail, userIds for list
+                'personIds' => [(string)$personId]
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token);
+            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -549,7 +549,7 @@ class DahuaHelper
             // --- FAIL-SAFE: Fallback to V1 if V2 returns limited fields ---
             if (!$person || (!isset($person['faceList']) && !isset($person['cardNo']) && !isset($person['cardNumber']))) {
                 $pathV1 = '/open-api/api-iot/v1/device/user/getUsers';
-                $headersV1 = self::generateSignV2($config, "POST", $body, $token);
+                $headersV1 = self::generateSignV2($config, "POST", $body, $token, true); // CORRECT V1 FLAG
                 $chV1 = curl_init($config['base_url'] . $pathV1);
                 curl_setopt_array($chV1, [
                     CURLOPT_RETURNTRANSFER => true,
@@ -646,7 +646,7 @@ class DahuaHelper
             ];
             $body = json_encode($bodyArr);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token);
+            $headers = self::generateSignV2($config, "POST", $body, $token, false, $path);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -662,7 +662,7 @@ class DahuaHelper
             // --- Fallback to V1 if V2 fails with 500 ---
             if (isset($resData['code']) && $resData['code'] == '500') {
                 $pathV1 = '/open-api/api-iot/v1/device/user/getUsers';
-                $headersV1 = self::generateSignV2($config, "POST", $body, $token);
+                $headersV1 = self::generateSignV2($config, "POST", $body, $token, true); // CORRECT V1 FLAG
                 $chV1 = curl_init($config['base_url'] . $pathV1);
                 curl_setopt_array($chV1, [
                     CURLOPT_RETURNTRANSFER => true,
