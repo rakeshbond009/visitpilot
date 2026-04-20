@@ -528,7 +528,7 @@ class DahuaHelper
             $body = json_encode([
                 'productId' => $config['product_id'],
                 'deviceId'  => $deviceId,
-                'userIds'   => [$personId]
+                'personIds' => [(string)$personId] // V2 uses personIds for detail, userIds for list
             ]);
 
             $headers = self::generateSignV2($config, "POST", $body, $token);
