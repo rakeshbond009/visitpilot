@@ -9,30 +9,7 @@ class DahuaHelper
         file_put_contents($logFile, "[$time] $msg\n", FILE_APPEND);
     }
 
-    private static function get_config($pdo = null)
-    {
-        if (!$pdo) {
-            global $pdo;
-        }
-        if (!$pdo)
-            return [];
 
-        try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
-            $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
-
-            return [
-                'client_id' => $settings['dahua_app_id'] ?? null,
-                'client_secret' => $settings['dahua_app_secret'] ?? null,
-                'product_id' => $settings['dahua_product_id'] ?? '',
-                'device_sns' => $settings['dahua_device_sns'] ?? '',
-                'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
-            ];
-        } catch (Exception $e) {
-            self::log("Config ERROR: " . $e->getMessage());
-            return [];
-        }
-    }
 
     private static function deleteWhitespace($str)
     {
@@ -110,7 +87,7 @@ class DahuaHelper
 
     public static function getAccessToken($pdo = null)
     {
-        $config = self::get_config($pdo);
+        $config = self::getConfig($pdo);
         if (empty($config['client_id']) || empty($config['client_secret']))
             return null;
         $cacheFile = dirname(__DIR__) . '/scratch/dahua_token_' . md5($config['client_id']) . '.json';

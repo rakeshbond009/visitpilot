@@ -117,13 +117,11 @@ if ($active_tab === 'logs') {
 
     if (($target_machine && isset($_GET['sync'])) || ($target_machine && $is_empty)) {
         try {
-            // Test: call without deviceId first to check if deviceId format is the issue
-            $raw_response = DahuaHelper::getPeopleList(null, $pdo);
-            $user_data = $raw_response;
+            $raw_response = DahuaHelper::getPeopleList($pdo, $target_machine);
+            $user_data = $raw_response['data'] ?? [];
             $_SESSION['raw_debug'] = 'deviceId:' . $target_machine . ' | raw:' . json_encode($raw_response);
 
-            // DahuaHelper::getPeopleList returns $data['data'] which contains pageData
-            $people = $user_data['pageData'] ?? (is_array($user_data) ? $user_data : []);
+            $people = $user_data['pageData'] ?? [];
             if (!empty($people)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
                     (device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, permission_level, user_type, times_used, general_plan, holiday_plan, validity_start, validity_end, created_at) 
