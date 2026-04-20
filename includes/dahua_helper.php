@@ -57,14 +57,13 @@ class DahuaHelper
             $sign = strtoupper(md5($factor));
             $version = 'v1'; // Trying lowercase v1 again for Singapore
         } else {
-        $cleanBody = ($body === "{}" || $body === "") ? "{}" : trim($body);
-        $bodyHash = hash('sha512', $cleanBody);
-        
-        $stringToSign = $method . "\n" . $bodyHash;
-        // Signature factor: AppID + Token + Timestamp + Nonce + Path + StringToSign
-        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
-        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-        $version = 'V1';
+            $cleanBody = self::deleteWhitespace($body);
+            $bodyHash = hash('sha512', $cleanBody);
+            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
+            // Include path if provided (Singapore requirement for SOME endpoints)
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
+            $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+            $version = 'V1';
         }
 
         $headers = [
@@ -122,7 +121,7 @@ class DahuaHelper
         }
         $path = '/open-api/api-base/auth/getAppAccessToken';
         $url = $config['base_url'] . $path;
-        $headers = self::generateSignV2($config, "POST", "{}", "", false, $path);
+        $headers = self::generateSignV2($config, "POST", "{}");
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -533,10 +532,10 @@ class DahuaHelper
         return self::getAccessToken($pdo);
     }
 
-    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
+    public static function generateV2Headers($path, $body, $appId, $appSecret)
     {
-        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret, 'product_id' => self::get_config()['product_id'] ?? ''];
-        return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
+        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
+        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
     }
 
     public static function makeRequest($url, $body, $headers)
@@ -569,9 +568,8 @@ class DahuaHelper
             if (!$token)
                 return null;
 
-            $path = "/open-api/api-iot/v2/device/accessControl/getUser";
+            $path = "/open-api/api-device/person/getPerson";
             $body = json_encode([
-                'productId' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
                 'deviceId' => $deviceId,
                 'personId' => (string) $personId
             ]);
@@ -606,12 +604,7 @@ class DahuaHelper
         foreach ($ids as $pid) {
             $detail = self::getPersonDetail($deviceId, $pid);
             if ($detail) {
-                // Count biometrics
-                $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
-                $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
-                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
-
-                // Improved mapping for name and biometrics
+                // Combined name check for V1/V2 Cloud responses
                 $name = $detail['userName'] ?? $detail['name'] ?? 'Unknown';
                 $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
                 $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
@@ -641,12 +634,11 @@ class DahuaHelper
             if (!$token)
                 return ['error' => 'No Token'];
 
-            $path = "/open-api/api-iot/v2/device/accessControl/getUsers";
+            $path = "/open-api/api-device/person/pageGetPerson";
             $body = json_encode([
-                'productId' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
-                'deviceId' => $deviceId ?: explode(',', $config['device_sns'] ?? '')[0],
-                'pageSize' => (int) $pageSize,
-                'pageNum' => (int) $page
+                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
+                'pageSize' => $pageSize,
+                'pageNum' => $page
             ]);
 
             $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
