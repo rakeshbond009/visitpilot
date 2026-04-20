@@ -514,13 +514,14 @@ class DahuaHelper
         return true;
     }
 
-    public static function getConfig($tenant_pdo = null) {
+    public static function get_config($tenant_pdo = null) {
         global $pdo, $master_pdo;
         $db = $tenant_pdo ?: $pdo;
         $config = [];
         
         // Try searching in the provided DB first
         try {
+            if (!$db) throw new Exception("No DB Connection");
             $stmt = $db->query("SELECT setting_key, setting_value FROM settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $config[$row['setting_key']] = $row['setting_value'];
@@ -533,30 +534,38 @@ class DahuaHelper
                     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                         $config[$row['setting_key']] = $row['setting_value'];
                     }
-                } catch (Exception $e2) {
-                    // Fail silently or log
-                }
+                } catch (Exception $e2) {}
             }
         }
         
-        // Final check: if still empty, check 'system_settings' table which some versions use
+        // Final check: if still empty, check 'system_settings'
         if (empty($config)) {
             $check_db = $master_pdo ?? $db;
-            try {
-                $stmt = $check_db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
-                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-                    $config[$row['setting_key']] = $row['setting_value'];
-                }
-            } catch (Exception $fallback) {}
+            if ($check_db) {
+                try {
+                    $stmt = $check_db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'device_sns'");
+                    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                        $config[$row['setting_key']] = $row['setting_value'];
+                    }
+                } catch (Exception $fallback) {}
+            }
         }
+        
+        // Map common keys if they are named differently in older versions
+        if (isset($config['dahua_app_id'])) $config['client_id'] = $config['dahua_app_id'];
+        if (isset($config['dahua_app_secret'])) $config['client_secret'] = $config['dahua_app_secret'];
+        if (!isset($config['base_url'])) $config['base_url'] = "https://sgp-dcloud.all-over-world.com";
 
         return $config;
     }
+    
+    // Alias for compatibility
+    public static function getConfig($pdo = null) { return self::get_config($pdo); }
 
-    public static function getPersonDetail($deviceId, $personId) {
+    public static function getPersonDetail($deviceId, $personId, $pdo = null) {
         try {
-            $config = self::getConfig();
-            $token = self::getAuthToken();
+            $config = self::get_config($pdo);
+            $token = self::getAccessToken($pdo);
             if (!$token) return null;
 
             $path = "/open-api/api-device/person/getPerson";
@@ -613,8 +622,8 @@ class DahuaHelper
     }
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100) {
         try {
-            $config = self::getConfig($pdo);
-            $token = self::getAuthToken();
+            $config = self::get_config($pdo);
+            $token = self::getAccessToken($pdo);
             if (!$token) return ['error' => 'No Token'];
 
             $path = "/open-api/api-device/person/pageGetPerson";
