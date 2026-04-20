@@ -45,41 +45,37 @@ class DahuaHelper
     {
         $timestamp = (string) round(microtime(true) * 1000);
         $nonce = bin2hex(random_bytes(16));
-        $appId = $config['client_id'];
-        $secret = $config['client_secret'];
-        $productId = $config['product_id'] ?? '';
-        $traceId = 'tid-' . bin2hex(random_bytes(8)) . '-' . $timestamp;
+        $appId = $config['client_id'] ?? $config['dahua_app_id'] ?? '';
+        $secret = $config['client_secret'] ?? $config['dahua_app_secret'] ?? '';
+        $productId = $config['product_id'] ?? $config['dahua_product_id'] ?? '';
 
         if ($isV1) {
-            $cleanBody = self::deleteWhitespace($body);
+            $cleanBody = preg_replace('/\s+/', '', $body);
             $bodyHash = ($body === "{}" || $body === "") ? "" : hash('sha512', $cleanBody);
             $factor = $appId . $timestamp . $nonce . $bodyHash . $secret;
             $sign = strtoupper(md5($factor));
-            $version = 'v1'; // Trying lowercase v1 again for Singapore
+            $version = 'v1';
         } else {
-            $cleanBody = self::deleteWhitespace($body);
+            $cleanBody = preg_replace('/\s+/', '', $body);
             $bodyHash = hash('sha512', $cleanBody);
-            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            // Include path if provided (Singapore requirement for SOME endpoints)
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
+            // Working Pattern: AccessKey + Token + Timestamp + Nonce + Path (if provided) + Method + "\n" + BodyHash
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $method . "\n" . $bodyHash;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-            $version = 'V1';
+            $version = 'v1';
         }
 
         $headers = [
             'Content-Type: application/json',
             'Version: ' . $version,
             'AccessKey: ' . $appId,
+            'ProductId: ' . $productId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
-            'Sign: ' . $sign,
-            'ProductID: ' . $productId,
-            'X-TraceId-Header: ' . $traceId,
-            'Accept-Language: en-US'
+            'Sign: ' . $sign
         ];
 
         if ($appAccessToken) {
-            $headers[] = 'AppAccessToken: ' . $appAccessToken;
+            $headers[] = 'Appaccesstoken: ' . $appAccessToken;
         }
 
         return $headers;
@@ -612,22 +608,23 @@ class DahuaHelper
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
     {
         try {
-            $config = self::getConfig($pdo);
-            $token = self::getAuthToken();
+            $config = self::get_config($pdo);
+            $token = self::getAccessToken($pdo);
             if (!$token)
                 return ['error' => 'No Token'];
 
-            $path = "/open-api/api-device/person/pageGetPerson";
+            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
+            $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
             $body = json_encode([
-                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
-                'pageSize' => $pageSize,
-                'pageNum' => $page
+                'productId' => $config['product_id'],
+                'deviceId' => $targetDeviceId,
+                'pageSize' => (int)$pageSize,
+                'pageNum' => (int)$page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
-
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $headers = self::generateSignV2($config, "POST", $body, $token);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
+            self::log("getPeopleList raw: " . substr($response, 0, 300));
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
