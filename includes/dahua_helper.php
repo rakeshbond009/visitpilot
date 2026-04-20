@@ -552,10 +552,10 @@ class DahuaHelper
 
     public static function getAuthToken($pdo = null) { return self::getAccessToken($pdo); }
     
-    public static function generateV2Headers($path, $body, $appId, $appSecret) {
+    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "") {
         // Mocking config for sign gen
         $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
-        return self::generateSignV2($cfg, "POST", $body, "", false, $path);
+        return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
     }
 
     private static function makeRequest($url, $body, $headers) {
@@ -633,20 +633,18 @@ class DahuaHelper
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100) {
         try {
             $config = self::getConfig($pdo);
-            $token = self::getAuthToken();
+            $token = self::getAuthToken($pdo);
             if (!$token) return ['error' => 'No Token'];
 
             $path = "/open-api/api-device/person/pageGetPerson";
             $body = json_encode([
-                'deviceId' => $deviceId ?: explode(',', $config['device_sns'])[0],
-                'pageSize' => $pageSize,
-                'pageNum' => $page
+                'deviceId' => $deviceId ?: explode(',', $config['device_sns'] ?? '')[0],
+                'pageSize' => (int)$pageSize,
+                'pageNum' => (int)$page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret']);
-            $headers[] = "Authorization: $token";
-
-            $response = self::makeRequest("https://sgp-dcloud.all-over-world.com" . $path, $body, $headers);
+            $headers = self::generateV2Headers($path, $body, $config['client_id'], $config['client_secret'], $token);
+            $response = self::makeRequest($config['base_url'] . $path, $body, $headers);
             return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
