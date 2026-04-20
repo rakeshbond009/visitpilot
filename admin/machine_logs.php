@@ -120,24 +120,8 @@ if ($active_tab === 'logs') {
             $list_response = DahuaHelper::getPeopleList($pdo, $target_machine);
             // Dahua wraps in data.pageData
             $list_data = $list_response['data'] ?? $list_response;
-            $people_list = $list_data['pageData'] ?? $list_data['list'] ?? (is_array($list_data) ? $list_data : []);
-            
-            if (isset($_GET['debug_raw'])) {
-                echo "<pre>Dahua API Response (getUsers):\n"; print_r($list_response); echo "</pre>";
-            }
-
-            // --- FAIL-SAFE FALLBACK: If API list fails with 500, use local logs to find IDs ---
-            if (empty($people_list) || ($list_response['code'] ?? '') == '500') {
-                $stmtLogs = $pdo->prepare("SELECT person_id as personId, MAX(person_name) as name FROM machine_logs WHERE machine_id = ? AND person_id IS NOT NULL GROUP BY person_id");
-                $stmtLogs->execute([$target_machine]);
-                $people_list = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
-                $_SESSION['raw_debug'] = 'API Failed (500). Falling back to local logs. Found ' . count($people_list) . ' users.';
-                if (isset($_GET['debug_raw'])) {
-                    echo "<div class='alert alert-warning'>Dahua API 500 Error. Fallback: Pulled ".count($people_list)." users from local activity logs.</div>";
-                }
-            } else {
-                $_SESSION['raw_debug'] = 'API Success. List returned ' . count($people_list) . ' people.';
-            }
+            $people_list = $list_data['pageData'] ?? (is_array($list_data) ? $list_data : []);
+            $_SESSION['raw_debug'] = 'List returned ' . count($people_list) . ' people | raw keys: ' . implode(',', array_keys($list_response ?? []));
 
             if (!empty($people_list)) {
                 $upsert = $pdo->prepare("INSERT INTO machine_users 
@@ -153,51 +137,29 @@ if ($active_tab === 'logs') {
                         updated_at = NOW()");
 
                 $synced = 0;
-                $syncedCards = 0;
-                $syncedPwds = 0;
                 foreach ($people_list as $person_stub) {
-                    $pid = $person_stub['personId'] ?? $person_stub['userId'] ?? null;
-                    if (!$pid) continue;
+                    $pid = $person_stub['personId'] ?? null;
+                    if (!$pid)
+                        continue;
 
                     // Fetch FULL detail per person — has card/pwd/face/fingerprint/photo
                     $detail = DahuaHelper::getPersonDetail($target_machine, $pid, $pdo);
                     $u = $detail ?: $person_stub; // fallback to list stub if detail fails
 
-                    // --- Biometrics (Robust extraction for Detail vs List Stub) ---
-                    // IMPORTANT: Ensure we don't pick up the userId as a cardNo
-                    $rawCard = $u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? '');
-                    if ($rawCard == ($u['userId'] ?? $u['personId'] ?? '---')) {
-                        $rawCard = ''; // Ignore if it's just repeating the ID
-                    }
-                    $cardNo = trim((string)$rawCard);
-                    if ($cardNo === "0" || $cardNo === "1") $cardNo = ''; // Ignore dummy values
+                    // --- Biometrics ---
+                    $cardNo = trim($u['cardList'][0]['cardNo'] ?? '') ?: '';
+                    $faceCount = count($u['faceList'] ?? []);
+                    $fpCount = count($u['fingerprintList'] ?? []);
+                    // Dahua password is in pwdList[] array — non-empty means password set
+                    $pwdCount = count($u['pwdList'] ?? []);
+                    if ($pwdCount === 0 && !empty($u['password']))
+                        $pwdCount = 1;
 
-                    $faceCount = isset($u['faceList']) ? count($u['faceList']) : 
-                                 ($u['hasFace'] ?? $u['faceCount'] ?? 0);
-
-                    $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : 
-                               ($u['hasFingerprint'] ?? $u['fpCount'] ?? 0);
-
-                    $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : 
-                                ($u['hasPassword'] ?? ($u['password'] ? 1 : 0));
-                    
-                    if ($cardNo) $syncedCards++;
-                    if ($pwdCount) $syncedPwds++;
-
-                    // --- Meta (V2 uses userType, deptName, etc.) ---
-                    $dept = $u['deptName'] ?? ($u['department'] ?? '');
+                    // --- Meta ---
+                    $dept = $u['department'] ?? ($u['deptName'] ?? '');
                     $schedule = $u['scheduleMode'] ?? '';
-                    $perm = $u['permission'] ?? ($u['doorRight'] ?? '');
-                    $uType = $u['userType'] ?? ($u['personType'] ?? '');
-                    
-                    // Map numeric types to labels if they are integers
-                    $types = [0 => 'General', 1 => 'VIP', 2 => 'Guest', 3 => 'Patrol', 4 => 'Blacklist'];
-                    if (is_numeric($uType) && isset($types[(int)$uType])) {
-                        $uType = $types[(int)$uType] . ' User';
-                    }
-                    if (is_numeric($perm) && $perm == 0) {
-                        $perm = 'Normal User';
-                    }
+                    $perm = $u['doorRight'] ?? ($u['permission'] ?? '');
+                    $uType = $u['personType'] ?? '';
                     $tUsed = $u['timesUsed'] ?? '';
                     $gPlan = $u['generalPlan'] ?? '';
                     $hPlan = $u['holidayPlan'] ?? '';
@@ -216,18 +178,14 @@ if ($active_tab === 'logs') {
                         [$v_start, $v_end] = explode('~', $vp, 2);
                     }
 
-                    if (isset($_GET['debug_raw']) && $pid == ($_GET['debug_pid'] ?? $pid)) {
-                        echo "<pre>PID $pid DETAIL:\n"; print_r($u); echo "</pre>";
-                    }
-                    
                     $upsert->execute([
                         $target_machine,
                         $pid,
-                        $u['name'] ?? $u['userName'] ?? $person_stub['name'] ?? 'Unknown',
+                        $u['name'] ?? $person_stub['name'] ?? 'Unknown',
                         $cardNo,
-                        (int)$faceCount,
-                        (int)$fpCount,
-                        (int)$pwdCount,
+                        $faceCount,
+                        $fpCount,
+                        $pwdCount,
                         $dept,
                         $schedule,
                         $perm,
@@ -420,11 +378,14 @@ include 'header.php';
                                                 </div>
                                             <?php endif; ?>
                                         </div>
+                                        <div>
                                             <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($user['name']); ?>
                                             </div>
                                             <div class="small text-muted mt-1">
-                                                <i class="bi bi-person-badge me-1"></i><?php echo ($user['user_type'] !== null && $user['user_type'] !== '') ? htmlspecialchars($user['user_type']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?><br>
-                                                <i class="bi bi-shield-lock me-1"></i><?php echo ($user['permission_level'] !== null && $user['permission_level'] !== '') ? htmlspecialchars($user['permission_level']) : '<span class="fst-italic opacity-50">Sync Pending</span>'; ?>
+                                                <i
+                                                    class="bi bi-person-badge me-1"></i><?php echo htmlspecialchars($user['user_type'] ?: 'General User'); ?><br>
+                                                <i
+                                                    class="bi bi-shield-lock me-1"></i><?php echo htmlspecialchars($user['permission_level'] ?: 'User'); ?>
                                             </div>
                                         </div>
                                     </div>
@@ -432,17 +393,17 @@ include 'header.php';
                                 <td>
                                     <div class="small">
                                         <div class="mb-1"><span class="text-muted fw-bold">Dept:</span> <span
-                                                class="badge bg-light text-dark border"><?php echo ($user['department'] !== null && $user['department'] !== '') ? htmlspecialchars($user['department']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></span>
+                                                class="badge bg-light text-dark border"><?php echo htmlspecialchars($user['department'] ?: '1-Default'); ?></span>
                                         </div>
                                         <div class="mb-1"><span class="text-muted fw-bold">Schedule:</span>
-                                            <?php echo ($user['schedule_mode'] !== null && $user['schedule_mode'] !== '') ? htmlspecialchars($user['schedule_mode']) : '<span class="fst-italic opacity-50">Pending</span>'; ?>
+                                            <?php echo htmlspecialchars($user['schedule_mode'] ?: 'Department Schedule'); ?>
                                         </div>
                                         <div class="mb-1"><span class="text-muted fw-bold">General:</span>
-                                            <?php echo ($user['general_plan'] !== null && $user['general_plan'] !== '') ? htmlspecialchars($user['general_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
+                                            <?php echo htmlspecialchars($user['general_plan'] ?: '255-Default'); ?></div>
                                         <div class="mb-1"><span class="text-muted fw-bold">Holiday:</span>
-                                            <?php echo ($user['holiday_plan'] !== null && $user['holiday_plan'] !== '') ? htmlspecialchars($user['holiday_plan']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
+                                            <?php echo htmlspecialchars($user['holiday_plan'] ?: '255-Default'); ?></div>
                                         <div><span class="text-muted fw-bold">Times Used:</span>
-                                            <?php echo ($user['times_used'] !== null && $user['times_used'] !== '') ? htmlspecialchars($user['times_used']) : '<span class="fst-italic opacity-50">Pending</span>'; ?></div>
+                                            <?php echo htmlspecialchars($user['times_used'] ?: 'Unlimited'); ?></div>
                                     </div>
                                 </td>
                                 <td>
@@ -462,13 +423,12 @@ include 'header.php';
                                             <span
                                                 class="badge <?php echo !empty($user['pwd_count']) ? 'bg-warning text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty($user['pwd_count']) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
-                                        <?php $real_card = (!empty(trim($user['card_no'])) && $user['card_no'] !== "0"); ?>
                                         <div
-                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $real_card ? 'border-info border-opacity-25' : ''; ?>">
+                                            class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo !empty(trim($user['card_no'])) ? 'border-info border-opacity-25' : ''; ?>">
                                             <span class="small fw-bold text-secondary"><i
                                                     class="bi bi-credit-card-2-front-fill me-2"></i>Card</span>
                                             <span
-                                                class="badge <?php echo $real_card ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo $real_card ? 'Added' : 'Not Added'; ?></span>
+                                                class="badge <?php echo !empty(trim($user['card_no'])) ? 'bg-info text-dark' : 'bg-secondary bg-opacity-25 text-dark'; ?>"><?php echo !empty(trim($user['card_no'])) ? 'Added' : 'Not Added'; ?></span>
                                         </div>
                                         <div
                                             class="d-flex justify-content-between align-items-center p-2 rounded bg-light border <?php echo $user['fp_count'] ? 'border-success border-opacity-25' : ''; ?>">

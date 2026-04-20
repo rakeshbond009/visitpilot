@@ -60,7 +60,8 @@ class DahuaHelper
             $cleanBody = self::deleteWhitespace($body);
             $bodyHash = hash('sha512', $cleanBody);
             $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . $stringToSign;
+            // Include path if provided (Singapore requirement for SOME endpoints)
+            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
             $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
             $version = 'V1';
         }
@@ -513,7 +514,8 @@ class DahuaHelper
         return true;
     }
 
-    public static function getPersonDetail($deviceId, $personId, $pdo = null) {
+    public static function getPersonDetail($deviceId, $personId, $pdo = null)
+    {
         try {
             $config = self::get_config($pdo);
             $token = self::getAccessToken($pdo);
@@ -522,15 +524,15 @@ class DahuaHelper
                 return null;
             }
 
-            // Use stable V1 endpoint for details
-            $path = '/open-api/api-iot/v1/device/user/getUsers';
+            // IoT v2 endpoint — used for reading person info back from the device
+            $path = '/open-api/api-iot/v2/device/accessControl/getPersonInfo';
             $body = json_encode([
                 'productId' => $config['product_id'],
-                'deviceId'  => $deviceId,
-                'userIds'   => [(string)$personId] // V1 uses userIds
+                'deviceId' => $deviceId,
+                'userIds' => [$personId]
             ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token, true); // true = V1 logic
+            $headers = self::generateSignV2($config, "POST", $body, $token);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -542,7 +544,9 @@ class DahuaHelper
             $response = curl_exec($ch);
             curl_close($ch);
             $data = json_decode($response, true);
-            self::log("getPersonDetail($personId) V1: " . substr($response, 0, 200));
+            self::log("getPersonDetail($personId): " . substr($response, 0, 200));
+
+            // IoT v2 returns data.list[0]
             return $data['data']['list'][0] ?? $data['data'] ?? null;
         } catch (Exception $e) {
             self::log("Error in getPersonDetail: " . $e->getMessage());
@@ -550,79 +554,77 @@ class DahuaHelper
         }
     }
 
-    public static function syncAllUsers($deviceId) {
+    public static function syncAllUsers($deviceId)
+    {
         $pdo = self::getPDO();
         // First try the bulk list
-        $allUsers = self::getPeopleList($pdo, $deviceId, 1, 100);
-        
-        $userList = $allUsers['data']['list'] ?? $allUsers['data']['pageData'] ?? [];
-        
-        foreach ($userList as $u) {
-            $pid = $u['personId'] ?? $u['userId'] ?? null;
-            if (!$pid) continue;
+        $allUsers = self::getPeopleList($deviceId, 1, 100);
 
-            // Try detail
-            $detail = self::getPersonDetail($deviceId, $pid, $pdo);
-            $u = $detail ?: $u;
+        $userList = $allUsers['data']['list'] ?? [];
 
-            // Count biometrics (Robust extraction)
-            $faceCount = isset($u['faceList']) ? count($u['faceList']) : ($u['hasFace'] ?? 0);
-            $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : ($u['hasFingerprint'] ?? 0);
-            
-            // Robust Card Extraction (Ensure we don't pick up ID as Card)
-            $rawCard = $u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? '');
-            if ($rawCard == ($u['userId'] ?? $u['personId'] ?? '---')) $rawCard = '';
-            $cardNo = trim((string)$rawCard);
-            if ($cardNo === "0" || $cardNo === "1") $cardNo = '';
+        // If bulk failed or is empty, we can't do much without IDs.
+        // But we can update existing "Unknown" users by personId.
+        $stmtUnknown = $pdo->prepare("SELECT DISTINCT person_id FROM machine_users WHERE name = 'Unknown' AND device_id = ?");
+        $stmtUnknown->execute([$deviceId]);
+        $ids = $stmtUnknown->fetchAll(PDO::FETCH_COLUMN);
 
-            $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : ($u['hasPassword'] ?? ($u['password'] ? 1 : 0));
+        foreach ($ids as $pid) {
+            $detail = self::getPersonDetail($deviceId, $pid);
+            if ($detail) {
+                // Count biometrics
+                $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
+                $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
+                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
+                $pwdCount = (empty($detail['password']) && empty($detail['pwd'])) ? 0 : 1;
+                $dept = $detail['department'] ?? '1-Default';
+                $schedule = $detail['scheduleMode'] ?? 'Department Schedule';
+                $perm = $detail['doorRight'] ?? $detail['permission'] ?? 'User';
+                $uType = $detail['personType'] ?? 'General User';
+                $tUsed = $detail['timesUsed'] ?? 'Unlimited';
+                $gPlan = $detail['generalPlan'] ?? '255-Default';
+                $hPlan = $detail['holidayPlan'] ?? '255-Default';
+                $photoPath = $detail['faceList'][0]['photoUrl'] ?? $detail['photoPath'] ?? null;
 
-            $dept = $u['deptName'] ?? ($u['department'] ?? '1-Default');
-            $schedule = $u['scheduleMode'] ?? 'Department Schedule';
-            $perm = $u['permission'] ?? ($u['doorRight'] ?? 'User');
-            $uType = $u['userType'] ?? ($u['personType'] ?? 'General User');
-            
-            // Map types
-            $types = [0 => 'General', 1 => 'VIP', 2 => 'Guest', 3 => 'Patrol', 4 => 'Blacklist'];
-            if (is_numeric($uType) && isset($types[(int)$uType])) $uType = $types[(int)$uType] . ' User';
-
-            $tUsed = $u['timesUsed'] ?? 'Unlimited';
-            $gPlan = $u['generalPlan'] ?? '255-Default';
-            $hPlan = $u['holidayPlan'] ?? '255-Default';
-            $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['photoPath'] ?? null;
-
-            $pdo->prepare("INSERT INTO machine_users (
-                device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, 
-                permission_level, user_type, times_used, general_plan, holiday_plan, photo_path, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
-            ON DUPLICATE KEY UPDATE 
-                name = VALUES(name), card_no = VALUES(card_no), face_count = VALUES(face_count), 
-                fp_count = VALUES(fp_count), pwd_count = VALUES(pwd_count), department = VALUES(department), 
-                schedule_mode = VALUES(schedule_mode), permission_level = VALUES(permission_level),
-                user_type = VALUES(user_type), times_used = VALUES(times_used), general_plan = VALUES(general_plan), 
-                holiday_plan = VALUES(holiday_plan), photo_path = VALUES(photo_path), updated_at = NOW()")
-            ->execute([$deviceId, $pid, $u['name'] ?? $u['userName'] ?? 'Unknown', $cardNo, $faceCount, $fpCount, $pwdCount, $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan, $photoPath]);
+                $pdo->prepare("UPDATE machine_users SET 
+                    name = ?, 
+                    card_no = ?,
+                    face_count = ?,
+                    fp_count = ?,
+                    pwd_count = ?,
+                    department = ?,
+                    schedule_mode = ?,
+                    permission_level = ?,
+                    user_type = ?,
+                    times_used = ?,
+                    general_plan = ?,
+                    holiday_plan = ?,
+                    photo_path = ?,
+                    updated_at = NOW()
+                    WHERE person_id = ? AND device_id = ?")
+                    ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pwdCount, $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan, $photoPath, $pid, $deviceId]);
+            }
         }
         return true;
     }
-    public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100) {
+    public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
+    {
         try {
             $config = self::get_config($pdo);
             $token = self::getAccessToken($pdo);
-            if (!$token) return ['error' => 'No Token'];
+            if (!$token)
+                return ['error' => 'No Token'];
 
-            // Use stable V1 endpoint for list
-            $path = '/open-api/api-iot/v1/device/user/getUsers';
+            // IoT v2 endpoint — same server that addUsers works on
+            $path = '/open-api/api-iot/v2/device/accessControl/getUsers';
             $targetDeviceId = $deviceId ?: trim(explode(',', $config['device_sns'] ?? '')[0]);
-            $bodyArr = [
+            $body = json_encode([
                 'productId' => $config['product_id'],
-                'deviceId'  => $targetDeviceId,
-                'pageSize'  => $pageSize,
-                'pageNum'   => $page
-            ];
-            $body = json_encode($bodyArr);
+                'deviceId' => $targetDeviceId,
+                'pageSize' => $pageSize,
+                'pageNum' => $page
+            ]);
 
-            $headers = self::generateSignV2($config, "POST", $body, $token, true); // true = V1 logic
+            $headers = self::generateSignV2($config, "POST", $body, $token);
             $ch = curl_init($config['base_url'] . $path);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
@@ -633,31 +635,8 @@ class DahuaHelper
             ]);
             $response = curl_exec($ch);
             curl_close($ch);
-            $resData = json_decode($response, true);
-            
-            // --- Fallback to V1 if V2 fails with 500 ---
-            if (isset($resData['code']) && $resData['code'] == '500') {
-                $pathV1 = '/open-api/api-iot/v1/device/user/getUsers';
-                $headersV1 = self::generateSignV2($config, "POST", $body, $token, true); // CORRECT V1 FLAG
-                $chV1 = curl_init($config['base_url'] . $pathV1);
-                curl_setopt_array($chV1, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_POST => true,
-                    CURLOPT_POSTFIELDS => $body,
-                    CURLOPT_HTTPHEADER => $headersV1
-                ]);
-                $responseV1 = curl_exec($chV1);
-                curl_close($chV1);
-                $resDataV1 = json_decode($responseV1, true);
-                if (isset($resDataV1['code']) && $resDataV1['code'] != '500') {
-                    $resData = $resDataV1;
-                    self::log("V2 Failed, V1 list succeeded.");
-                }
-            }
-
-            self::log("getPeopleList raw: " . substr(isset($responseV1) ? $responseV1 : $response, 0, 300));
-            return $resData;
+            self::log("getPeopleList raw: " . substr($response, 0, 300));
+            return json_decode($response, true);
         } catch (Exception $e) {
             self::log("Error in getPeopleList: " . $e->getMessage());
             return ['error' => $e->getMessage()];
