@@ -52,7 +52,7 @@ class DahuaHelper
 
         if ($isV1) {
             $cleanBody = self::deleteWhitespace($body);
-            $bodyHash = ($body === "{}" || $body === "") ? "" : hash('sha512', $cleanBody);
+            $bodyHash = ($body === "{}" || $body === "") ? "" : md5($cleanBody);
             $factor = $appId . $timestamp . $nonce . $bodyHash . $secret;
             $sign = strtoupper(md5($factor));
             $version = 'v1'; // Trying lowercase v1 again for Singapore
