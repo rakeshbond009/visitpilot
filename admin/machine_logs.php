@@ -146,14 +146,19 @@ if ($active_tab === 'logs') {
                     $detail = DahuaHelper::getPersonDetail($target_machine, $pid, $pdo);
                     $u = $detail ?: $person_stub; // fallback to list stub if detail fails
 
-                    // --- Biometrics ---
-                    $cardNo = trim($u['cardList'][0]['cardNo'] ?? '') ?: '';
-                    $faceCount = count($u['faceList'] ?? []);
-                    $fpCount = count($u['fingerprintList'] ?? []);
-                    // Dahua password is in pwdList[] array — non-empty means password set
-                    $pwdCount = count($u['pwdList'] ?? []);
-                    if ($pwdCount === 0 && !empty($u['password']))
-                        $pwdCount = 1;
+                    // --- Biometrics (Robust extraction for Detail vs List Stub) ---
+                    $cardNo = trim($u['cardNo'] ?? 
+                                   $u['cardNumber'] ?? 
+                                   ($u['cardList'][0]['cardNo'] ?? '')) ?: '';
+
+                    $faceCount = isset($u['faceList']) ? count($u['faceList']) : 
+                                 ($u['hasFace'] ?? $u['faceCount'] ?? 0);
+
+                    $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : 
+                               ($u['hasFingerprint'] ?? $u['fpCount'] ?? 0);
+
+                    $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : 
+                                ($u['hasPassword'] ?? ($u['password'] ? 1 : 0));
 
                     // --- Meta ---
                     $dept = $u['department'] ?? ($u['deptName'] ?? '');

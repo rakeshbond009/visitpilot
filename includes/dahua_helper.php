@@ -556,51 +556,44 @@ class DahuaHelper
     public static function syncAllUsers($deviceId) {
         $pdo = self::getPDO();
         // First try the bulk list
-        $allUsers = self::getPeopleList($deviceId, 1, 100);
+        $allUsers = self::getPeopleList($pdo, $deviceId, 1, 100);
         
-        $userList = $allUsers['data']['list'] ?? [];
+        $userList = $allUsers['data']['list'] ?? $allUsers['data']['pageData'] ?? [];
         
-        // If bulk failed or is empty, we can't do much without IDs.
-        // But we can update existing "Unknown" users by personId.
-        $stmtUnknown = $pdo->prepare("SELECT DISTINCT person_id FROM machine_users WHERE name = 'Unknown' AND device_id = ?");
-        $stmtUnknown->execute([$deviceId]);
-        $ids = $stmtUnknown->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($userList as $u) {
+            $pid = $u['personId'] ?? $u['userId'] ?? null;
+            if (!$pid) continue;
 
-        foreach ($ids as $pid) {
-            $detail = self::getPersonDetail($deviceId, $pid);
-            if ($detail) {
-                // Count biometrics
-                $faceCount = isset($detail['faceList']) ? count($detail['faceList']) : 0;
-                $fpCount = isset($detail['fingerprintList']) ? count($detail['fingerprintList']) : 0;
-                $cardNo = $detail['cardList'][0]['cardNo'] ?? '';
-                $pwdCount = (empty($detail['password']) && empty($detail['pwd'])) ? 0 : 1;
-                $dept = $detail['department'] ?? '1-Default';
-                $schedule = $detail['scheduleMode'] ?? 'Department Schedule';
-                $perm = $detail['doorRight'] ?? $detail['permission'] ?? 'User';
-                $uType = $detail['personType'] ?? 'General User';
-                $tUsed = $detail['timesUsed'] ?? 'Unlimited';
-                $gPlan = $detail['generalPlan'] ?? '255-Default';
-                $hPlan = $detail['holidayPlan'] ?? '255-Default';
-                $photoPath = $detail['faceList'][0]['photoUrl'] ?? $detail['photoPath'] ?? null;
+            // Try detail, or use stub
+            $detail = self::getPersonDetail($deviceId, $pid, $pdo);
+            $u = $detail ?: $u;
 
-                $pdo->prepare("UPDATE machine_users SET 
-                    name = ?, 
-                    card_no = ?,
-                    face_count = ?,
-                    fp_count = ?,
-                    pwd_count = ?,
-                    department = ?,
-                    schedule_mode = ?,
-                    permission_level = ?,
-                    user_type = ?,
-                    times_used = ?,
-                    general_plan = ?,
-                    holiday_plan = ?,
-                    photo_path = ?,
-                    updated_at = NOW()
-                    WHERE person_id = ? AND device_id = ?")
-                ->execute([$detail['name'], $cardNo, $faceCount, $fpCount, $pwdCount, $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan, $photoPath, $pid, $deviceId]);
-            }
+            // Count biometrics (Robust extraction)
+            $faceCount = isset($u['faceList']) ? count($u['faceList']) : ($u['hasFace'] ?? 0);
+            $fpCount = isset($u['fingerprintList']) ? count($u['fingerprintList']) : ($u['hasFingerprint'] ?? 0);
+            $cardNo = trim($u['cardNo'] ?? $u['cardNumber'] ?? ($u['cardList'][0]['cardNo'] ?? '')) ?: '';
+            $pwdCount = isset($u['pwdList']) ? count($u['pwdList']) : ($u['hasPassword'] ?? ($u['password'] ? 1 : 0));
+
+            $dept = $u['department'] ?? ($u['deptName'] ?? '1-Default');
+            $schedule = $u['scheduleMode'] ?? 'Department Schedule';
+            $perm = $u['doorRight'] ?? $u['permission'] ?? 'User';
+            $uType = $u['personType'] ?? 'General User';
+            $tUsed = $u['timesUsed'] ?? 'Unlimited';
+            $gPlan = $u['generalPlan'] ?? '255-Default';
+            $hPlan = $u['holidayPlan'] ?? '255-Default';
+            $photoPath = $u['faceList'][0]['photoUrl'] ?? $u['photoPath'] ?? null;
+
+            $pdo->prepare("INSERT INTO machine_users (
+                device_id, person_id, name, card_no, face_count, fp_count, pwd_count, department, schedule_mode, 
+                permission_level, user_type, times_used, general_plan, holiday_plan, photo_path, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) 
+            ON DUPLICATE KEY UPDATE 
+                name = VALUES(name), card_no = VALUES(card_no), face_count = VALUES(face_count), 
+                fp_count = VALUES(fp_count), pwd_count = VALUES(pwd_count), department = VALUES(department), 
+                schedule_mode = VALUES(schedule_mode), permission_level = VALUES(permission_level),
+                user_type = VALUES(user_type), times_used = VALUES(times_used), general_plan = VALUES(general_plan), 
+                holiday_plan = VALUES(holiday_plan), photo_path = VALUES(photo_path), updated_at = NOW()")
+            ->execute([$deviceId, $pid, $u['name'] ?? $u['userName'] ?? 'Unknown', $cardNo, $faceCount, $fpCount, $pwdCount, $dept, $schedule, $perm, $uType, $tUsed, $gPlan, $hPlan, $photoPath]);
         }
         return true;
     }
