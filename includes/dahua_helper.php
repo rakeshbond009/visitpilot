@@ -68,7 +68,7 @@ class DahuaHelper
 
         $headers = [
             'Content-Type: application/json',
-            'Version: ' . $version,
+            'Version: V1',
             'AccessKey: ' . $appId,
             'Timestamp: ' . $timestamp,
             'Nonce: ' . $nonce,
