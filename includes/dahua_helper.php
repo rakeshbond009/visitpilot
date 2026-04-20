@@ -18,14 +18,14 @@ class DahuaHelper
             return [];
 
         try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key LIKE 'product_id%'");
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
             $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
             return [
-                'client_id' => $settings['dahua_app_id'] ?? $settings['client_id'] ?? null,
-                'client_secret' => $settings['dahua_app_secret'] ?? $settings['client_secret'] ?? null,
-                'product_id' => $settings['dahua_product_id'] ?? $settings['product_id'] ?? '',
-                'device_sns' => $settings['dahua_device_sns'] ?? $settings['device_sns'] ?? '',
+                'client_id' => $settings['dahua_app_id'] ?? null,
+                'client_secret' => $settings['dahua_app_secret'] ?? null,
+                'product_id' => $settings['dahua_product_id'] ?? '',
+                'device_sns' => $settings['dahua_device_sns'] ?? '',
                 'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
             ];
         } catch (Exception $e) {
@@ -532,9 +532,10 @@ class DahuaHelper
         return self::getAccessToken($pdo);
     }
 
-    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
+    public static function generateV2Headers($path, $body, $appId, $appSecret)
     {
-        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
+        $cfg = self::get_config();
+        $token = self::getAuthToken();
         return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
     }
 
@@ -570,7 +571,7 @@ class DahuaHelper
 
             $path = "/open-api/api-iot/v2/device/accessControl/getUser";
             $body = json_encode([
-                'productId' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
+                'productId' => $config['product_id'] ?? '',
                 'deviceId' => $deviceId,
                 'personId' => (string) $personId
             ]);
@@ -645,7 +646,7 @@ class DahuaHelper
 
             $path = "/open-api/api-iot/v2/device/accessControl/getUsers";
             $body = json_encode([
-                'productId' => $config['dahua_product_id'] ?? $config['product_id'] ?? '',
+                'productId' => $config['product_id'] ?? '',
                 'deviceId' => $deviceId ?: explode(',', $config['device_sns'] ?? '')[0],
                 'pageSize' => (int) $pageSize,
                 'pageNum' => (int) $page
