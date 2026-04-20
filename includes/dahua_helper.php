@@ -57,13 +57,14 @@ class DahuaHelper
             $sign = strtoupper(md5($factor));
             $version = 'v1'; // Trying lowercase v1 again for Singapore
         } else {
-            $cleanBody = self::deleteWhitespace($body);
-            $bodyHash = hash('sha512', $cleanBody);
-            $stringToSign = $method . ($cleanBody === "{}" || $cleanBody === "" ? "" : "\n" . $bodyHash);
-            // Include path if provided (Singapore requirement for SOME endpoints)
-            $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
-            $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
-            $version = 'V1';
+        $cleanBody = ($body === "{}" || $body === "") ? "{}" : trim($body);
+        $bodyHash = hash('sha512', $cleanBody);
+        
+        $stringToSign = $method . "\n" . $bodyHash;
+        // Signature factor: AppID + Token + Timestamp + Nonce + Path + StringToSign
+        $strAuthFactor = $appId . $appAccessToken . $timestamp . $nonce . ($path ?: "") . $stringToSign;
+        $sign = strtoupper(hash_hmac('sha512', $strAuthFactor, $secret));
+        $version = 'V1';
         }
 
         $headers = [
@@ -121,7 +122,7 @@ class DahuaHelper
         }
         $path = '/open-api/api-base/auth/getAppAccessToken';
         $url = $config['base_url'] . $path;
-        $headers = self::generateSignV2($config, "POST", "{}");
+        $headers = self::generateSignV2($config, "POST", "{}", "", false, $path);
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
