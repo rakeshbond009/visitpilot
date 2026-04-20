@@ -481,14 +481,36 @@ class DahuaHelper
                     json_encode($event)
                 ]);
 
-                // ✅ AUTO-POPULATE machine_users table
+                // ✅ AUTO-POPULATE machine_users table with biometric detection
                 if ($personId && $deviceId) {
-                    $stmtUser = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, created_at) 
-                        VALUES (?, ?, ?, NOW()) 
+                    // Start with basic counts from the event itself
+                    $fCount = ($eventType === 'Face') ? 1 : 0;
+                    $fpCount = ($eventType === 'Fingerprint') ? 1 : 0;
+                    $pCount = ($eventType === 'Password') ? 1 : 0;
+                    $cNo = ($eventType === 'Card' && !empty($event['cardNo'])) ? $event['cardNo'] : '';
+
+                    // If name is unknown, try one-time aggressive fetch
+                    if ($personName === 'Unknown') {
+                        $full = self::getPersonDetail($deviceId, $personId, $pdo);
+                        if ($full) {
+                            $personName = $full['name'] ?? $full['userName'] ?? $personName;
+                            $fCount = isset($full['faceList']) ? count($full['faceList']) : ($full['hasFace'] ?? $fCount);
+                            $fpCount = isset($full['fingerprintList']) ? count($full['fingerprintList']) : ($full['hasFingerprint'] ?? $fpCount);
+                            $pCount = isset($full['pwdList']) ? count($full['pwdList']) : ($full['hasPassword'] ?? $pCount);
+                            $cNo = $full['cardNo'] ?? $full['cardNumber'] ?? ($full['cardList'][0]['cardNo'] ?? $cNo);
+                        }
+                    }
+
+                    $stmtUser = $pdo->prepare("INSERT INTO machine_users (device_id, person_id, name, face_count, fp_count, pwd_count, card_no, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW()) 
                         ON DUPLICATE KEY UPDATE 
                             name = COALESCE(NULLIF(VALUES(name), 'Unknown'), name),
+                            face_count = GREATEST(face_count, VALUES(face_count)),
+                            fp_count = GREATEST(fp_count, VALUES(fp_count)),
+                            pwd_count = GREATEST(pwd_count, VALUES(pwd_count)),
+                            card_no = COALESCE(NULLIF(VALUES(card_no), ''), card_no),
                             updated_at = NOW()");
-                    $stmtUser->execute([$deviceId, $personId, $personName ?: 'Unknown']);
+                    $stmtUser->execute([$deviceId, $personId, $personName, $fCount, $fpCount, $pCount, $cNo]);
                 }
             } catch (Exception $e) {
                 self::log("Error writing to machine_logs: " . $e->getMessage());
