@@ -136,9 +136,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
     <meta property="og:title" content="CodePilotx VMS - Smart Visitor Management">
     <meta property="og:description" content="Streamline visitor experience with AI-powered smart visitor management and robust security.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://visitpilot.codepilotx.com/">
-    <link rel="canonical" href="https://visitpilot.codepilotx.com/">
+    <meta property="og:url" content="https://atithi.online/">
+    <meta property="og:image" content="https://atithi.online/assets/img/logo.png">
+    <meta property="og:site_name" content="Atithi - Smart Visitor Management">
     
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="CodePilotx VMS - Smart Visitor Management">
+    <meta name="twitter:description" content="Streamline visitor experience with AI-powered smart visitor management and robust security.">
+    <meta name="twitter:image" content="https://atithi.online/assets/img/logo.png">
+    
+    <link rel="canonical" href="https://atithi.online/">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
