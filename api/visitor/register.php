@@ -216,7 +216,7 @@ try {
     logAction($pdo, $user_id, "Visitor Registered via Mobile: " . ($visitorRow['name'] ?? $data['name']) . " (Visit Code: $visit_code)", null, $newRegData);
 
     // ⚡ STEP 2: Respond IMMEDIATELY (flush / fastcgi_finish_request)
-    sendAsyncResponse('success', 'Visitor registered successfully', [
+    sendInstantResponse('success', 'Visitor registered successfully', [
         'visit_id' => $visit_id,
         'visit_code' => $visit_code,
         'status' => ($invitation_id || $auto_approve) ? 'approved' : 'pending',

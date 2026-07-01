@@ -130,10 +130,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login_action'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodePilotx VMS - Smart Visitor Management</title>
+    <meta name="description" content="CodePilotx VMS is an advanced Smart Visitor Management System offering AI-powered intelligence, hardware integration, and robust security for modern workspaces.">
+    <meta name="keywords" content="Visitor Management System, VMS, Smart Visitor System, Access Control, CodePilotx VMS, Workplace Security">
+    <meta name="author" content="CodePilotX">
+    <meta property="og:title" content="CodePilotx VMS - Smart Visitor Management">
+    <meta property="og:description" content="Streamline visitor experience with AI-powered smart visitor management and robust security.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://visitpilot.codepilotx.com/">
+    <link rel="canonical" href="https://visitpilot.codepilotx.com/">
+    
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- CSS Dependencies -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">

@@ -18,13 +18,13 @@ class DahuaHelper
             return [];
 
         try {
-            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%' OR setting_key = 'product_id'");
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key LIKE 'dahua_%'");
             $settings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
 
             return [
-                'client_id' => $settings['dahua_app_id'] ?? $settings['client_id'] ?? null,
-                'client_secret' => $settings['dahua_app_secret'] ?? $settings['client_secret'] ?? null,
-                'product_id' => $settings['dahua_product_id'] ?? $settings['product_id'] ?? '',
+                'client_id' => $settings['dahua_app_id'] ?? null,
+                'client_secret' => $settings['dahua_app_secret'] ?? null,
+                'product_id' => $settings['dahua_product_id'] ?? '',
                 'device_sns' => $settings['dahua_device_sns'] ?? '',
                 'base_url' => rtrim($settings['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com', '/')
             ];
@@ -532,9 +532,10 @@ class DahuaHelper
         return self::getAccessToken($pdo);
     }
 
-    public static function generateV2Headers($path, $body, $appId, $appSecret, $token = "")
+    public static function generateV2Headers($path, $body, $appId, $appSecret)
     {
-        $cfg = ['client_id' => $appId, 'client_secret' => $appSecret];
+        $cfg = self::get_config();
+        $token = self::getAuthToken();
         return self::generateSignV2($cfg, "POST", $body, $token, false, $path);
     }
 
@@ -563,7 +564,7 @@ class DahuaHelper
     public static function getPersonDetail($deviceId, $personId)
     {
         try {
-            $config = self::get_config();
+            $config = self::getConfig();
             $token = self::getAuthToken();
             if (!$token)
                 return null;
@@ -575,7 +576,7 @@ class DahuaHelper
                 'personId' => (string) $personId
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['client_id'], $config['client_secret'], $token);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
             $headers[] = "Authorization: $token";
 
             $response = self::makeRequest(($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com') . $path, $body, $headers);
@@ -638,7 +639,7 @@ class DahuaHelper
     public static function getPeopleList($pdo = null, $deviceId = null, $page = 1, $pageSize = 100)
     {
         try {
-            $config = self::get_config($pdo);
+            $config = self::getConfig($pdo);
             $token = self::getAuthToken();
             if (!$token)
                 return ['error' => 'No Token'];
@@ -651,7 +652,7 @@ class DahuaHelper
                 'pageNum' => (int) $page
             ]);
 
-            $headers = self::generateV2Headers($path, $body, $config['client_id'], $config['client_secret'], $token);
+            $headers = self::generateV2Headers($path, $body, $config['dahua_app_id'], $config['dahua_app_secret'], $token);
             $headers[] = "Authorization: $token";
 
             $response = self::makeRequest(($config['dahua_base_url'] ?? 'https://open-api-sg.dolynkcloud.com') . $path, $body, $headers);
