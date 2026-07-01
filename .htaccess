@@ -8,6 +8,18 @@
 # Prevent directory browsing
 Options -Indexes
 
+# Explicitly allow sitemap.xml and robots.txt (must come before error pages)
+<Files "sitemap.xml">
+    Order allow,deny
+    Allow from all
+    Header set Content-Type "application/xml; charset=utf-8"
+</Files>
+
+<Files "robots.txt">
+    Order allow,deny
+    Allow from all
+</Files>
+
 # Custom error pages
 ErrorDocument 404 index.php
 ErrorDocument 403 index.php
